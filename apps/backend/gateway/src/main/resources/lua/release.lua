@@ -1,0 +1,2 @@
+-- Returns a whole reserve after a refusal or expiry.
+-- Not implemented yet.
