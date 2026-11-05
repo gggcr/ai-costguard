@@ -5,6 +5,7 @@ spring-modulith = "2.1.2"
 avro = "1.12.2"
 jtokkit = "1.1.0"
 cel = "0.15.0"
+springdoc = "3.0.0"
 
 [libraries]
 # BOMs: versions of everything below without an explicit version come from these
@@ -51,6 +52,8 @@ avro = { module = "org.apache.avro:avro", version.ref = "avro" }
 avro-tools = { module = "org.apache.avro:avro-tools", version.ref = "avro" }
 jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
 cel = { module = "dev.cel:cel", version.ref = "cel" }
+springdoc-webmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "springdoc" }
+springdoc-webflux = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

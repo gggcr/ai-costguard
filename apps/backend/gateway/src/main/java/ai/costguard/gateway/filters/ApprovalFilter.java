@@ -1,22 +1,26 @@
 package ai.costguard.gateway.filters;
 
+import ai.costguard.gateway.ladder.CheckStep;
+import ai.costguard.gateway.ladder.OperationContext;
+import ai.costguard.gateway.ladder.StepResult;
 import org.springframework.stereotype.Component;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.core.Ordered;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+/**
+ * Step 7 of the check ladder: a human approves the operation.
+ *
+ * <p>Stub. It refuses rather than passes, so an unfinished check cannot allow spending.
+ */
 @Component
-public class IdentityFilter implements CheckStep {
+public class ApprovalFilter implements CheckStep {
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    public Mono<StepResult> check(OperationContext op) {
         return Mono.error(new UnsupportedOperationException("ApprovalFilter is not implemented"));
     }
 
     @Override
     public int getOrder() {
-        return 7;
+        return 700;
     }
 }
