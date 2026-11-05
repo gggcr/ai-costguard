@@ -6,12 +6,8 @@ import org.springframework.core.Ordered;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-/**
- * Step 2 of the check ladder: the mandate allows the model, vendor, amount and time.
- *
- * <p>Stub, not registered as a bean yet. It refuses rather than passes, so an unfinished check cannot allow spending.
- */
-public class MandateFilter implements GlobalFilter, Ordered {
+@Component
+public class IdentityFilter implements CheckStep {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

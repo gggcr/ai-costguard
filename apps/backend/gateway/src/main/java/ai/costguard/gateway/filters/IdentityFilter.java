@@ -6,12 +6,8 @@ import org.springframework.core.Ordered;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-/**
- * Step 1 of the check ladder: the key is valid and the agent is not suspended.
- *
- * <p>Stub, not registered as a bean yet. It refuses rather than passes, so an unfinished check cannot allow spending.
- */
-public class IdentityFilter implements GlobalFilter, Ordered {
+@Component
+public class IdentityFilter implements CheckStep {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
