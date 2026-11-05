@@ -6,12 +6,8 @@ import org.springframework.core.Ordered;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-/**
- * Step 3 of the check ladder: the operation is not a repeat or part of a loop within the task.
- *
- * <p>Stub, not registered as a bean yet. It refuses rather than passes, so an unfinished check cannot allow spending.
- */
-public class LoopFilter implements GlobalFilter, Ordered {
+@Component
+public class IdentityFilter implements CheckStep {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

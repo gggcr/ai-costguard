@@ -1,0 +1,15 @@
+name: java
+on:
+  push:
+    paths: ['apps/backend/gateway/**', 'apps/backend/core/**', 'libs/java/**', 'schemas/**', 'gradle/**', '*.gradle.kts']
+  pull_request:
+    paths: ['apps/backend/gateway/**', 'apps/backend/core/**', 'libs/java/**', 'schemas/**', 'gradle/**', '*.gradle.kts']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '25' }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew build
