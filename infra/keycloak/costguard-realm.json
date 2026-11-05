@@ -1,0 +1,22 @@
+{
+  "realm": "costguard",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      { "name": "owner", "description": "Company owner" },
+      { "name": "finance", "description": "Finance" },
+      { "name": "it_admin", "description": "IT administrator" },
+      { "name": "agent_owner", "description": "Agent owner" },
+      { "name": "auditor", "description": "Read-only, verifies receipts" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "costguard-frontend",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"]
+    }
+  ]
+}

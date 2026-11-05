@@ -1,4 +1,4 @@
-/** Users, roles and org structure. Owns TENANT, DEPARTMENT, EMPLOYEE. */
+/** Users, roles and org structure. Owns TENANT, USER_ACCOUNT, DEPARTMENT, EMPLOYEE. */
 @ApplicationModule(displayName = "Organisation")
 package ai.costguard.core.org;
 

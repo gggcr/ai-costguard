@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.spring.boot.starter.kafka)
     implementation(libs.jtokkit)
     implementation(libs.cel)
+    implementation(libs.springdoc.webflux)
     runtimeOnly(libs.micrometer.prometheus)
 
     testImplementation(libs.spring.boot.starter.test)

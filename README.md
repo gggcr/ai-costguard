@@ -18,14 +18,16 @@ Architecture: [Miro board](https://miro.com/app/board/uXjVES7uH9I=/).
 
 Library versions live only in `gradle/libs.versions.toml`.
 
-## Build
+## Build and run
 
-Requires JDK 25.
+Requires JDK 25 and Docker.
 
 ```bash
+cp .env.example .env
+make up                 # PostgreSQL, Redis, Kafka, Schema Registry, ClickHouse, MinIO, Keycloak, Vault
 ./gradlew build
-./gradlew :gateway:test
 ./gradlew :core:bootRun
+./gradlew :gateway:bootRun
 ```
 
-The core needs PostgreSQL to start. `infra/local` will provide it, along with the other infrastructure.
+On Windows without `make`, run `docker compose -f infra/local/docker-compose.yml --env-file .env up -d --wait`.
