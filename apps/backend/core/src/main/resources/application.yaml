@@ -20,6 +20,9 @@ spring:
       jdbc:
         schema-initialization:
           enabled: true
+  cloud:
+    vault:
+      enabled: ${VAULT_ENABLED:false}
 
 management:
   endpoints:

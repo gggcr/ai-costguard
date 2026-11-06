@@ -13,9 +13,9 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `journal.receipts.v1` | Core journal | NEAR notary | receipt_id |
 | `journal.anchors.v1` | NEAR notary | Core journal | batch_id |
 | `ingest.files.v1` | Core imports | Ingest pipeline | file_id |
-| `ingest.normalized.v1` | Ingest pipeline | Core master data | entity key |
+| `ingest.normalized.v1` | Ingest pipeline | Core software and org | entity key |
 | `cost.records.v1` | Ingest pipeline, core ledger | ClickHouse, forecast service | tenant_id |
 | `findings.v1` | Audit engine | Core findings and notifications | finding fingerprint |
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
-Budget counters in Redis are written only by the gateway; the ledger publishes limits and reconciles.
+Budget counters in Redis are written only by the gateway. The core ledger limits reconciles them against PostgreSQL and publishes corrections  in `budgets.limit.v1`; the gateway applies them
