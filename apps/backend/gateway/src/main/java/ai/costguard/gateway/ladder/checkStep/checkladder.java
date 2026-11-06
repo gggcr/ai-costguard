@@ -13,5 +13,4 @@ public class Checkladder {
     static final int STEPS =7;
     private final List<CheckStep> steps;
 
-    public Checkladder(List<CheckStepp)
-}
+    public Checkladder (List<CheckStepp> steps)
