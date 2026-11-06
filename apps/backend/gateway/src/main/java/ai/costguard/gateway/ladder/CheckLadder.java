@@ -14,12 +14,14 @@ public class CheckLadder {
     private final List<CheckStep> steps;
 
     public CheckLadder(List<CheckStep> steps) {
+        // An empty or incomplete ladder would pass everything, so the gateway refuses to start
         if (steps.size() != STEPS) {
             throw new IllegalStateException("Expected " + STEPS + " check steps, got " + steps.size());
         }
         this.steps = steps.stream().sorted(Comparator.comparingInt(Ordered::getOrder)).toList();
     }
 
+    /** Steps run in order; the first one that does not pass stops the ladder. */
     public Mono<StepResult> run(OperationContext op) {
         return Flux.fromIterable(steps)
                 .concatMap(step -> step.check(op))
