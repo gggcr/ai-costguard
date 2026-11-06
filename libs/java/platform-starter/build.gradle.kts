@@ -4,4 +4,5 @@ plugins {
 
 dependencies {
     api(libs.spring.boot.autoconfigure)
+    compileOnly(libs.spring.jdbc)
 }
