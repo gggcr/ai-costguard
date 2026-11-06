@@ -19,3 +19,6 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
 Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
+
+The `assets` module publishes no events yet, and the board has no topic for it. See
+[the comparison](../../docs/architecture/assets-vs-board.md) for what the audit engine needs.
