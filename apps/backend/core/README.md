@@ -30,6 +30,13 @@ Company equipment, who holds it and when it is due back. Comparison with the boa
 Tests start an embedded PostgreSQL and connect as an ordinary role, because a superuser bypasses RLS.
 Docker is not needed.
 
+A normal test run stops that PostgreSQL itself. A test JVM killed by force skips shutdown hooks and leaves it
+running, and PIT does this to its workers. To clean up on Windows, in PowerShell:
+
+    Get-CimInstance Win32_Process -Filter "Name='postgres.exe'" |
+        Where-Object { $_.ExecutablePath -like '*\embedded-pg\*' } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
 The API contract `schemas/openapi/core.yaml` is exported from the code. After an API change, regenerate it:
 
     ./gradlew :core:test --tests "*OpenApiContractTest" -Popenapi.update=true
