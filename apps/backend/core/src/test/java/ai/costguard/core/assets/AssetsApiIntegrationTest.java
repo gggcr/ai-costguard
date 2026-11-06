@@ -15,18 +15,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ai.costguard.core.PostgresTestSupport;
+import ai.costguard.core.shared.security.RealmRoles;
 import com.jayway.jsonpath.JsonPath;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -56,12 +60,21 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
 
     @Autowired MockMvc mvc;
     @Autowired JdbcClient jdbc;
+    @Autowired RealmRoles realmRoles;
 
     private final UUID tenant = UUID.randomUUID();
     private final UUID employee = UUID.randomUUID();
 
     private RequestPostProcessor as(UUID tenantId) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenantId.toString()));
+        return as(tenantId, "it_admin");
+    }
+
+    /** Goes through the real role converter, so a token here looks like one from Keycloak. */
+    private RequestPostProcessor as(UUID tenantId, String... roles) {
+        return jwt()
+                .jwt(j -> j.claim("tenant_id", tenantId.toString())
+                        .claim("realm_access", Map.of("roles", List.of(roles))))
+                .authorities(realmRoles);
     }
 
     private MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
@@ -99,6 +112,53 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
     @Test
     void anonymousRequestIsRejected() throws Exception {
         mvc.perform(get("/api/v1/assets")).andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"owner", "finance", "it_admin"})
+    void managersCanChangeAssets(String role) throws Exception {
+        String body = mvc.perform(json(post("/api/v1/assets"), laptop(inventoryNumber())).with(as(tenant, role)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(body, "$.id");
+
+        mvc.perform(json(put("/api/v1/assets/{id}/assignment", id), issue(employee)).with(as(tenant, role)))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/assets/{id}/assignment", id).with(as(tenant, role)))
+                .andExpect(status().isNoContent());
+        mvc.perform(put("/api/v1/assets/{id}/retirement", id).with(as(tenant, role)))
+                .andExpect(status().isOk());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"agent_owner", "auditor", "unknown"})
+    void otherRolesCanReadButNotChangeAssets(String role) throws Exception {
+        String id = createAsset();
+        assign(id, employee);
+
+        for (var change : List.of(
+                json(post("/api/v1/assets"), laptop(inventoryNumber())),
+                json(put("/api/v1/assets/{id}/assignment", id), issue(UUID.randomUUID())),
+                delete("/api/v1/assets/{id}/assignment", id),
+                put("/api/v1/assets/{id}/retirement", id))) {
+            mvc.perform(change.with(as(tenant, role)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                    .andExpect(jsonPath("$.code").value("role_required"));
+        }
+
+        mvc.perform(get("/api/v1/assets/{id}", id).with(as(tenant, role)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ASSIGNED"))
+                .andExpect(jsonPath("$.currentAssignment.employeeId").value(employee.toString()));
+        mvc.perform(get("/api/v1/assets").with(as(tenant, role))).andExpect(jsonPath("$.items", hasSize(1)));
+    }
+
+    @Test
+    void tokenWithoutRolesCannotChangeAssets() throws Exception {
+        mvc.perform(json(post("/api/v1/assets"), laptop(inventoryNumber())).with(as(tenant, new String[0])))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("role_required"));
     }
 
     @Test

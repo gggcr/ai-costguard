@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 /** A rule of the module was broken; {@code code} is the stable value clients branch on. */
 enum AssetProblem {
     TENANT_MISSING(HttpStatus.FORBIDDEN, "Token has no valid tenant_id claim"),
+    ROLE_REQUIRED(HttpStatus.FORBIDDEN, "Changing assets needs the owner, finance or it_admin role"),
     ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "Asset not found"),
     INVENTORY_NUMBER_TAKEN(HttpStatus.CONFLICT, "Inventory number is already registered"),
     ASSET_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "Asset is held by an employee"),
