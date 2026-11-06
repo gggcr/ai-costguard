@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.spring.boot.starter.kafka)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
+    implementation(libs.spring.cloud.starter.vault)
     implementation(libs.spring.modulith.starter.core)
     implementation(libs.spring.modulith.starter.jdbc)
     implementation(libs.spring.modulith.events.kafka)

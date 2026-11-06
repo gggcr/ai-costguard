@@ -13,7 +13,7 @@ Board frames: 2 (operation path), 3 (gateway check ladder), 13 (inside the servi
 | 2 | `MandateFilter` | Mandate allows the model, vendor, amount and time | 403 `policy_denied` |
 | 3 | `LoopFilter` | Repeat or loop within a task | Cached response, or 409 `duplicate_operation` |
 | 4 | `RiskFilter` | Agent risk score | 429 `rate_limited`, approval, or 423 `agent_suspended` |
-| 5 | `BudgetFilter` | Reserve at every budget level | 402 `budget_exceeded`, or approval |
+| 5 | `BudgetFilter` | Reserve at every budget level | 402 `budget_exceeded`|
 | 6 | `TaskFitFilter` | AI assessor, above the mandate threshold | Goes to approval |
 | 7 | `ApprovalFilter` | Human approval | Refusal, reserve is returned |
 
