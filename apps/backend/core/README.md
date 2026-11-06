@@ -19,7 +19,10 @@ Company equipment, who holds it and when it is due back. Comparison with the boa
 - **Asset**: one item of equipment. **Assignment**: one period an employee holds an asset; an open
   assignment has no `returnedAt`. **Retired**: no longer in use, kept for history.
 - `cost` comes from outside. The core does not depreciate it: accounting stays in the accounting system.
-- The tenant comes from the `tenant_id` token claim. `TenantSession` binds it to the transaction, and RLS
+- The tenant comes from the `tenant_id` token claim. An administrator sets it as a Keycloak user attribute;
+  users cannot change it, and a user without it gets 403 `tenant_missing`. After a realm change, recreate
+  the container: `--import-realm` skips a realm that already exists.
+- `TenantSession` binds the tenant to the transaction, and RLS
   alone isolates the rows, so queries have no tenant filter.
 
 ## Tests
