@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
         content = @Content(mediaType = "application/problem+json",
                 schema = @Schema(implementation = AssetErrorDocs.ProblemBody.class)))
 @ApiResponse(responseCode = "401", description = "Missing or invalid token", content = @Content)
-@ApiResponse(responseCode = "403", description = "code: tenant_missing",
+@ApiResponse(responseCode = "403", description = "code: tenant_missing or role_required",
         content = @Content(mediaType = "application/problem+json",
                 schema = @Schema(implementation = AssetErrorDocs.ProblemBody.class)))
 class AssetController {
@@ -58,6 +58,7 @@ class AssetController {
     }
 
     @PostMapping("/assets")
+    @ManagesAssets
     @Operation(summary = "Register an asset")
     @AssetErrorDocs.InventoryNumberConflict
     ResponseEntity<Asset> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody NewAsset asset) {
@@ -83,6 +84,7 @@ class AssetController {
     }
 
     @PutMapping("/assets/{id}/assignment")
+    @ManagesAssets
     @Operation(summary = "Issue an asset to an employee or move its return date", description = "Idempotent.")
     @AssetErrorDocs.NotFound
     @AssetErrorDocs.AssetStateConflict
@@ -93,6 +95,7 @@ class AssetController {
 
     @DeleteMapping("/assets/{id}/assignment")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @ManagesAssets
     @Operation(summary = "Take an asset back from its holder", description = "Idempotent.")
     @AssetErrorDocs.NotFound
     void takeBack(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
@@ -107,6 +110,7 @@ class AssetController {
     }
 
     @PutMapping("/assets/{id}/retirement")
+    @ManagesAssets
     @Operation(summary = "Retire an asset that nobody holds", description = "Idempotent.")
     @AssetErrorDocs.NotFound
     @AssetErrorDocs.AssetStateConflict

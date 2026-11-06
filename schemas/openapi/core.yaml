@@ -34,7 +34,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -81,7 +81,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -121,7 +121,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -177,7 +177,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -203,7 +203,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -237,7 +237,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -265,7 +265,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
@@ -299,7 +299,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: "code: tenant_missing"
+          description: "code: tenant_missing or role_required"
           content:
             application/problem+json:
               schema:
