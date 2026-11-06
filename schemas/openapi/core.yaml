@@ -1,0 +1,362 @@
+openapi: 3.1.0
+info:
+  title: CostGuard Core API
+  version: v1
+servers:
+- url: /
+security:
+- bearer: []
+tags:
+- name: Assets
+  description: "Employee equipment: who holds what and when it is due back"
+paths:
+  /api/v1/assets/{id}/retirement:
+    put:
+      tags:
+      - Assets
+      summary: Retire an asset that nobody holds
+      description: Idempotent.
+      operationId: retire
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "409":
+          description: "code: asset_already_assigned or asset_retired"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}/assignment:
+    put:
+      tags:
+      - Assets
+      summary: Issue an asset to an employee or move its return date
+      description: Idempotent.
+      operationId: assign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewAssignment"
+        required: true
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "409":
+          description: "code: asset_already_assigned or asset_retired"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+    delete:
+      tags:
+      - Assets
+      summary: Take an asset back from its holder
+      description: Idempotent.
+      operationId: takeBack
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "204":
+          description: No Content
+  /api/v1/assets:
+    get:
+      tags:
+      - Assets
+      summary: "List assets, optionally by status"
+      operationId: list
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - IN_STOCK
+          - ASSIGNED
+          - RETIRED
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+    post:
+      tags:
+      - Assets
+      summary: Register an asset
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewAsset"
+        required: true
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "409":
+          description: "code: inventory_number_taken"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/employees/{employeeId}/assets:
+    get:
+      tags:
+      - Assets
+      summary: "What an employee still holds, with its total cost"
+      operationId: heldBy
+      parameters:
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}:
+    get:
+      tags:
+      - Assets
+      summary: Get an asset
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}/assignments:
+    get:
+      tags:
+      - Assets
+      summary: "Assignment history, newest first"
+      operationId: history
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+components:
+  schemas:
+    ProblemBody:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+    NewAssignment:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+        returnDue:
+          type: string
+          format: date
+      required:
+      - employeeId
+    NewAsset:
+      type: object
+      properties:
+        inventoryNumber:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+        cost:
+          type: number
+          minimum: 0
+      required:
+      - cost
+      - inventoryNumber
+      - model
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
