@@ -35,6 +35,6 @@ class OpenApiContractTest extends PostgresTestSupport {
             Files.writeString(committed, actual);
         }
 
-        assertThat(Files.readString(committed)).isEqualTo(actual);
+        assertThat(Files.readString(committed)).isEqualToNormalizingNewlines(actual);
     }
 }
