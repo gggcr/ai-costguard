@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: core
+  mvc:
+    problemdetails:
+      enabled: true
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/costguard}
     username: ${DB_USER:costguard}
@@ -23,6 +26,9 @@ spring:
   cloud:
     vault:
       enabled: ${VAULT_ENABLED:false}
+
+springdoc:
+  default-produces-media-type: application/json
 
 management:
   endpoints:

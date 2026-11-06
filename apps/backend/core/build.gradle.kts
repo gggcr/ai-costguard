@@ -27,11 +27,19 @@ dependencies {
     runtimeOnly(libs.micrometer.prometheus)
 
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.security.test)
+    testImplementation(libs.embedded.postgres)
     testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
     testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.test {
+    systemProperty("repo.root", rootDir.path)
+    systemProperty("openapi.update", providers.gradleProperty("openapi.update").getOrElse("false"))
 }
 
 tasks.named<BootJar>("bootJar") {
