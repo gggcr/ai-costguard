@@ -1,21 +1,35 @@
-# Kafka event schemas
+# AI CostGuard
 
-The schema comes first: add `.avsc` files here, and `:events` generates the Java classes from them.
+A single platform that controls a company's digital spending: it decides on each paid AI agent
+operation before the money is spent, and turns invoices, exports and access logs into findings with
+estimated savings.
 
-| Topic | Producer | Consumers | Key |
-|---|---|---|---|
-| `agent.operations.v1` | Agent gateway | Core ledger and journal, anomaly detector, ClickHouse | agent_id |
-| `agent.risk-signals.v1` (compacted) | Anomaly detector | Agent gateway, core agents and notifications | agent_id or task_id |
-| `policy.snapshots.v1` (compacted) | Core policies | Agent gateway | tenant_id |
-| `agents.state.v1` (compacted) | Core agents | Agent gateway | agent_id |
-| `catalog.prices.v1` (compacted) | Core catalog | Agent gateway | sku_id |
-| `budgets.limits.v1` (compacted) | Core ledger | Agent gateway | budget_id |
-| `journal.receipts.v1` | Core journal | NEAR notary | receipt_id |
-| `journal.anchors.v1` | NEAR notary | Core journal | batch_id |
-| `ingest.files.v1` | Core imports | Ingest pipeline | file_id |
-| `ingest.normalized.v1` | Ingest pipeline | Core software and org | entity key |
-| `cost.records.v1` | Ingest pipeline, core ledger | ClickHouse, forecast service | tenant_id |
-| `findings.v1` | Audit engine | Core findings and notifications | finding fingerprint |
+Architecture: [Miro board](https://miro.com/app/board/uXjVES7uH9I=/).
 
-`agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
-Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
+## Java part of the monorepo
+
+| Path | Gradle project | Purpose |
+|---|---|---|
+| `apps/backend/gateway` | `:gateway` | Agent gateway (Spring Cloud Gateway): checks, budget reserve, proxy to providers |
+| `apps/backend/core` | `:core` | Core modular monolith (Spring Modulith, PostgreSQL) |
+| `libs/java/platform-starter` | `:platform-starter` | Shared starter: tenant and RLS, RFC 9457 errors, tracing |
+| `libs/java/events` | `:events` | Event classes generated from `schemas/avro` |
+| `schemas/avro` | | Kafka contracts. The schema comes first, classes are generated |
+
+Library versions live only in `gradle/libs.versions.toml`.
+
+## Build and run
+
+Requires JDK 25 and Docker.
+
+```bash
+cp .env.example .env
+make up                 # PostgreSQL, Redis, Kafka, Schema Registry, ClickHouse, MinIO, Keycloak, Vault
+./gradlew build
+./gradlew :core:bootRun
+./gradlew :gateway:bootRun
+```
+
+
+On Windows without `make`, run `docker compose -f infra/local/docker-compose.yml --env-file .env up -d --wait`.
+

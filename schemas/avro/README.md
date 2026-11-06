@@ -5,7 +5,7 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | Topic | Producer | Consumers | Key |
 |---|---|---|---|
 | `agent.operations.v1` | Agent gateway | Core ledger and journal, anomaly detector, ClickHouse | agent_id |
-| `agent.risk-signals.v1` (compacted) | Anomaly detector | Agent gateway | agent_id or task_id |
+| `agent.risk-signals.v1` (compacted) | Anomaly detector | Agent gateway, core agents and notifications | agent_id or task_id |
 | `policy.snapshots.v1` (compacted) | Core policies | Agent gateway | tenant_id |
 | `agents.state.v1` (compacted) | Core agents | Agent gateway | agent_id |
 | `catalog.prices.v1` (compacted) | Core catalog | Agent gateway | sku_id |
@@ -18,4 +18,4 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `findings.v1` | Audit engine | Core findings and notifications | finding fingerprint |
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
-Budget counters in Redis are written only by the gateway. The core ledger limits reconciles them against PostgreSQL and publishes corrections  in `budgets.limit.v1`; the gateway applies them
+Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
