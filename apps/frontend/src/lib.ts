@@ -33,6 +33,10 @@ export function fmtRelative(iso: string): string {
   return `${Math.round(diff / 86400)} дн назад`;
 }
 
+// Календарный день по часам пользователя: в Москве в 01:00 уже завтра, а toISOString ещё вчера
+export const localDay = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const daysUntil = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
 
 let counter = 0;

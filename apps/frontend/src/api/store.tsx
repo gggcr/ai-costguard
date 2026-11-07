@@ -3,18 +3,19 @@
 // Когда появится клиент из schemas/openapi, тела функций заменятся на запросы, интерфейс останется.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type {
-  Agent, AppState, Approval, Budget, Contract, Employee, Finding, FindingStatus, GatewayCode, ImportJob,
+  Agent, AppState, Approval, Asset, AssetAssignment, Budget, Contract, Employee, Finding, FindingStatus, GatewayCode, ImportJob,
   ImportType, Mandate, Notification, Operation, Role, Subscription, User, Vendor,
 } from './types';
 import { createSeed } from './mock-data';
-import { fakeHash, fmtRub, newId } from '../lib';
+import { fakeHash, fmtRub, localDay, newId } from '../lib';
 
 const STORAGE_KEY = 'costguard-demo-state-v1';
 
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as AppState;
+    // Состояние из прошлой версии прототипа: разделы, которых в нём нет (например, техника), берём из демо-данных
+    if (raw) return { ...createSeed(), ...(JSON.parse(raw) as Partial<AppState>) };
   } catch {
     /* нет доступа к localStorage — работаем в памяти */
   }
@@ -95,6 +96,15 @@ function useActions(
     };
 
     const agentName = (s: AppState, id?: string) => s.agents.find((a) => a.id === id)?.name ?? '—';
+
+    // Как в ядре: АВ-<год>-<n>, по порядку внутри компании и года
+    const nextActNumber = (s: AppState) => {
+      const year = new Date().getFullYear();
+      const prefix = `АВ-${year}-`;
+      const last = s.assetAssignments.reduce((m, a) => (a.actNumber?.startsWith(prefix) ? Math.max(m, Number(a.actNumber.slice(prefix.length))) : m), 0);
+      return `${prefix}${String(last + 1).padStart(4, '0')}`;
+    };
+    const openAssignment = (s: AppState, assetId: string) => s.assetAssignments.find((a) => a.assetId === assetId && !a.returnedAt);
 
     return {
       reset() {
@@ -282,6 +292,81 @@ function useActions(
         pushToast('Лицензия назначена', 'good');
       },
 
+      // ——— Техника сотрудников (ядро: модуль assets) ———
+      // POST /api/v1/assets
+      createAsset(a: Omit<Asset, 'id' | 'status' | 'source' | 'createdAt'>): string | null {
+        const s0 = getState();
+        if (s0.assets.some((x) => x.inventoryNumber.trim().toLowerCase() === a.inventoryNumber.trim().toLowerCase())) {
+          pushToast('Инвентарный номер уже занят (409 inventory_number_taken)', 'critical');
+          return null;
+        }
+        if (a.serialNumber && s0.assets.some((x) => x.serialNumber?.toLowerCase() === a.serialNumber!.trim().toLowerCase())) {
+          pushToast('Серийный номер уже занят (409 serial_number_taken)', 'critical');
+          return null;
+        }
+        const id = newId('as');
+        setState((s) => { s.assets.unshift({ ...a, inventoryNumber: a.inventoryNumber.trim(), model: a.model.trim(), serialNumber: a.serialNumber?.trim() || undefined, id, status: 'IN_STOCK', source: 'manual', createdAt: new Date().toISOString() }); });
+        pushToast(`Техника ${a.inventoryNumber} поставлена на учёт`, 'good');
+        return id;
+      },
+      // PUT /api/v1/assets/{id}/assignment: новая выдача сразу получает акт (PDF)
+      issueAsset(assetId: string, employeeId: string, returnDue: string | null, by: string): AssetAssignment | null {
+        const s0 = getState();
+        const asset = s0.assets.find((x) => x.id === assetId);
+        if (!asset || asset.status !== 'IN_STOCK' || openAssignment(s0, assetId)) return null;
+        if (!s0.employees.some((e) => e.id === employeeId)) {
+          pushToast('Сотрудник не найден в оргструктуре (404 employee_not_found)', 'critical');
+          return null;
+        }
+        const number = nextActNumber(s0);
+        const issued: AssetAssignment = { id: newId('aa'), assetId, employeeId, issuedAt: localDay(), returnDue, returnedAt: null, actNumber: number, issuedBy: by };
+        setState((s) => {
+          const a = s.assets.find((x) => x.id === assetId)!;
+          a.status = 'ASSIGNED';
+          s.assetAssignments.unshift({ ...issued });
+          const who = s.employees.find((e) => e.id === employeeId)?.name ?? '—';
+          notify(s, `Выдано: ${a.model} (${a.inventoryNumber}) → ${who}. Акт ${number}`, 'info', `/assets/${assetId}`);
+        });
+        pushToast(`Техника выдана. Сформирован акт ${number}`, 'good');
+        return issued;
+      },
+      // тот же PUT с тем же сотрудником: новый срок, без нового акта
+      moveReturnDate(assetId: string, returnDue: string | null) {
+        setState((s) => { const o = openAssignment(s, assetId); if (o) o.returnDue = returnDue; });
+        pushToast(returnDue ? 'Срок возврата изменён. Акт остаётся прежним' : 'Срок возврата снят. Акт остаётся прежним', 'good');
+      },
+      // DELETE /api/v1/assets/{id}/assignment
+      returnAsset(assetId: string) {
+        setState((s) => {
+          const o = openAssignment(s, assetId);
+          const a = s.assets.find((x) => x.id === assetId);
+          if (!o || !a) return;
+          o.returnedAt = localDay();
+          a.status = 'IN_STOCK';
+          // Движок аудита закрывает находку, только когда условие исчезло целиком
+          const stillHeld = (employeeId: string) => s.assetAssignments.filter((x) => x.employeeId === employeeId && !x.returnedAt)
+            .map((x) => s.assets.find((y) => y.id === x.assetId)).filter(Boolean) as Asset[];
+          s.findings.forEach((f) => {
+            if (!f.rule.startsWith('asset.') || f.employeeId !== o.employeeId || ['confirmed', 'rejected', 'auto_closed'].includes(f.status)) return;
+            const held = stillHeld(o.employeeId);
+            const gone = f.rule === 'asset.not-returned' ? held.length === 0
+              : f.rule === 'asset.duplicate' ? held.filter((x) => x.type === a.type).length < 2 : false;
+            if (gone) {
+              f.status = 'auto_closed';
+              f.history.push({ at: new Date().toISOString(), by: 'Движок аудита', text: 'Техника возвращена. Условие исчезло, находка закрыта автоматически' });
+            } else {
+              f.history.push({ at: new Date().toISOString(), by: 'Движок аудита', text: `Возвращено: ${a.model}. За сотрудником ещё ${held.length} шт.` });
+            }
+          });
+        });
+        pushToast('Техника принята на склад', 'good');
+      },
+      // PUT /api/v1/assets/{id}/retirement
+      retireAsset(assetId: string) {
+        setState((s) => { const a = s.assets.find((x) => x.id === assetId); if (a && a.status === 'IN_STOCK') a.status = 'RETIRED'; });
+        pushToast('Техника списана. История выдач сохранена');
+      },
+
       // ——— Находки ———
       findingAction(id: string, action: FindingAction, by: string, payload?: { ownerId?: string; date?: string; reason?: string }) {
         setState((s) => {
@@ -414,6 +499,18 @@ function useActions(
           if (!e) return;
           e.active = active;
           const licenses = s.assignments.filter((a) => a.employeeId === id);
+          const held = s.assetAssignments.filter((a) => a.employeeId === id && !a.returnedAt)
+            .map((g) => s.assets.find((x) => x.id === g.assetId)).filter(Boolean) as Asset[];
+          if (!active && held.length) {
+            const fid = newId('f');
+            s.findings.unshift({
+              id: fid, rule: 'asset.not-returned', title: `Уволенный не сдал технику: ${e.name}`,
+              description: `За уволенным сотрудником числится: ${held.map((x) => `${x.model} (инв. № ${x.inventoryNumber})`).join(', ')}. Верните технику; сумму удержания решают кадры и бухгалтерия.`,
+              assetId: held[0].id, employeeId: id, expectedSavings: held.reduce((sum, x) => sum + x.cost, 0), status: 'new', missedInvoices: 0,
+              createdAt: new Date().toISOString(), history: [{ at: new Date().toISOString(), by: 'Движок аудита', text: 'Находка создана по правилу asset.not-returned' }],
+            });
+            notify(s, `Уволенный ${e.name} не сдал технику: ${held.length} шт.`, 'warning', `/assets?tab=return`);
+          }
           if (!active && licenses.length) {
             const subs = licenses.map((l) => s.subscriptions.find((x) => x.id === l.subscriptionId)).filter(Boolean) as Subscription[];
             const savings = subs.reduce((sum, x) => sum + x.pricePerSeat, 0);
@@ -427,7 +524,7 @@ function useActions(
             notify(s, `Новая находка: лицензии уволенного (${e.name})`, 'warning', `/findings/${fid}`);
           }
         });
-        pushToast(active ? 'Сотрудник восстановлен' : 'Сотрудник отмечен уволенным. Движок аудита проверит его лицензии', active ? 'good' : 'warning');
+        pushToast(active ? 'Сотрудник восстановлен' : 'Сотрудник отмечен уволенным. Движок аудита проверит его лицензии и технику', active ? 'good' : 'warning');
       },
       inviteUser(u: Omit<User, 'id'>) {
         setState((s) => { s.users.push({ ...u, id: newId('u') }); });
@@ -582,6 +679,8 @@ export function useLookup() {
     mandate: (id?: string) => state.mandates.find((m) => m.id === id),
     subscription: (id?: string) => state.subscriptions.find((s) => s.id === id),
     contract: (id?: string) => state.contracts.find((c) => c.id === id),
+    asset: (id?: string) => state.assets.find((a) => a.id === id),
+    holding: (assetId?: string): AssetAssignment | undefined => state.assetAssignments.find((a) => a.assetId === assetId && !a.returnedAt),
     budgetOfAgent: (id?: string) => state.budgets.find((b) => b.level === 'agent' && b.refId === id),
   }), [state]);
 }

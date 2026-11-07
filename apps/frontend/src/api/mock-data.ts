@@ -1,6 +1,6 @@
 // Демо-компания «Северный ветер». Все данные синтетические.
 import type {
-  Agent, AppState, Approval, Budget, Contract, CostPoint, Department, Employee, Finding,
+  Agent, AppState, Approval, Asset, AssetAssignment, Budget, Contract, CostPoint, Department, Employee, Finding,
   GatewayCode, ImportJob, LicenseAssignment, Mandate, Notification, Operation, Report,
   Subscription, User, Vendor, VirtualKey,
 } from './types';
@@ -220,6 +220,8 @@ const findings: Finding[] = [
   { id: 'f-6', rule: 'oversized_plan', title: 'Figma Professional: 2 места без редактирования', description: 'Два пользователя только просматривают макеты, им достаточно бесплатного доступа.', subscriptionId: 's-figma', expectedSavings: 3000, status: 'confirmed', ownerId: 'u-it', missedInvoices: 0, createdAt: iso(70 * DAY), history: [{ at: iso(70 * DAY), by: 'Движок аудита', text: 'Находка создана' }, { at: iso(64 * DAY), by: 'Мария Соколова', text: 'Принята' }, { at: iso(63 * DAY), by: 'Мария Соколова', text: 'Создана задача' }, { at: iso(30 * DAY), by: 'Движок аудита', text: 'Экономия видна в счёте за октябрь. Подтверждена' }] },
   { id: 'f-7', rule: 'invoice_errors', title: 'Ошибка в счёте Yandex Cloud за октябрь', description: 'Строка «Хранилище» выставлена дважды на 7 400 ₽.', expectedSavings: 7400, status: 'postponed', ownerId: 'u-fin', postponedUntil: isoAhead(5 * DAY), missedInvoices: 0, createdAt: iso(9 * DAY), history: [{ at: iso(9 * DAY), by: 'Движок аудита', text: 'Находка создана по правилу invoice_errors' }, { at: iso(8 * DAY), by: 'Игорь Лебедев', text: 'Отложена: ждём акт сверки' }] },
   { id: 'f-8', rule: 'annual_plan', title: 'Miro: помесячная оплата вместо годовой', description: 'Годовой тариф дешевле на 17%.', subscriptionId: 's-miro', expectedSavings: 1770, status: 'rejected', ownerId: 'u-it', rejectReason: 'Через 2 месяца переходим на другой сервис', missedInvoices: 0, createdAt: iso(40 * DAY), history: [{ at: iso(40 * DAY), by: 'Движок аудита', text: 'Находка создана' }, { at: iso(38 * DAY), by: 'Мария Соколова', text: 'Отклонена: через 2 месяца переходим на другой сервис' }] },
+  { id: 'f-10', rule: 'asset.not-returned', title: 'Уволенный не сдал технику: Сергей Морозов', description: 'За уволенным сотрудником числятся Apple MacBook Air 13 M2 (инв. № INV-0103) и Apple iPhone 13 (инв. № INV-0203). Верните технику; сумму удержания решают кадры и бухгалтерия.', assetId: 'as-03', employeeId: 'e-08', expectedSavings: 169980, status: 'new', missedInvoices: 0, createdAt: iso(2 * DAY), history: [{ at: iso(2 * DAY), by: 'Движок аудита', text: 'Находка создана по правилу asset.not-returned' }] },
+  { id: 'f-11', rule: 'asset.duplicate', title: 'У сотрудника 2 ноутбука: Дмитрий Волков', description: 'За одним сотрудником числятся Apple MacBook Pro 14 M3 (инв. № INV-0102) и Lenovo ThinkPad X1 Carbon Gen 11 (инв. № INV-0104). Верните лишний на склад и выдайте тем, кто ждёт новую технику.', assetId: 'as-04', employeeId: 'e-06', expectedSavings: 189990, status: 'review', ownerId: 'u-it', missedInvoices: 0, createdAt: iso(4 * DAY), history: [{ at: iso(4 * DAY), by: 'Движок аудита', text: 'Находка создана по правилу asset.duplicate' }, { at: iso(3 * DAY), by: 'Анна Ковалёва', text: 'Назначен владелец: Мария Соколова' }] },
   { id: 'f-9', rule: 'agent_loop', title: 'Исследователь рынка: петля запросов', description: 'Детектор аномалий остановил агента: 46 похожих запросов за 5 минут. Без остановки агент потратил бы около 18 000 ₽ за сутки.', agentId: 'a-research', expectedSavings: 18000, status: 'review', ownerId: 'u-ao', missedInvoices: 0, createdAt: iso(3 * 3600000), history: [{ at: iso(3 * 3600000), by: 'Детектор аномалий', text: 'Агент остановлен, риск 91' }] },
 ];
 
@@ -231,6 +233,50 @@ const imports: ImportJob[] = [
   ], templateSaved: false },
   { id: 'imp-3', fileName: 'Лицензии_Битрикс.xlsx', type: 'excel', vendorId: 'v-b24', uploadedAt: iso(25 * DAY), uploadedBy: 'Мария Соколова', status: 'done', rows: 50, total: 24800, columns: ['ФИО', 'Email', 'Последний вход', 'Тариф'], mapping: { 'ФИО': 'Сотрудник', Email: 'Email', 'Последний вход': 'Последняя активность', 'Тариф': 'Продукт' }, errors: [{ row: 31, message: 'Дата «31.02.2026» не существует' }], reviewTasks: [], templateSaved: true },
   { id: 'imp-4', fileName: 'скан_акт_Kaspersky.jpg', type: 'scan', vendorId: 'v-kasp', uploadedAt: iso(12 * DAY), uploadedBy: 'Игорь Лебедев', status: 'failed', rows: 0, total: 0, columns: [], mapping: {}, errors: [{ row: 0, message: 'Не удалось распознать таблицу: изображение размыто' }], reviewTasks: [], templateSaved: false },
+];
+
+// Техника: кто что держит. Номера актов идут по порядку внутри года, как в ядре (АВ-<год>-<n>).
+export const COMPANY_NAME = 'ООО «Северный ветер»';
+
+const assets: Asset[] = [
+  { id: 'as-01', inventoryNumber: 'INV-0101', model: 'Lenovo ThinkPad T14 Gen 5', type: 'LAPTOP', cost: 125990, serialNumber: 'PF4ABC12', status: 'ASSIGNED', source: 'intune', createdAt: iso(300 * DAY) },
+  { id: 'as-02', inventoryNumber: 'INV-0102', model: 'Apple MacBook Pro 14 M3', type: 'LAPTOP', cost: 219990, serialNumber: 'C02XK1Y2MD6T', status: 'ASSIGNED', source: 'jamf', createdAt: iso(280 * DAY) },
+  { id: 'as-03', inventoryNumber: 'INV-0103', model: 'Apple MacBook Air 13 M2', type: 'LAPTOP', cost: 109990, serialNumber: 'FVFHK3Q2Q6L4', status: 'ASSIGNED', source: 'jamf', createdAt: iso(260 * DAY) },
+  { id: 'as-04', inventoryNumber: 'INV-0104', model: 'Lenovo ThinkPad X1 Carbon Gen 11', type: 'LAPTOP', cost: 189990, serialNumber: 'PF3ZQ8LM', status: 'ASSIGNED', source: 'intune', createdAt: iso(240 * DAY) },
+  { id: 'as-05', inventoryNumber: 'INV-0105', model: 'Huawei MateBook D 16', type: 'LAPTOP', cost: 74990, serialNumber: 'HM16D2207731', status: 'ASSIGNED', source: 'manual', createdAt: iso(200 * DAY) },
+  { id: 'as-06', inventoryNumber: 'INV-0106', model: 'Lenovo ThinkPad E14 Gen 4', type: 'LAPTOP', cost: 69990, serialNumber: 'PF2MM4KX', status: 'IN_STOCK', source: 'intune', createdAt: iso(400 * DAY) },
+  { id: 'as-07', inventoryNumber: 'INV-0107', model: 'Apple MacBook Air 13 M1', type: 'LAPTOP', cost: 84990, serialNumber: 'FVFDL1A9Q6L5', status: 'IN_STOCK', source: 'jamf', createdAt: iso(420 * DAY) },
+  { id: 'as-08', inventoryNumber: 'INV-0201', model: 'Apple iPhone 15', type: 'PHONE', cost: 79990, serialNumber: 'F2LXQ0J1N72Q', status: 'ASSIGNED', source: 'jamf', createdAt: iso(150 * DAY) },
+  { id: 'as-09', inventoryNumber: 'INV-0202', model: 'Samsung Galaxy S24', type: 'PHONE', cost: 74990, serialNumber: 'R5CX10ABCDE', status: 'ASSIGNED', source: 'intune', createdAt: iso(140 * DAY) },
+  { id: 'as-10', inventoryNumber: 'INV-0203', model: 'Apple iPhone 13', type: 'PHONE', cost: 59990, serialNumber: 'DX3GH7P1N72J', status: 'ASSIGNED', source: 'jamf', createdAt: iso(500 * DAY) },
+  { id: 'as-11', inventoryNumber: 'INV-0301', model: 'Монитор Dell P2723QE 27″', type: 'MONITOR', cost: 42990, status: 'ASSIGNED', source: 'onec', createdAt: iso(330 * DAY) },
+  { id: 'as-12', inventoryNumber: 'INV-0302', model: 'Монитор Dell P2423 24″', type: 'MONITOR', cost: 21990, status: 'IN_STOCK', source: 'onec', createdAt: iso(330 * DAY) },
+  { id: 'as-13', inventoryNumber: 'INV-0401', model: 'Гарнитура Jabra Evolve2 65', type: 'OTHER', cost: 24990, status: 'ASSIGNED', source: 'manual', createdAt: iso(90 * DAY) },
+  { id: 'as-14', inventoryNumber: 'INV-0099', model: 'HP ProBook 450 G6', type: 'LAPTOP', cost: 15000, serialNumber: '5CD9123XYZ', status: 'RETIRED', source: 'onec', createdAt: iso(1500 * DAY) },
+];
+
+const year = new Date().getFullYear();
+const act = (n: number) => `АВ-${year}-${String(n).padStart(4, '0')}`;
+const day = (msAgo: number) => iso(msAgo).slice(0, 10);
+const dayAhead = (ms: number) => isoAhead(ms).slice(0, 10);
+
+const assetAssignments: AssetAssignment[] = [
+  // история: со склада ноутбук был у уволенной Беловой и у дизайнера, оба вернули
+  { id: 'aa-01', assetId: 'as-06', employeeId: 'e-11', issuedAt: day(390 * DAY), returnDue: null, returnedAt: day(130 * DAY), actNumber: null, issuedBy: 'Мария Соколова' },
+  { id: 'aa-02', assetId: 'as-07', employeeId: 'e-13', issuedAt: day(410 * DAY), returnDue: null, returnedAt: day(40 * DAY), actNumber: null, issuedBy: 'Мария Соколова' },
+  { id: 'aa-03', assetId: 'as-01', employeeId: 'e-03', issuedAt: day(290 * DAY), returnDue: null, returnedAt: null, actNumber: act(1), issuedBy: 'connector:intune' },
+  { id: 'aa-04', assetId: 'as-02', employeeId: 'e-06', issuedAt: day(270 * DAY), returnDue: null, returnedAt: null, actNumber: act(2), issuedBy: 'connector:jamf' },
+  { id: 'aa-05', assetId: 'as-11', employeeId: 'e-06', issuedAt: day(260 * DAY), returnDue: null, returnedAt: null, actNumber: act(3), issuedBy: 'Мария Соколова' },
+  // уволенный Морозов не сдал ноутбук и телефон
+  { id: 'aa-06', assetId: 'as-03', employeeId: 'e-08', issuedAt: day(250 * DAY), returnDue: null, returnedAt: null, actNumber: act(4), issuedBy: 'connector:jamf' },
+  { id: 'aa-07', assetId: 'as-10', employeeId: 'e-08', issuedAt: day(245 * DAY), returnDue: null, returnedAt: null, actNumber: act(5), issuedBy: 'Мария Соколова' },
+  // у тимлида Волкова второй ноутбук
+  { id: 'aa-08', assetId: 'as-04', employeeId: 'e-06', issuedAt: day(230 * DAY), returnDue: null, returnedAt: null, actNumber: act(6), issuedBy: 'connector:intune' },
+  { id: 'aa-09', assetId: 'as-08', employeeId: 'e-09', issuedAt: day(140 * DAY), returnDue: null, returnedAt: null, actNumber: act(7), issuedBy: 'connector:jamf' },
+  { id: 'aa-10', assetId: 'as-09', employeeId: 'e-10', issuedAt: day(130 * DAY), returnDue: null, returnedAt: null, actNumber: act(8), issuedBy: 'Максим Фёдоров' },
+  // временная выдача, срок прошёл
+  { id: 'aa-11', assetId: 'as-05', employeeId: 'e-14', issuedAt: day(80 * DAY), returnDue: day(10 * DAY), returnedAt: null, actNumber: act(9), issuedBy: 'Максим Фёдоров' },
+  { id: 'aa-12', assetId: 'as-13', employeeId: 'e-15', issuedAt: day(60 * DAY), returnDue: dayAhead(120 * DAY), returnedAt: null, actNumber: act(10), issuedBy: 'Максим Фёдоров' },
 ];
 
 const notifications: Notification[] = [
@@ -255,7 +301,7 @@ const costHistory: CostPoint[] = [
 export function createSeed(): AppState {
   return structuredClone({
     users, departments, employees, agents, keys, mandates, budgets, operations, approvals,
-    vendors, contracts, subscriptions, assignments: makeAssignments(), findings, imports,
+    vendors, contracts, subscriptions, assignments: makeAssignments(), assets, assetAssignments, findings, imports,
     notifications, reports, costHistory,
   });
 }

@@ -14,6 +14,7 @@ const NAV: { section: Section; to: string; label: string; group: string }[] = [
   { section: 'operations', to: '/operations', label: 'Журнал операций', group: 'Контур А: ИИ-агенты' },
   { section: 'budgets', to: '/budgets', label: 'Бюджеты', group: 'Контур А: ИИ-агенты' },
   { section: 'software', to: '/software', label: 'Подписки и договоры', group: 'Контур Б: расходы на ПО' },
+  { section: 'assets', to: '/assets', label: 'Техника сотрудников', group: 'Контур Б: расходы на ПО' },
   { section: 'imports', to: '/imports', label: 'Импорт данных', group: 'Контур Б: расходы на ПО' },
   { section: 'findings', to: '/findings', label: 'Находки', group: 'Контур Б: расходы на ПО' },
   { section: 'analytics', to: '/analytics', label: 'Прогнозы и отчёты', group: 'Контур Б: расходы на ПО' },
@@ -49,6 +50,7 @@ function GlobalSearch() {
     const out: { label: string; kind: string; to: string }[] = [];
     if (canView('agents')) state.agents.filter((a) => a.name.toLowerCase().includes(t)).forEach((a) => out.push({ label: a.name, kind: 'Агент', to: `/agents/${a.id}` }));
     if (canView('software')) state.subscriptions.filter((s) => s.product.toLowerCase().includes(t)).forEach((s) => out.push({ label: s.product, kind: 'Подписка', to: `/software/subscriptions/${s.id}` }));
+    if (canView('assets')) state.assets.filter((a) => [a.model, a.inventoryNumber, a.serialNumber ?? ''].some((x) => x.toLowerCase().includes(t))).forEach((a) => out.push({ label: `${a.model} · ${a.inventoryNumber}`, kind: 'Техника', to: `/assets/${a.id}` }));
     if (canView('findings')) state.findings.filter((f) => f.title.toLowerCase().includes(t)).forEach((f) => out.push({ label: f.title, kind: 'Находка', to: `/findings/${f.id}` }));
     if (canView('operations')) state.operations.filter((o) => o.id.toLowerCase().includes(t)).slice(0, 3).forEach((o) => out.push({ label: o.id, kind: 'Операция', to: `/operations/${o.id}` }));
     if (canView('org')) state.employees.filter((e) => e.name.toLowerCase().includes(t)).forEach((e) => out.push({ label: e.name, kind: 'Сотрудник', to: `/org?employee=${e.id}` }));
