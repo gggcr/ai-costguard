@@ -36,9 +36,25 @@ final class AssetErrorDocs {
 
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
-    @ApiResponse(responseCode = "409", description = "code: inventory_number_taken",
+    @ApiResponse(responseCode = "409", description = "code: inventory_number_taken or serial_number_taken",
             content = @Content(mediaType = "application/problem+json",
                     schema = @Schema(implementation = ProblemBody.class)))
-    @interface InventoryNumberConflict {
+    @interface NumberConflict {
+    }
+
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @ApiResponse(responseCode = "404", description = "code: asset_not_found or employee_not_found",
+            content = @Content(mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemBody.class)))
+    @interface AssetOrEmployeeNotFound {
+    }
+
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @ApiResponse(responseCode = "404", description = "code: asset_not_found or act_not_found",
+            content = @Content(mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemBody.class)))
+    @interface ActNotFound {
     }
 }

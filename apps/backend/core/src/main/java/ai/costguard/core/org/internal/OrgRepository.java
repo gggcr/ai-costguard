@@ -1,5 +1,6 @@
 package ai.costguard.core.org.internal;
 
+import ai.costguard.core.org.EmployeeDirectory;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -128,6 +129,18 @@ class OrgRepository {
                     out.put(rs.getObject("id", UUID.class), rs.getObject("dismissed_at", LocalDate.class));
                 });
         return out;
+    }
+
+    Optional<EmployeeDirectory.EmployeeCard> card(UUID id) {
+        return jdbc.sql("""
+                select e.id, e.name, e.position, d.name as department, e.email, e.dismissed_at
+                from employee e join department d on d.id = e.department_id
+                where e.id = ?
+                """).param(id)
+                .query((rs, n) -> new EmployeeDirectory.EmployeeCard(rs.getObject("id", UUID.class),
+                        rs.getString("name"), rs.getString("position"), rs.getString("department"),
+                        rs.getString("email"), rs.getObject("dismissed_at", LocalDate.class)))
+                .optional();
     }
 
     record Named(UUID id, String name) {

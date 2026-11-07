@@ -13,6 +13,7 @@ const paths: Record<string, string> = {
   approvals: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
   operations: 'M4 6h16M4 12h16M4 18h10',
   software: 'M4 4h16v12H4zM8 20h8M12 16v4',
+  assets: 'M5 5h14v10H5zM2 19h20M9 19l1-4h4l1 4',
   imports: 'M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3',
   findings: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm10 17l-5-5',
   analytics: 'M4 20V10M10 20V4M16 20v-7M22 20H2',

@@ -39,22 +39,24 @@ export function Org() {
           <Card>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Сотрудник</th><th>Отдел</th><th>Должность</th><th className="num">Лицензий</th><th>Статус</th><th /></tr></thead>
+                <thead><tr><th>Сотрудник</th><th>Отдел</th><th>Должность</th><th className="num">Лицензий</th><th className="num">Техники</th><th>Статус</th><th /></tr></thead>
                 <tbody>
                   {people.map((e) => {
                     const licenses = state.assignments.filter((a) => a.employeeId === e.id);
+                    const held = state.assetAssignments.filter((a) => a.employeeId === e.id && !a.returnedAt).length;
                     return (
                       <tr key={e.id} className={highlight === e.id ? 'row-highlight' : ''}>
                         <td>{e.name}<span className="muted small block">{e.email}</span></td>
                         <td>{L.dept(e.departmentId)?.name}</td>
                         <td>{e.position}</td>
                         <td className="num" title={licenses.map((l) => L.subscription(l.subscriptionId)?.product).join(', ')}>{licenses.length}</td>
+                        <td className="num">{held ? <Link to={`/assets?holder=${e.id}`}>{held}</Link> : 0}</td>
                         <td>{e.active ? <Badge tone="good">Работает</Badge> : <Badge tone="critical">Уволен</Badge>}</td>
                         <td>{edit && (
                           <span className="row-gap">
                             <Button variant="ghost" onClick={() => { setEditEmployee(e); setModal('employee'); }}>Изменить</Button>
                             {e.active
-                              ? <ConfirmButton variant="ghost" title="Отметить увольнение?" text={`${e.name}: движок аудита проверит лицензии (${licenses.length}) и создаст находку.`} confirmLabel="Отметить" onConfirm={() => actions.setEmployeeActive(e.id, false)}>Уволен</ConfirmButton>
+                              ? <ConfirmButton variant="ghost" title="Отметить увольнение?" text={`${e.name}: движок аудита проверит лицензии (${licenses.length}) и технику (${held}) и создаст находки.`} confirmLabel="Отметить" onConfirm={() => actions.setEmployeeActive(e.id, false)}>Уволен</ConfirmButton>
                               : <Button variant="ghost" onClick={() => actions.setEmployeeActive(e.id, true)}>Восстановить</Button>}
                           </span>
                         )}</td>

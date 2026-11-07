@@ -10,7 +10,11 @@ const RULE_LABEL: Record<string, string> = {
   unused_licenses: 'Неиспользуемые лицензии', offboarded: 'Лицензии уволенных', duplicates: 'Дубли подписок', overlap: 'Пересекающиеся инструменты',
   oversized_plan: 'Избыточный тариф', auto_renewal: 'Скорое автопродление', invoice_errors: 'Ошибки в счетах', shadow_saas: 'Теневой SaaS',
   ai_bypass: 'ИИ-расходы мимо шлюза', annual_plan: 'Помесячно вместо годового', agent_loop: 'Аномалия ИИ-агента',
+  'asset.not-returned': 'Техника не возвращена', 'asset.idle': 'Техника простаивает', 'asset.duplicate': 'Лишняя техника у сотрудника',
 };
+// Экономия по технике разовая (стоимость устройства), а не ежемесячная, и в счетах её не видно
+const oneOff = (rule: string) => rule.startsWith('asset.');
+const savingsText = (rule: string, v: number) => `${fmtRub(v)}${oneOff(rule) ? ' разово' : '/мес'}`;
 const FILTERS: { id: 'open' | FindingStatus | 'all'; label: string }[] = [
   { id: 'open', label: 'Открытые' }, { id: 'new', label: 'Новые' }, { id: 'review', label: 'На проверке' }, { id: 'in_progress', label: 'Выполняются' },
   { id: 'confirmed', label: 'Подтверждены' }, { id: 'all', label: 'Все' },
@@ -25,12 +29,13 @@ export function Findings() {
   const [params, setParams] = useSearchParams();
   const filter = (params.get('status') ?? 'open') as (typeof FILTERS)[number]['id'];
   const list = state.findings.filter((f) => filter === 'all' || (filter === 'open' ? OPEN.includes(f.status) : f.status === filter));
-  const potential = state.findings.filter((f) => OPEN.includes(f.status)).reduce((s, f) => s + f.expectedSavings, 0);
+  const potential = state.findings.filter((f) => OPEN.includes(f.status) && !oneOff(f.rule)).reduce((s, f) => s + f.expectedSavings, 0);
+  const equipment = state.findings.filter((f) => OPEN.includes(f.status) && oneOff(f.rule)).reduce((s, f) => s + f.expectedSavings, 0);
   const confirmed = state.findings.filter((f) => f.status === 'confirmed').reduce((s, f) => s + f.expectedSavings, 0);
 
   const exportCsv = () => downloadText('findings.csv', toCsv([
-    ['ID', 'Правило', 'Находка', 'Статус', 'Владелец', 'Экономия в месяц, ₽', 'Создана'],
-    ...list.map((f) => [f.id, RULE_LABEL[f.rule] ?? f.rule, f.title, FINDING_META[f.status].label, L.user(f.ownerId)?.name ?? '', f.expectedSavings, f.createdAt.slice(0, 10)]),
+    ['ID', 'Правило', 'Находка', 'Статус', 'Владелец', 'Экономия, ₽', 'Период экономии', 'Создана'],
+    ...list.map((f) => [f.id, RULE_LABEL[f.rule] ?? f.rule, f.title, FINDING_META[f.status].label, L.user(f.ownerId)?.name ?? '', f.expectedSavings, oneOff(f.rule) ? 'разово' : 'в месяц', f.createdAt.slice(0, 10)]),
   ]), 'text/csv');
 
   return (
@@ -39,7 +44,7 @@ export function Findings() {
         actions={<Button icon="download" onClick={exportCsv}>Выгрузить CSV</Button>} />
       {!canEdit('findings') && <ReadOnlyNote />}
       <div className="stats">
-        <Stat label="Потенциальная экономия" value={`${fmtRub(potential)}/мес`} hint={`${fmtRub(potential * 12)} в год`} />
+        <Stat label="Потенциальная экономия" value={`${fmtRub(potential)}/мес`} hint={`${fmtRub(potential * 12)} в год${equipment ? ` · техника ${fmtRub(equipment)} разово` : ''}`} />
         <Stat label="Подтверждено" value={`${fmtRub(confirmed)}/мес`} hint="видно в счетах" />
         <Stat label="Новых находок" value={state.findings.filter((f) => f.status === 'new').length} hint="ждут владельца" />
       </div>
@@ -50,7 +55,7 @@ export function Findings() {
         {list.length === 0 ? <Empty>Находок с таким статусом нет</Empty> : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Находка</th><th>Правило</th><th>Владелец</th><th>Статус</th><th className="num">Экономия/мес</th></tr></thead>
+              <thead><tr><th>Находка</th><th>Правило</th><th>Владелец</th><th>Статус</th><th className="num">Экономия</th></tr></thead>
               <tbody>
                 {list.map((f) => (
                   <tr key={f.id} className="clickable" onClick={() => navigate(`/findings/${f.id}`)}>
@@ -58,7 +63,7 @@ export function Findings() {
                     <td>{RULE_LABEL[f.rule] ?? f.rule}</td>
                     <td>{L.user(f.ownerId)?.name ?? <span className="muted">не назначен</span>}</td>
                     <td><FindingBadge status={f.status} /></td>
-                    <td className="num"><strong>{fmtRub(f.expectedSavings)}</strong></td>
+                    <td className="num"><strong>{savingsText(f.rule, f.expectedSavings)}</strong></td>
                   </tr>
                 ))}
               </tbody>
@@ -135,7 +140,10 @@ export function FindingDetail() {
         <Card title="Суть">
           <p>{f.description}</p>
           <dl className="dl">
-            <dt>Экономия</dt><dd><strong>{fmtRub(f.expectedSavings)}</strong> в месяц · {fmtRub(f.expectedSavings * 12)} в год</dd>
+            <dt>Экономия</dt><dd>{oneOff(f.rule)
+              ? <><strong>{fmtRub(f.expectedSavings)}</strong> разово: стоимость техники, в счетах не видна</>
+              : <><strong>{fmtRub(f.expectedSavings)}</strong> в месяц · {fmtRub(f.expectedSavings * 12)} в год</>}</dd>
+            {f.assetId && <><dt>Техника</dt><dd><Link to={`/assets/${f.assetId}`}>{state.assets.find((a) => a.id === f.assetId)?.model ?? 'карточка'}</Link></dd></>}
             <dt>Владелец</dt><dd>{L.user(f.ownerId)?.name ?? 'не назначен'}</dd>
             {sub && <><dt>Подписка</dt><dd><Link to={`/software/subscriptions/${sub.id}`}>{sub.product}</Link></dd></>}
             {agent && <><dt>Агент</dt><dd><Link to={`/agents/${agent.id}`}>{agent.name}</Link></dd></>}

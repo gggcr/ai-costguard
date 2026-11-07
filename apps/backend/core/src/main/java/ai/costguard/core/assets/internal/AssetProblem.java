@@ -9,7 +9,10 @@ enum AssetProblem implements ProblemCode {
     ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "Asset not found"),
     INVENTORY_NUMBER_TAKEN(HttpStatus.CONFLICT, "Inventory number is already registered"),
     ASSET_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "Asset is held by an employee"),
-    ASSET_RETIRED(HttpStatus.CONFLICT, "Asset is retired");
+    ASSET_RETIRED(HttpStatus.CONFLICT, "Asset is retired"),
+    EMPLOYEE_NOT_FOUND(HttpStatus.NOT_FOUND, "Employee not found: an act needs a person from the org structure"),
+    ACT_NOT_FOUND(HttpStatus.NOT_FOUND, "This issue has no handover act"),
+    SERIAL_NUMBER_TAKEN(HttpStatus.CONFLICT, "Serial number is already registered");
 
     private final HttpStatus status;
     private final String detail;

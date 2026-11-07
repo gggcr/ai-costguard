@@ -10,9 +10,13 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -52,7 +56,7 @@ class AssetController {
     @PostMapping("/assets")
     @ManagesAssets
     @Operation(summary = "Register an asset")
-    @AssetErrorDocs.InventoryNumberConflict
+    @AssetErrorDocs.NumberConflict
     ResponseEntity<Asset> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody NewAsset asset) {
         Asset created = service.create(tenant(jwt), asset);
         return ResponseEntity.created(URI.create("/api/v1/assets/" + created.id())).body(created);
@@ -77,12 +81,43 @@ class AssetController {
 
     @PutMapping("/assets/{id}/assignment")
     @ManagesAssets
-    @Operation(summary = "Issue an asset to an employee or move its return date", description = "Idempotent.")
-    @AssetErrorDocs.NotFound
+    @Operation(summary = "Issue an asset to an employee or move its return date",
+            description = "Idempotent. A new issue makes its handover act (PDF), see actNumber; moving the return "
+                    + "date of the same holder makes none.")
+    @AssetErrorDocs.AssetOrEmployeeNotFound
     @AssetErrorDocs.AssetStateConflict
     Assignment assign(
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody NewAssignment request) {
-        return service.assign(tenant(jwt), id, request);
+        return service.assign(tenant(jwt), id, request, issuer(jwt));
+    }
+
+    /** The name the act shows under «Передал»: the person's name from the token, else their login. */
+    private static String issuer(Jwt jwt) {
+        for (String claim : new String[] {"name", "preferred_username", "email"}) {
+            String value = jwt.getClaimAsString(claim);
+            if (value != null && !value.isBlank()) {
+                return value.strip();
+            }
+        }
+        return jwt.getSubject() == null ? "—" : jwt.getSubject();
+    }
+
+    @GetMapping("/assets/{id}/assignments/{assignmentId}/act")
+    @Operation(summary = "Handover act of an issue, as made at the issue",
+            description = "The X-Content-SHA256 header carries the SHA-256 of the PDF.")
+    @ApiResponse(responseCode = "200", description = "The act",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                    schema = @Schema(type = "string", format = "binary")))
+    @AssetErrorDocs.ActNotFound
+    ResponseEntity<byte[]> act(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+            @PathVariable UUID assignmentId) {
+        HandoverActs.StoredAct act = service.act(tenant(jwt), id, assignmentId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("Акт " + act.number() + ".pdf", StandardCharsets.UTF_8).build().toString())
+                .header("X-Content-SHA256", act.sha256())
+                .body(act.pdf());
     }
 
     @DeleteMapping("/assets/{id}/assignment")

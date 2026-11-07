@@ -1,7 +1,7 @@
 """The connector agent: runs the connectors on a schedule, inside the platform or inside the client's network.
 
-When 1C stands behind the client's firewall, the agent runs there and only connects out, to Kafka. The config
-is a TOML file; secrets come from the environment, never from the file:
+When 1C or an on-premises Jamf stands behind the client's firewall, the agent runs there and only connects out,
+to Kafka. The config is a TOML file; secrets come from the environment, never from the file:
 
     tenant_id = "…"
     interval_minutes = 60
@@ -18,6 +18,12 @@ is a TOML file; secrets come from the environment, never from the file:
     [mail]
     host = "imap.yandex.ru"
     user = "invoices@company.ru"   # password: MAIL_PASSWORD; core: CORE_URL and CORE_TOKEN
+    [jamf]
+    url = "https://company.jamfcloud.com"
+    client_id = "…"                # secret: JAMF_CLIENT_SECRET
+    [intune]
+    directory_id = "…"             # the Entra ID tenant
+    client_id = "…"                # secret: INTUNE_CLIENT_SECRET
 
 Cursors are kept in the state file and written after each successful publish. With COSTGUARD_ENV_PREFIX=ROMASHKA_
 the variables ROMASHKA_ONEC_PASSWORD and so on take the place of the unprefixed ones.
@@ -37,7 +43,7 @@ from pathlib import Path
 
 import httpx
 
-from costguard_connectors import bitrix24, contract, mail, moysklad, onec, yandex360
+from costguard_connectors import bitrix24, contract, intune, jamf, mail, moysklad, onec, yandex360
 
 log = logging.getLogger("costguard.connectors")
 
@@ -59,6 +65,14 @@ def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
         found.append(yandex360.Yandex360(httpx.Client(
             base_url=c.get("url", yandex360.BASE_URL), timeout=60,
             headers={"Authorization": f"OAuth {env['YANDEX360_TOKEN']}"}), c["org_id"]))
+    if "jamf" in config:
+        c = config["jamf"]
+        found.append(jamf.Jamf(httpx.Client(base_url=c["url"], timeout=60), c["client_id"],
+                               env["JAMF_CLIENT_SECRET"]))
+    if "intune" in config:
+        c = config["intune"]
+        found.append(intune.Intune(httpx.Client(timeout=60), c["directory_id"], c["client_id"],
+                                   env["INTUNE_CLIENT_SECRET"]))
     return found
 
 

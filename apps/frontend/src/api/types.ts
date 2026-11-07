@@ -151,6 +151,35 @@ export interface Subscription {
   renewalDate: string;
 }
 
+// Техника сотрудников (кадр 15 доски). Повторяет модуль assets ядра: Asset и Assignment из schemas/openapi/core.yaml.
+export type AssetType = 'LAPTOP' | 'PHONE' | 'MONITOR' | 'OTHER';
+export type AssetStatus = 'IN_STOCK' | 'ASSIGNED' | 'RETIRED';
+export type AssetSource = 'manual' | 'jamf' | 'intune' | 'onec';
+
+export interface Asset {
+  id: string;
+  inventoryNumber: string;
+  model: string;
+  type: AssetType;
+  cost: number; // ₽, из учётной системы
+  serialNumber?: string;
+  status: AssetStatus;
+  source: AssetSource; // откуда пришла запись: вручную или от коннектора
+  createdAt: string;
+}
+
+// Одна выдача: кто держит технику и до какого срока. У каждой выдачи есть акт приёма-передачи (PDF).
+export interface AssetAssignment {
+  id: string;
+  assetId: string;
+  employeeId: string;
+  issuedAt: string;
+  returnDue: string | null; // null — бессрочно, до увольнения
+  returnedAt: string | null;
+  actNumber: string | null; // АВ-2026-0001; null у выдач, записанных до появления актов
+  issuedBy: string; // имя выдавшего или connector:<источник>
+}
+
 export interface LicenseAssignment {
   id: string;
   subscriptionId: string;
@@ -181,7 +210,9 @@ export interface Finding {
   description: string;
   subscriptionId?: string;
   agentId?: string;
-  expectedSavings: number; // ₽ в месяц
+  assetId?: string;
+  employeeId?: string; // у находок по технике: чья это техника
+  expectedSavings: number; // ₽ в месяц; у находок по технике — разово (стоимость техники)
   status: FindingStatus;
   ownerId?: string; // user
   postponedUntil?: string;
@@ -258,6 +289,8 @@ export interface AppState {
   contracts: Contract[];
   subscriptions: Subscription[];
   assignments: LicenseAssignment[];
+  assets: Asset[];
+  assetAssignments: AssetAssignment[];
   findings: Finding[];
   imports: ImportJob[];
   notifications: Notification[];

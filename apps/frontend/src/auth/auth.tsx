@@ -14,30 +14,30 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const ROLE_HINT: Record<Role, string> = {
   owner: 'Видит всё и может всё',
-  finance: 'Бюджеты, согласования, подписки, импорт, находки, отчёты',
-  it_admin: 'Агенты, мандаты, ключи, подписки, оргструктура',
+  finance: 'Бюджеты, согласования, подписки, техника, импорт, находки, отчёты',
+  it_admin: 'Агенты, мандаты, ключи, подписки, техника, оргструктура',
   agent_owner: 'Свои агенты, их бюджеты и согласования',
   auditor: 'Только чтение, проверка квитанций в NEAR, отчёты',
 };
 
 export type Section =
   | 'dashboard' | 'agents' | 'policies' | 'budgets' | 'approvals' | 'operations'
-  | 'software' | 'imports' | 'findings' | 'analytics' | 'org' | 'notifications';
+  | 'software' | 'assets' | 'imports' | 'findings' | 'analytics' | 'org' | 'notifications';
 
-const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'imports', 'findings', 'analytics', 'org', 'notifications'];
+const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'findings', 'analytics', 'org', 'notifications'];
 
 const VIEW: Record<Role, Section[]> = {
   owner: ALL,
-  finance: ['dashboard', 'agents', 'budgets', 'approvals', 'operations', 'software', 'imports', 'findings', 'analytics', 'notifications'],
-  it_admin: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'imports', 'findings', 'org', 'notifications'],
-  agent_owner: ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'findings', 'notifications'],
-  auditor: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'findings', 'analytics', 'notifications'],
+  finance: ['dashboard', 'agents', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'findings', 'analytics', 'notifications'],
+  it_admin: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'imports', 'findings', 'org', 'notifications'],
+  agent_owner: ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'assets', 'findings', 'notifications'],
+  auditor: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'findings', 'analytics', 'notifications'],
 };
 
 const EDIT: Record<Role, Section[]> = {
   owner: ALL,
-  finance: ['budgets', 'approvals', 'software', 'imports', 'findings', 'analytics'],
-  it_admin: ['agents', 'policies', 'software', 'imports', 'findings', 'org'],
+  finance: ['budgets', 'approvals', 'software', 'assets', 'imports', 'findings', 'analytics'],
+  it_admin: ['agents', 'policies', 'software', 'assets', 'imports', 'findings', 'org'],
   agent_owner: ['agents', 'approvals', 'findings'],
   auditor: ['analytics'],
 };
