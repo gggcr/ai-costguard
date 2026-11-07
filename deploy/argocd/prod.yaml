@@ -1,0 +1,19 @@
+# Production follows release tags and is synced by a person: no automated policy.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: costguard-prod
+  namespace: argocd
+spec:
+  project: costguard
+  source:
+    repoURL: https://git.costguard.example/costguard/costguard.git
+    targetRevision: v0.1.0
+    path: deploy/helm/costguard
+    helm:
+      valueFiles: [values.yaml, values-prod.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: costguard
+  syncPolicy:
+    syncOptions: [CreateNamespace=true]

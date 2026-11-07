@@ -29,7 +29,7 @@ class SecurityConfig {
         tokens.setJwtGrantedAuthoritiesConverter(realmRoles);
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/prometheus", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(tokens)))
                 .csrf(csrf -> csrf.disable())

@@ -1,5 +1,6 @@
 package ai.costguard.core.assets.internal;
 
+import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -7,6 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +19,21 @@ class AssetService {
     private final AssetRepository assets;
     private final TenantSession session;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
-    AssetService(AssetRepository assets, TenantSession session, Clock clock) {
+    AssetService(AssetRepository assets, TenantSession session, Clock clock, ApplicationEventPublisher events) {
         this.assets = assets;
         this.session = session;
         this.clock = clock;
+        this.events = events;
+    }
+
+    private void announce(UUID tenantId, UUID assetId) {
+        Asset a = found(assetId);
+        Assignment open = a.currentAssignment();
+        events.publishEvent(new AssetChanged(tenantId, a.id(), a.inventoryNumber(), a.model(), a.type().name(),
+                a.cost(), a.status().name(), open == null ? null : open.employeeId(),
+                open == null ? null : open.issuedAt(), open == null ? null : open.returnDue(), clock.instant()));
     }
 
     @Transactional
@@ -33,6 +45,7 @@ class AssetService {
         } catch (DuplicateKeyException e) {
             throw AssetProblem.INVENTORY_NUMBER_TAKEN.failure();
         }
+        announce(tenantId, id);
         return found(id);
     }
 
@@ -77,12 +90,18 @@ class AssetService {
         }
         Assignment open = asset.currentAssignment();
         if (open == null) {
-            return issue(tenantId, assetId, request);
+            Assignment issued = issue(tenantId, assetId, request);
+            announce(tenantId, assetId);
+            return issued;
         }
         if (!open.employeeId().equals(request.employeeId())) {
             throw AssetProblem.ASSET_ALREADY_ASSIGNED.failure();
         }
-        return withReturnDate(open, request.returnDue());
+        Assignment moved = withReturnDate(open, request.returnDue());
+        if (moved != open) {
+            announce(tenantId, assetId);
+        }
+        return moved;
     }
 
     private Assignment issue(UUID tenantId, UUID assetId, NewAssignment request) {
@@ -109,6 +128,7 @@ class AssetService {
         if (open != null) {
             assets.closeAssignment(open.id(), LocalDate.now(clock));
             assets.setStatus(assetId, AssetStatus.IN_STOCK);
+            announce(tenantId, assetId);
         }
     }
 
@@ -118,7 +138,10 @@ class AssetService {
         if (locked(assetId).status() == AssetStatus.ASSIGNED) {
             throw AssetProblem.ASSET_ALREADY_ASSIGNED.failure();
         }
-        assets.setStatus(assetId, AssetStatus.RETIRED);
+        if (locked(assetId).status() != AssetStatus.RETIRED) {
+            assets.setStatus(assetId, AssetStatus.RETIRED);
+            announce(tenantId, assetId);
+        }
         return found(assetId);
     }
 

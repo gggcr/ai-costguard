@@ -1,0 +1,83 @@
+# Images are built by CI (see .github/workflows) and tagged with the commit; set image.tag per environment.
+image:
+  registry: cr.yandex/costguard
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# Managed services outside the cluster (deploy/terraform creates them). Secrets are not here: every service reads
+# the Kubernetes secret named in `secretName` (create it from Lockbox or Vault, see docs/runbooks/secrets.md).
+external:
+  kafkaBootstrapServers: kafka:9092
+  schemaRegistryUrl: http://schema-registry:8081
+  postgresUrl: jdbc:postgresql://postgres:6432/costguard
+  redisHost: redis
+  clickhouseUrl: http://clickhouse:8123
+  s3Endpoint: https://storage.yandexcloud.net
+  keycloakIssuerUri: https://id.costguard.example/realms/costguard
+
+secretName: costguard-secrets
+
+# One entry per workload. `http` services get a Service, probes and metrics; the others are Kafka consumers.
+services:
+  core:
+    enabled: true
+    image: core
+    replicas: 2
+    http: { port: 8080 }
+    probes: spring
+    metrics: /actuator/prometheus
+    resources: { requests: { cpu: 500m, memory: 768Mi }, limits: { memory: 1536Mi } }
+    env:
+      CORE_PORT: "8080"
+      TRACE_SAMPLING: "0.1"
+  gateway:
+    enabled: true
+    image: gateway
+    replicas: 3
+    http: { port: 8081 }
+    probes: spring
+    metrics: /actuator/prometheus
+    autoscaling: { minReplicas: 3, maxReplicas: 12, cpu: 70 }
+    resources: { requests: { cpu: 500m, memory: 512Mi }, limits: { memory: 1Gi } }
+    env:
+      GATEWAY_PORT: "8081"
+      COMPANY_TIME_ZONE: Europe/Moscow
+  ingest:
+    enabled: true
+    image: python
+    command: [costguard-ingest]
+    replicas: 2
+    resources: { requests: { cpu: 200m, memory: 512Mi }, limits: { memory: 1Gi } }
+  anomaly:
+    enabled: true
+    image: python
+    command: [costguard-anomaly]
+    # It keeps its history in memory and reads the topic from the start: one replica per tenant set.
+    replicas: 1
+    resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { memory: 2Gi } }
+  notary:
+    enabled: true
+    image: python
+    command: [costguard-notary]
+    replicas: 1
+    resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 256Mi } }
+    env:
+      NEAR_RPC_URL: https://rpc.mainnet.near.org
+      NEAR_CONTRACT_ID: notary.costguard.near
+
+# Connectors run on Airflow (infra/airflow) or as a CronJob here, one per tenant config in the secret.
+connectorsCronJob:
+  enabled: false
+  schedule: "0 * * * *"
+  configSecret: costguard-tenants
+
+clickhouseMigrations:
+  enabled: true
+
+monitoring:
+  serviceMonitor: true
+  rules: true
+  dashboard: true
+  # Alert thresholds
+  gatewayP99Seconds: 0.25
+  consumerLagMessages: 10000

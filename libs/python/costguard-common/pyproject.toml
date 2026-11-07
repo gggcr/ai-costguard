@@ -1,0 +1,13 @@
+[project]
+name = "costguard-common"
+version = "0.1.0"
+description = "Shared code of the Python services: Kafka wire format, Schema Registry, FOCUS records, settings"
+requires-python = ">=3.12"
+dependencies = ["fastavro>=1.9", "httpx>=0.27", "pydantic>=2.9", "pydantic-settings>=2.6"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/costguard_common"]

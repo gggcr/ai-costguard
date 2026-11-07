@@ -8,17 +8,35 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `agent.risk-signals.v1` (compacted) | Anomaly detector | Agent gateway, core agents and notifications | agent_id or task_id |
 | `policy.snapshots.v1` (compacted) | Core policies | Agent gateway | tenant_id |
 | `agents.state.v1` (compacted) | Core agents | Agent gateway | agent_id |
-| `catalog.prices.v1` (compacted) | Core catalog | Agent gateway | sku_id |
+| `catalog.prices.v1` (compacted) | Core catalog | Agent gateway | tenant_id:sku_id |
 | `budgets.limits.v1` (compacted) | Core ledger | Agent gateway | budget_id |
 | `journal.receipts.v1` | Core journal | NEAR notary | receipt_id |
 | `journal.anchors.v1` | NEAR notary | Core journal | batch_id |
 | `ingest.files.v1` | Core imports | Ingest pipeline | file_id |
+| `ingest.results.v1` | Ingest pipeline | Core imports | file_id |
+| `ingest.accepted.v1` | Core imports | Ingest pipeline | file_id |
 | `ingest.normalized.v1` | Ingest pipeline | Core software and org | entity key |
 | `cost.records.v1` | Ingest pipeline, core ledger | ClickHouse, forecast service | tenant_id |
 | `findings.v1` | Audit engine | Core findings and notifications | finding fingerprint |
+| `assets.assignments.v1` | Core assets | Audit engine | asset_id |
+| `approvals.decisions.v1` (compacted) | Core approvals | Agent gateway | operation_id |
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
 Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
 
-The `assets` module publishes no events yet, and the board has no topic for it. See
-[the comparison](../../docs/architecture/assets-vs-board.md) for what the audit engine needs.
+`assets.assignments.v1` is not on the board yet: it closes the gap described in
+[the comparison](../../docs/architecture/assets-vs-board.md).
+
+`approvals.decisions.v1` is not on the board either: frame 3 retries an approved operation through the gateway,
+and nothing else tells the gateway what was decided. `budgets.limits.v1` carries the level and `ref_id` of a
+budget, so the gateway can find the budget of an agent and walk up to the company.
+
+Prices are per tenant, so `catalog.prices.v1` is keyed by tenant and SKU: keyed by SKU alone, compaction
+would keep one tenant's price and drop the others.
+
+The core publishes its topics from the Spring Modulith outbox (`ai.costguard.core.shared.outbox`): an event
+is stored in the same transaction as the change and sent after commit, again until Kafka takes it. Messages
+use the Schema Registry wire format: byte 0, a 4-byte schema id, then Avro binary.
+
+`ingest.results.v1` and `ingest.accepted.v1` are not on the board: the board draws the pipeline reporting columns,
+errors and unsure values back to people, and people releasing the rows, but no topic carries either step.

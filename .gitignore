@@ -53,3 +53,9 @@ replay_pid*
 # OS
 .DS_Store
 Thumbs.db
+
+# Python tooling caches
+.venv/
+.pytest_cache/
+.ruff_cache/
+__pycache__/

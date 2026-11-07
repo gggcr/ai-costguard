@@ -1,0 +1,60 @@
+{
+  "type": "record",
+  "name": "IngestNormalized",
+  "namespace": "ai.costguard.events",
+  "doc": "One normalized entity for the master data. Key: entity_key.",
+  "fields": [
+    {
+      "name": "entity_key",
+      "type": "string"
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "file_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "entity_type",
+      "type": {
+        "type": "enum",
+        "name": "NormalizedEntityType",
+        "symbols": [
+          "VENDOR",
+          "SUBSCRIPTION",
+          "CONTRACT",
+          "INVOICE",
+          "PAYMENT",
+          "EMPLOYEE",
+          "LICENSE_ASSIGNMENT",
+          "ACTIVITY_EVENT",
+          "ASSET"
+        ]
+      }
+    },
+    {
+      "name": "payload",
+      "type": "string",
+      "doc": "JSON of the entity."
+    },
+    {
+      "name": "confidence",
+      "type": "double"
+    },
+    {
+      "name": "normalized_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

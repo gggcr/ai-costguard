@@ -1,0 +1,105 @@
+{
+  "type": "record",
+  "name": "AssetAssignmentChanged",
+  "namespace": "ai.costguard.events",
+  "doc": "Current state of an asset, for equipment findings. Key: asset_id.",
+  "fields": [
+    {
+      "name": "asset_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "inventory_number",
+      "type": "string"
+    },
+    {
+      "name": "model",
+      "type": "string"
+    },
+    {
+      "name": "type",
+      "type": {
+        "type": "enum",
+        "name": "AssetKind",
+        "symbols": [
+          "LAPTOP",
+          "PHONE",
+          "MONITOR",
+          "OTHER"
+        ]
+      }
+    },
+    {
+      "name": "cost",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "AssetState",
+        "symbols": [
+          "IN_STOCK",
+          "ASSIGNED",
+          "RETIRED"
+        ]
+      }
+    },
+    {
+      "name": "employee_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null,
+      "doc": "Current holder."
+    },
+    {
+      "name": "issued_at",
+      "type": [
+        "null",
+        {
+          "type": "int",
+          "logicalType": "date"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "return_due",
+      "type": [
+        "null",
+        {
+          "type": "int",
+          "logicalType": "date"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "changed_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

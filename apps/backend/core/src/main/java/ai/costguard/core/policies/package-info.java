@@ -1,4 +1,7 @@
-/** Rules, simulation and publishing. Publishes policy.snapshots.v1. */
+/**
+ * Company rules on top of agent mandates, their simulation, and publication of snapshots to the gateway.
+ * Owns POLICY. A rule names the operations it catches; DENY wins over REQUIRE_APPROVAL.
+ */
 @ApplicationModule(displayName = "Policies")
 package ai.costguard.core.policies;
 

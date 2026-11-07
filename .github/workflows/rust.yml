@@ -1,0 +1,24 @@
+name: rust
+on:
+  push:
+    paths: ['contracts/**']
+  pull_request:
+    paths: ['contracts/**']
+jobs:
+  notary-contract:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: contracts/notary } }
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.95 --profile minimal --component clippy,rustfmt --target wasm32-unknown-unknown
+      - run: rustup override set 1.95
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: contracts/notary }
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: cargo build --locked --release --target wasm32-unknown-unknown
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notary-wasm
+          path: contracts/notary/target/wasm32-unknown-unknown/release/costguard_notary.wasm

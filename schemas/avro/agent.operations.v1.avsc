@@ -1,0 +1,148 @@
+{
+  "type": "record",
+  "name": "AgentOperation",
+  "namespace": "ai.costguard.events",
+  "doc": "One paid agent operation and the decision on it. Key: agent_id.",
+  "fields": [
+    {
+      "name": "operation_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "agent_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "kind",
+      "type": {
+        "type": "enum",
+        "name": "OperationKind",
+        "symbols": [
+          "LLM_CALL",
+          "PAID_API"
+        ]
+      }
+    },
+    {
+      "name": "provider",
+      "type": "string"
+    },
+    {
+      "name": "model",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "decision",
+      "type": {
+        "type": "enum",
+        "name": "OperationDecision",
+        "symbols": [
+          "ALLOWED",
+          "DENIED",
+          "PENDING_APPROVAL"
+        ]
+      }
+    },
+    {
+      "name": "denial_code",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "For example budget_exceeded or policy_denied."
+    },
+    {
+      "name": "estimated_cost",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "actual_cost",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 6
+        }
+      ],
+      "default": null,
+      "doc": "Absent until the provider has answered."
+    },
+    {
+      "name": "currency",
+      "type": "string"
+    },
+    {
+      "name": "input_tokens",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null
+    },
+    {
+      "name": "output_tokens",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null
+    },
+    {
+      "name": "mandate_version",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    },
+    {
+      "name": "prompt_simhash",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "For loop detection. The prompt itself is not sent."
+    },
+    {
+      "name": "occurred_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

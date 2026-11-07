@@ -20,6 +20,7 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/costguard}
   modulith:
     events:
+      republish-outstanding-events-on-restart: true
       jdbc:
         schema-initialization:
           enabled: true
@@ -27,10 +28,25 @@ spring:
     vault:
       enabled: ${VAULT_ENABLED:false}
 
+costguard:
+  events:
+    kafka:
+      enabled: ${CORE_EVENTS_KAFKA_ENABLED:true}
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8085}
+  catalog:
+    cbr:
+      enabled: ${CBR_RATES_ENABLED:true}
+  journal:
+    private-key: ${JOURNAL_PRIVATE_KEY:}
+    public-key: ${JOURNAL_PUBLIC_KEY:}
+
 springdoc:
   default-produces-media-type: application/json
 
 management:
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:0.1}
   endpoints:
     web:
       exposure:

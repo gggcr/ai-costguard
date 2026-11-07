@@ -15,7 +15,7 @@ import org.springframework.stereotype.Repository;
 class AssetRepository {
 
     private static final String SELECT = """
-            select a.id, a.inventory_number, a.model, a.cost, a.status,
+            select a.id, a.inventory_number, a.model, a.type, a.cost, a.status,
                    o.id as assignment_id, o.employee_id, o.issued_at, o.return_due
             from asset a
             left join asset_assignment o on o.asset_id = a.id and o.returned_at is null
@@ -43,16 +43,17 @@ class AssetRepository {
         Assignment open = assignmentId == null ? null : new Assignment(assignmentId, id,
                 rs.getObject("employee_id", UUID.class), rs.getObject("issued_at", LocalDate.class),
                 rs.getObject("return_due", LocalDate.class), null);
-        return new Asset(id, rs.getString("inventory_number"), rs.getString("model"), rs.getBigDecimal("cost"),
+        return new Asset(id, rs.getString("inventory_number"), rs.getString("model"),
+                AssetType.valueOf(rs.getString("type")), rs.getBigDecimal("cost"),
                 AssetStatus.valueOf(rs.getString("status")), open);
     }
 
     void insert(UUID tenantId, UUID id, NewAsset asset) {
         jdbc.sql("""
-                insert into asset (id, tenant_id, inventory_number, model, cost, status)
-                values (?, ?, ?, ?, ?, ?)
+                insert into asset (id, tenant_id, inventory_number, model, type, cost, status)
+                values (?, ?, ?, ?, ?, ?, ?)
                 """)
-                .params(id, tenantId, asset.inventoryNumber(), asset.model(), asset.cost(),
+                .params(id, tenantId, asset.inventoryNumber(), asset.model(), asset.type().name(), asset.cost(),
                         AssetStatus.IN_STOCK.name())
                 .update();
     }

@@ -1,4 +1,4 @@
-/** Findings, their statuses and savings. Owns FINDING, SAVINGS_RECORD. */
+/** Findings with estimated savings and their life cycle. Owns FINDING, SAVINGS_RECORD. */
 @ApplicationModule(displayName = "Findings")
 package ai.costguard.core.findings;
 
