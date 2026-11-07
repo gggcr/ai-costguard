@@ -11,6 +11,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.spring.boot.starter.opentelemetry)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.data.jdbc)
     implementation(libs.spring.boot.starter.flyway)
@@ -38,6 +39,8 @@ dependencies {
 }
 
 tasks.test {
+    // Each fork starts its own embedded PostgreSQL, so forks do not share data.
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 4)
     systemProperty("repo.root", rootDir.path)
     systemProperty("openapi.update", providers.gradleProperty("openapi.update").getOrElse("false"))
 }

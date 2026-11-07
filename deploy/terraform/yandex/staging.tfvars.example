@@ -1,0 +1,5 @@
+cloud_id    = "b1g..."
+folder_id   = "b1g..."
+environment = "staging"
+nodes_min   = 2
+nodes_max   = 4

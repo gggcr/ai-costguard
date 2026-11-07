@@ -1,0 +1,98 @@
+{
+  "type": "record",
+  "name": "BudgetLimit",
+  "namespace": "ai.costguard.events",
+  "doc": "Limit of a budget and reconciliation corrections. Compacted. Key: budget_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "budget_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "parent_budget_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "level",
+      "type": {
+        "type": "enum",
+        "name": "BudgetLevel",
+        "symbols": [
+          "COMPANY",
+          "DEPARTMENT",
+          "AGENT"
+        ]
+      }
+    },
+    {
+      "name": "ref_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null,
+      "doc": "The department or agent of the budget."
+    },
+    {
+      "name": "limit_amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "currency",
+      "type": "string"
+    },
+    {
+      "name": "correction",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      },
+      "doc": "Applied by the gateway to its Redis counter. Zero when the counters agree."
+    },
+    {
+      "name": "period_start",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    },
+    {
+      "name": "period_end",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    },
+    {
+      "name": "version",
+      "type": "long"
+    }
+  ]
+}

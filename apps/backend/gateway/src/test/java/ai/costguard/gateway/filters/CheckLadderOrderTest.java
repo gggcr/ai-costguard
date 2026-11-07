@@ -12,13 +12,13 @@ class CheckLadderOrderTest {
     @Test
     void stepsRunInTheOrderOfTheCheckLadder() {
         List<CheckStep> ladder = List.of(
-                new IdentityFilter(),
-                new MandateFilter(),
-                new LoopFilter(),
-                new RiskFilter(),
-                new BudgetFilter(),
-                new TaskFitFilter(),
-                new ApprovalFilter());
+                new IdentityFilter(null),
+                new MandateFilter(null, null),
+                new LoopFilter(null),
+                new RiskFilter(null),
+                new BudgetFilter(null, null, null, 0),
+                new TaskFitFilter(null),
+                new ApprovalFilter(null));
 
         for (int i = 0; i < ladder.size(); i++) {
             assertEquals((i + 1) * 100, ladder.get(i).getOrder(), ladder.get(i).getClass().getSimpleName());

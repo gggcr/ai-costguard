@@ -1,0 +1,68 @@
+{{- if .Values.clickhouseMigrations.enabled }}
+---
+# Applies schemas/clickhouse/migrations before every release; a migration that changed after it ran stops it.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: costguard-clickhouse-migrations-{{ .Release.Revision }}
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    argocd.argoproj.io/hook: PreSync
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: migrate
+          image: {{ include "costguard.image" (dict "root" . "image" "python") }}
+          command: [python, /app/schemas/clickhouse/apply.py]
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretName }}
+          env:
+            {{- include "costguard.env" . | nindent 12 }}
+            - name: KAFKA_BROKERS
+              value: {{ .Values.external.kafkaBootstrapServers | quote }}
+{{- end }}
+{{- if .Values.connectorsCronJob.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: costguard-connectors
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.connectorsCronJob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+          containers:
+            - name: connectors
+              image: {{ include "costguard.image" (dict "root" . "image" "python") }}
+              # Every file of the secret is one tenant; the state file lives next to it on the volume.
+              command: [sh, -c, 'for f in /tenants/*.toml; do costguard-connector-agent "$f" --once || rc=1; done; exit ${rc:-0}']
+              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+              envFrom:
+                - secretRef:
+                    name: {{ .Values.secretName }}
+              env:
+                {{- include "costguard.env" . | nindent 16 }}
+              volumeMounts:
+                - { name: tenants, mountPath: /tenants, readOnly: true }
+          volumes:
+            - name: tenants
+              secret:
+                secretName: {{ .Values.connectorsCronJob.configSecret }}
+{{- end }}

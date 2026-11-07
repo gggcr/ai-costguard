@@ -1,0 +1,19 @@
+[project]
+name = "costguard-anomaly"
+version = "0.1.0"
+description = "Anomaly detector: spend spikes and double charges in cost.records.v1, reported to findings.v1"
+requires-python = ">=3.12"
+dependencies = ["costguard-common", "confluent-kafka>=2.6"]
+
+[project.scripts]
+costguard-anomaly = "costguard_anomaly.service:main"
+
+[tool.uv.sources]
+costguard-common = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/costguard_anomaly"]

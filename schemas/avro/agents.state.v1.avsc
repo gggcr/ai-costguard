@@ -1,0 +1,72 @@
+{
+  "type": "record",
+  "name": "AgentState",
+  "namespace": "ai.costguard.events",
+  "doc": "What the gateway must know about an agent. Compacted. Key: agent_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "agent_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "virtual_key_hashes",
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "doc": "Hashes of active keys. Keys themselves never leave the core."
+    },
+    {
+      "name": "suspended",
+      "type": "boolean"
+    },
+    {
+      "name": "mandate_version",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    },
+    {
+      "name": "mandate_expression",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "CEL expression."
+    },
+    {
+      "name": "approval_threshold",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 6
+        }
+      ],
+      "default": null,
+      "doc": "Operations above this go to the AI evaluator."
+    },
+    {
+      "name": "updated_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

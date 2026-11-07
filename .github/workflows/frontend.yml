@@ -1,0 +1,30 @@
+name: frontend
+on:
+  push:
+    paths: ['apps/frontend/**', 'libs/js/**', 'schemas/openapi/**']
+  pull_request:
+    paths: ['apps/frontend/**', 'libs/js/**', 'schemas/openapi/**']
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: npm, cache-dependency-path: apps/frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+  js-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      # The SDK has no dependencies; the compiler comes from the frontend's lock file.
+      - run: npm ci
+        working-directory: apps/frontend
+      - run: npm test
+        working-directory: libs/js/costguard-sdk
+      - run: ../../../apps/frontend/node_modules/.bin/tsc -p tsconfig.json --noEmit
+        working-directory: libs/js/costguard-sdk

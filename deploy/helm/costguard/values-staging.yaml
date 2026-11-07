@@ -1,0 +1,12 @@
+image:
+  tag: main
+services:
+  core: { replicas: 1 }
+  gateway: { autoscaling: { minReplicas: 1, maxReplicas: 3, cpu: 80 } }
+  ingest: { replicas: 1 }
+  notary:
+    env:
+      NEAR_RPC_URL: https://rpc.testnet.near.org
+      NEAR_CONTRACT_ID: notary.costguard.testnet
+connectorsCronJob:
+  enabled: true

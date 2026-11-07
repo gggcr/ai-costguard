@@ -1,0 +1,32 @@
+name: deploy-manifests
+on:
+  push:
+    paths: ['deploy/**']
+  pull_request:
+    paths: ['deploy/**']
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: v3.16.4 }
+      - run: |
+          for env in staging prod; do
+            helm lint deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml
+            helm template cg deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml > /tmp/$env.yaml
+          done
+      - run: |
+          docker run --rm -v /tmp:/w ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -ignore-missing-schemas \
+            -kubernetes-version 1.30.0 /w/staging.yaml /w/prod.yaml
+          docker run --rm -v "$PWD/deploy/argocd:/w" ghcr.io/yannh/kubeconform:v0.6.7 -summary -ignore-missing-schemas /w
+  terraform:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: deploy/terraform/yandex } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.8 }
+      - run: terraform fmt -check -diff
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate

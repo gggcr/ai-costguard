@@ -4,5 +4,5 @@ import org.springframework.core.Ordered;
 import reactor.core.publisher.Mono;
 
 public interface CheckStep extends Ordered {
-    Mono<StepResult> check(OperationContext op);
+    Mono<StepResult> check(Operation op);
 }

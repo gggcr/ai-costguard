@@ -83,7 +83,7 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
 
     private static String laptop(String inventoryNumber) {
         return """
-                {"inventoryNumber":"%s","model":"ThinkPad T14","cost":80000.00}
+                {"inventoryNumber":"%s","model":"ThinkPad T14","type":"LAPTOP","cost":80000.00}
                 """.formatted(inventoryNumber);
     }
 
@@ -249,6 +249,10 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
         String tooPrecise = laptop(inventoryNumber()).replace("80000.00", "1.234");
         mvc.perform(json(post("/api/v1/assets"), tooPrecise).with(as(tenant)))
                 .andExpect(status().isBadRequest());
+        String noType = laptop(inventoryNumber()).replace("\"type\":\"LAPTOP\",", "");
+        mvc.perform(json(post("/api/v1/assets"), noType).with(as(tenant))).andExpect(status().isBadRequest());
+        String unknownType = laptop(inventoryNumber()).replace("LAPTOP", "TOASTER");
+        mvc.perform(json(post("/api/v1/assets"), unknownType).with(as(tenant))).andExpect(status().isBadRequest());
         String blankModel = laptop(inventoryNumber()).replace("ThinkPad T14", " ");
         mvc.perform(json(post("/api/v1/assets"), blankModel).with(as(tenant)))
                 .andExpect(status().isBadRequest());

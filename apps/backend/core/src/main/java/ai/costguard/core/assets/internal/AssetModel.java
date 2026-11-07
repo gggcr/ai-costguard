@@ -11,9 +11,12 @@ import java.util.UUID;
 
 enum AssetStatus { IN_STOCK, ASSIGNED, RETIRED }
 
+enum AssetType { LAPTOP, PHONE, MONITOR, OTHER }
+
 record NewAsset(
         @NotBlank String inventoryNumber,
         @NotBlank String model,
+        @NotNull AssetType type,
         @NotNull @DecimalMin("0") @Digits(integer = 12, fraction = 2) BigDecimal cost) {
 }
 
@@ -30,6 +33,7 @@ record Asset(
         UUID id,
         String inventoryNumber,
         String model,
+        AssetType type,
         BigDecimal cost,
         AssetStatus status,
         Assignment currentAssignment) {

@@ -1,0 +1,66 @@
+{
+  "type": "record",
+  "name": "PolicySnapshot",
+  "namespace": "ai.costguard.events",
+  "doc": "Published rules of a tenant. Compacted. Key: tenant_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "version",
+      "type": "long"
+    },
+    {
+      "name": "rules",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "PolicyRule",
+          "fields": [
+            {
+              "name": "id",
+              "type": {
+                "type": "string",
+                "logicalType": "uuid"
+              }
+            },
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "expression",
+              "type": "string",
+              "doc": "CEL expression."
+            },
+            {
+              "name": "effect",
+              "type": {
+                "type": "enum",
+                "name": "PolicyEffect",
+                "symbols": [
+                  "ALLOW",
+                  "DENY",
+                  "REQUIRE_APPROVAL"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "published_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

@@ -1,22 +1,31 @@
 package ai.costguard.gateway.filters;
 
 import ai.costguard.gateway.ladder.CheckStep;
-import ai.costguard.gateway.ladder.OperationContext;
+import ai.costguard.gateway.ladder.Operation;
 import ai.costguard.gateway.ladder.StepResult;
+import ai.costguard.gateway.keys.AgentDirectory;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-/**
- * Step 1 of the check ladder: the key is valid and the agent is not suspended.
- *
- * <p>Stub. It refuses rather than passes, so an unfinished check cannot allow spending.
- */
+/** Step 1: the key is valid and the agent is not suspended. */
 @Component
 public class IdentityFilter implements CheckStep {
 
+    private final AgentDirectory agents;
+
+    public IdentityFilter(AgentDirectory agents) {
+        this.agents = agents;
+    }
+
     @Override
-    public Mono<StepResult> check(OperationContext op) {
-        return Mono.error(new UnsupportedOperationException("IdentityFilter is not implemented"));
+    public Mono<StepResult> check(Operation op) {
+        if (op.secret() == null || op.secret().isBlank()) {
+            return Mono.just(new StepResult.Refuse(401, "invalid_api_key"));
+        }
+        return Mono.just(agents.byKey(op.secret()).<StepResult>map(agent -> {
+            op.agent(agent);
+            return agent.getSuspended() ? new StepResult.Refuse(423, "agent_suspended") : new StepResult.Pass();
+        }).orElseGet(() -> new StepResult.Refuse(401, "invalid_api_key")));
     }
 
     @Override

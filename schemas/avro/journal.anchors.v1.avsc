@@ -1,0 +1,70 @@
+{
+  "type": "record",
+  "name": "JournalAnchor",
+  "namespace": "ai.costguard.events",
+  "doc": "A receipt batch anchored in NEAR. Key: batch_id.",
+  "fields": [
+    {
+      "name": "batch_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "merkle_root",
+      "type": "string"
+    },
+    {
+      "name": "receipt_count",
+      "type": "int"
+    },
+    {
+      "name": "receipt_ids",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      }
+    },
+    {
+      "name": "period_start",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "period_end",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "near_tx_hash",
+      "type": "string"
+    },
+    {
+      "name": "anchored_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null,
+      "doc": "The tenant whose receipts the batch holds. Optional only so that anchors written before it was added still read."
+    }
+  ]
+}

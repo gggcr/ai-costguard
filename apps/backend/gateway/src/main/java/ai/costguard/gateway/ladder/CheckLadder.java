@@ -22,7 +22,7 @@ public class CheckLadder {
     }
 
     /** Steps run in order; the first one that does not pass stops the ladder. */
-    public Mono<StepResult> run(OperationContext op) {
+    public Mono<StepResult> run(Operation op) {
         return Flux.fromIterable(steps)
                 .concatMap(step -> step.check(op))
                 .filter(r -> !(r instanceof StepResult.Pass))

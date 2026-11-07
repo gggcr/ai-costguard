@@ -28,6 +28,10 @@ spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-star
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
 spring-security-test = { module = "org.springframework.security:spring-security-test" }
 spring-jdbc = { module = "org.springframework:spring-jdbc" }
+spring-web = { module = "org.springframework:spring-web" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
+micrometer-tracing = { module = "io.micrometer:micrometer-tracing" }
+spring-boot-starter-opentelemetry = { module = "org.springframework.boot:spring-boot-starter-opentelemetry" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
@@ -50,6 +54,7 @@ embedded-postgres = { module = "io.zonky.test:embedded-postgres", version.ref = 
 # Testcontainers
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-kafka = { module = "org.testcontainers:testcontainers-kafka" }
+testcontainers-core = { module = "org.testcontainers:testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 
 # Other

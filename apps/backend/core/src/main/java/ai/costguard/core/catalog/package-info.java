@@ -1,4 +1,6 @@
-/** Prices of models, APIs and cloud; Central Bank exchange rates. */
+/**
+ * Prices of models, paid APIs and clouds; Bank of Russia exchange rates. Owns PRICE, FX_RATE.
+ */
 @ApplicationModule(displayName = "Catalog")
 package ai.costguard.core.catalog;
 

@@ -1,0 +1,42 @@
+name: python
+on:
+  push:
+    paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'pyproject.toml', 'uv.lock']
+  pull_request:
+    paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'pyproject.toml', 'uv.lock']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      # schemas/clickhouse/tests run against it; without CLICKHOUSE_TEST_URL they are skipped.
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8
+        env: { CLICKHOUSE_SKIP_USER_SETUP: '1' }
+        ports: ['8123:8123']
+        options: --health-cmd "wget -qO- localhost:8123/ping" --health-interval 5s --health-retries 30
+    env:
+      CLICKHOUSE_TEST_URL: http://127.0.0.1:8123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { version: '0.5.11' }
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-packages
+      - run: uv run ruff check .
+      - run: uv run pytest
+      - name: Seed SQL loads on the migrations
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=p -e POSTGRES_DB=costguard -p 5432:5432 postgres:17
+          until docker exec pg pg_isready -U postgres -d costguard; do sleep 1; done
+          for f in $(ls apps/backend/core/src/main/resources/db/migration/*.sql | sort -V); do
+            docker exec -i pg psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard < "$f"
+          done
+          python tools/seed/seed.py | docker exec -i pg psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
+          python tools/seed/seed.py | docker exec -i pg psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
+  image:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/python/Dockerfile -t costguard-python:${{ github.sha }} .
+      - run: docker run --rm costguard-python:${{ github.sha }} python -c "import costguard_ingest, costguard_anomaly, costguard_notary, costguard_connectors, costguard_reports; from costguard_common import schemas; assert schemas.topics()"

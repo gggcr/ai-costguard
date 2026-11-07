@@ -1,26 +1,23 @@
 package ai.costguard.core.assets.internal;
 
+import ai.costguard.platform.errors.ProblemHandler;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/** Only the role message is specific to this module; other errors go through {@link ProblemHandler}. */
 @RestControllerAdvice(assignableTypes = AssetController.class)
 class AssetProblemHandler {
 
-    @ExceptionHandler
-    ProblemDetail handle(AssetProblem.Failure failure) {
-        return body(failure.problem);
+    private final ProblemHandler problems;
+
+    AssetProblemHandler(ProblemHandler problems) {
+        this.problems = problems;
     }
 
     @ExceptionHandler
     ProblemDetail handle(AccessDeniedException denied) {
-        return body(AssetProblem.ROLE_REQUIRED);
-    }
-
-    private static ProblemDetail body(AssetProblem problem) {
-        ProblemDetail body = ProblemDetail.forStatusAndDetail(problem.status, problem.detail);
-        body.setProperty("code", problem.code());
-        return body;
+        return problems.body(AssetProblem.ROLE_REQUIRED);
     }
 }

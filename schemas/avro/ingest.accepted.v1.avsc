@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "IngestAccepted",
+  "namespace": "ai.costguard.events",
+  "doc": "People confirmed the mapping and resolved every review task; the pipeline writes the rows. Key: file_id.",
+  "fields": [
+    {"name": "file_id", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "tenant_id", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "s3_key", "type": "string"},
+    {"name": "file_name", "type": "string"},
+    {"name": "vendor_id", "type": ["null", {"type": "string", "logicalType": "uuid"}], "default": null},
+    {"name": "mapping", "type": {"type": "map", "values": "string"}},
+    {"name": "corrections", "type": {"type": "map", "values": {"type": "map", "values": "string"}},
+     "doc": "Row number (as text) to field to the value people entered."},
+    {"name": "accepted_at", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+  ]
+}
