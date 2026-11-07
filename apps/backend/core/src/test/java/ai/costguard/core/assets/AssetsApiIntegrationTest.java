@@ -27,7 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -63,7 +63,24 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
     @Autowired RealmRoles realmRoles;
 
     private final UUID tenant = UUID.randomUUID();
-    private final UUID employee = UUID.randomUUID();
+    private UUID employee;
+
+    /** An issue makes a handover act, and an act needs a person from the org structure. */
+    @BeforeEach
+    void hireTheEmployee() throws Exception {
+        employee = hire();
+    }
+
+    private UUID hire() throws Exception {
+        String department = JsonPath.read(mvc.perform(json(post("/api/v1/departments"),
+                        "{\"name\":\"%s\"}".formatted(UUID.randomUUID())).with(as(tenant)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        String id = JsonPath.read(mvc.perform(json(post("/api/v1/employees"), """
+                        {"name":"Иванов Иван","email":"%s@corp.ru","departmentId":"%s","position":"Инженер"}
+                        """.formatted(UUID.randomUUID(), department)).with(as(tenant)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        return UUID.fromString(id);
+    }
 
     private RequestPostProcessor as(UUID tenantId) {
         return as(tenantId, "it_admin");
@@ -193,11 +210,12 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
 
     @Test
     void concurrentIssuesToDifferentEmployeesLeaveOneHolder() throws Exception {
+        List<UUID> people = List.of(hire(), hire());
         try (var pool = Executors.newFixedThreadPool(2)) {
             for (int round = 0; round < 30; round++) {
                 String id = createAsset();
                 CountDownLatch start = new CountDownLatch(1);
-                List<Future<Integer>> attempts = Stream.generate(UUID::randomUUID).limit(2)
+                List<Future<Integer>> attempts = people.stream()
                         .map(person -> pool.submit(() -> {
                             start.await();
                             return mvc.perform(json(put("/api/v1/assets/{id}/assignment", id), issue(person))
@@ -363,7 +381,7 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
         assign(id, employee);
         mvc.perform(delete("/api/v1/assets/{id}/assignment", id).with(as(tenant)));
 
-        assign(id, UUID.randomUUID());
+        assign(id, hire());
 
         mvc.perform(get("/api/v1/assets/{id}/assignments", id).with(as(tenant)))
                 .andExpect(jsonPath("$", hasSize(2)));

@@ -563,7 +563,8 @@ paths:
       tags:
       - Assets
       summary: Issue an asset to an employee or move its return date
-      description: Idempotent.
+      description: "Idempotent. A new issue makes its handover act (PDF), see actNumber;\
+        \ moving the return date of the same holder makes none."
       operationId: assign
       parameters:
       - name: id
@@ -594,7 +595,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemBody"
         "404":
-          description: "code: asset_not_found"
+          description: "code: asset_not_found or employee_not_found"
           content:
             application/problem+json:
               schema:
@@ -1364,7 +1365,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemBody"
         "409":
-          description: "code: inventory_number_taken"
+          description: "code: inventory_number_taken or serial_number_taken"
           content:
             application/problem+json:
               schema:
@@ -1840,6 +1841,54 @@ paths:
                 $ref: "#/components/schemas/ProblemBody"
         "404":
           description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}/assignments/{assignmentId}/act:
+    get:
+      tags:
+      - Assets
+      summary: "Handover act of an issue, as made at the issue"
+      description: The X-Content-SHA256 header carries the SHA-256 of the PDF.
+      operationId: act_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: assignmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "200":
+          description: The act
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: "code: asset_not_found or act_not_found"
           content:
             application/problem+json:
               schema:
@@ -2930,6 +2979,10 @@ components:
         cost:
           type: number
           minimum: 0
+        serialNumber:
+          type: string
+          maxLength: 100
+          minLength: 1
       required:
       - cost
       - inventoryNumber

@@ -1,12 +1,15 @@
 package ai.costguard.core.imports.internal;
 
+import ai.costguard.core.assets.AssetLinks;
 import ai.costguard.core.imports.NormalizedEntities;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.org.Staff;
 import ai.costguard.core.software.SoftwareLinks;
 import ai.costguard.platform.tenant.TenantSession;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
  * The merge of vendors and people. Vendors are matched by INN, then by the cleaned name, and created when new:
  * a vendor needs nothing but a name. People are matched by e-mail, then by a unique full name, but never created,
  * because an employee needs a department only people know. A license is tied when its vendor, subscription and
- * person are all known; then its last activity moves forward. Everything else waits in ingest_entity.
+ * person are all known; then its last activity moves forward. A device is registered by its serial or
+ * inventory number and issued to the holder the source names (with a handover act). An employee an HR system
+ * reports as dismissed is dismissed. Everything else waits in ingest_entity.
  */
 @Service
 class EntityStaging implements NormalizedEntities {
@@ -31,12 +36,17 @@ class EntityStaging implements NormalizedEntities {
     private final TenantSession session;
     private final SoftwareLinks software;
     private final EmployeeDirectory people;
+    private final AssetLinks assets;
+    private final Staff staff;
 
-    EntityStaging(JdbcClient jdbc, TenantSession session, SoftwareLinks software, EmployeeDirectory people) {
+    EntityStaging(JdbcClient jdbc, TenantSession session, SoftwareLinks software, EmployeeDirectory people,
+            AssetLinks assets, Staff staff) {
         this.jdbc = jdbc;
         this.session = session;
         this.software = software;
         this.people = people;
+        this.assets = assets;
+        this.staff = staff;
     }
 
     @Override
@@ -69,13 +79,42 @@ class EntityStaging implements NormalizedEntities {
         return switch (type) {
             case "VENDOR" -> text(p, "name").map(n -> software.vendor(tenantId, n, text(p, "inn").orElse(null)))
                     .orElse(null);
-            case "EMPLOYEE" -> person(text(p, "email"), text(p, "name")).orElse(null);
+            case "EMPLOYEE" -> employee(tenantId, p);
+            case "ASSET" -> asset(tenantId, p);
             case "INVOICE", "PAYMENT", "CONTRACT" -> text(p, "vendor")
                     .map(n -> software.vendor(tenantId, n, text(p, "inn").orElse(null))).orElse(null);
             case "SUBSCRIPTION" -> subscription(tenantId, p).orElse(null);
             case "LICENSE_ASSIGNMENT" -> license(tenantId, p).orElse(null);
             default -> null;
         };
+    }
+
+    /**
+     * Only a source that keeps employment says {@code dismissed}: an HR system. A login switched off in a
+     * directory ({@code active: false}) may be a holiday, so it dismisses nobody.
+     */
+    private UUID employee(UUID tenantId, JsonNode p) {
+        UUID id = person(text(p, "email"), text(p, "name")).orElse(null);
+        if (id != null && p.path("dismissed").asBoolean(false)) {
+            staff.dismissedInHrSystem(tenantId, id);
+        }
+        return id;
+    }
+
+    private UUID asset(UUID tenantId, JsonNode p) {
+        UUID holder = person(text(p, "holder_email"), text(p, "holder_name")).orElse(null);
+        BigDecimal cost = text(p, "cost").flatMap(EntityStaging::decimal).orElse(null);
+        return assets.reported(tenantId, new AssetLinks.Reported(text(p, "serial_number").orElse(null),
+                text(p, "inventory_number").orElse(null), text(p, "model").orElse(null),
+                text(p, "type").orElse(null), cost, holder, text(p, "source").orElse("connector")));
+    }
+
+    private static Optional<BigDecimal> decimal(String text) {
+        try {
+            return Optional.of(new BigDecimal(text.replace(" ", "").replace(',', '.')));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
     }
 
     private Optional<UUID> subscription(UUID tenantId, JsonNode p) {

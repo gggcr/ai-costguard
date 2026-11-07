@@ -18,11 +18,40 @@ def vendor(tenant: uuid.UUID, name: str, inn: object = None, source: str = "", *
 
 
 def employee(tenant: uuid.UUID, name: str, email: object = None, department: str | None = None,
-             active: bool = True, source: str = "", **extra) -> Entity:
+             active: bool = True, source: str = "", dismissed: bool = False, **extra) -> Entity:
+    """dismissed is said only by an HR system; a login switched off (active = False) may be a holiday."""
     address = normalized.clean_email(email)
     return Entity(EntityType.EMPLOYEE, normalized.person_key(tenant, address, name),
                   {"name": " ".join(name.split()) or None, "email": address, "department": department,
-                   "active": active, "source": source, **extra})
+                   "active": active, "dismissed": dismissed, "source": source, **extra})
+
+
+ASSET_TYPES = ("LAPTOP", "PHONE", "MONITOR", "OTHER")
+
+# What firmware of no-name and virtual machines reports instead of a serial; two such devices are not one.
+_NO_SERIAL = {"0", "none", "n/a", "na", "default string", "system serial number", "to be filled by o.e.m.",
+              "123456789", "unknown"}
+
+
+def asset(tenant: uuid.UUID, source: str, serial_number: str | None, inventory_number: str | None = None,
+          model: str | None = None, kind: str = "OTHER", cost: Decimal | None = None,
+          holder_email: object = None, holder_name: str | None = None, **extra) -> Entity | None:
+    """One device. The core finds it by serial, then by inventory number; None when the source gives neither.
+
+    cost is left out by MDM systems: what a device cost is known to accounting, in the company's currency.
+    """
+    serial = (serial_number or "").strip() or None
+    if serial is not None and serial.lower() in _NO_SERIAL:
+        serial = None
+    inventory = (inventory_number or "").strip() or None
+    if serial is None and inventory is None:
+        return None
+    name = " ".join((holder_name or "").split()) or None
+    return Entity(EntityType.ASSET, normalized.key(tenant, "asset", serial or inventory),
+                  {"serial_number": serial, "inventory_number": inventory, "model": (model or "").strip() or None,
+                   "type": kind if kind in ASSET_TYPES else "OTHER", "cost": None if cost is None else str(cost),
+                   "holder_email": normalized.clean_email(holder_email), "holder_name": name, "source": source,
+                   **extra})
 
 
 def subscription(tenant: uuid.UUID, vendor_name: str, product: str, seats: int | None = None,

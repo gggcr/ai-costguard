@@ -108,4 +108,34 @@ class AuditIntegrationTest extends PostgresTestSupport {
         audit.run(tenant);
         assertThat(findings()).hasSize(before);
     }
+
+    @Test
+    void anEmployeeWithTwoLaptopsIsAFinding() throws Exception {
+        String department = send(post("/api/v1/departments"), "{\"name\":\"Продажи\"}");
+        String carol = send(post("/api/v1/employees"), """
+                {"name":"Кэрол","email":"carol@corp.ru","departmentId":"%s","position":"Sales"}"""
+                .formatted(department));
+        List<String> devices = List.of("ThinkPad T14\",\"type\":\"LAPTOP\",\"cost\":80000.00",
+                "MacBook Pro\",\"type\":\"LAPTOP\",\"cost\":120000.00",
+                "iPhone 15\",\"type\":\"PHONE\",\"cost\":70000.00");
+        List<String> ids = new java.util.ArrayList<>();
+        for (String device : devices) {
+            String id = send(post("/api/v1/assets"), "{\"inventoryNumber\":\"INV-%s\",\"model\":\"%s}"
+                    .formatted(UUID.randomUUID(), device));
+            send(put("/api/v1/assets/" + id + "/assignment"), "{\"employeeId\":\"%s\"}".formatted(carol));
+            ids.add(id);
+        }
+
+        audit.run(tenant);
+        assertThat(statuses("asset.duplicate")).containsExactly("new");
+        var duplicate = findings().stream().filter(f -> "asset.duplicate".equals(f.get("rule"))).findFirst()
+                .orElseThrow();
+        assertThat(duplicate.get("expectedSavings").toString()).isEqualTo("80000.0"); // all but the dearest
+        assertThat(duplicate.get("title").toString()).startsWith("У сотрудника 2 ноутбука");
+
+        mvc.perform(delete("/api/v1/assets/" + ids.get(0) + "/assignment").with(owner()))
+                .andExpect(status().isNoContent());
+        audit.run(tenant);
+        assertThat(statuses("asset.duplicate")).containsExactly("auto_closed");
+    }
 }

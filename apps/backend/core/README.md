@@ -23,6 +23,12 @@ Company equipment, who holds it and when it is due back. Comparison with the boa
   users cannot change it, and a user without it gets 403 `tenant_missing`. After a realm change, recreate
   the container: `--import-realm` skips a realm that already exists.
 - `owner`, `finance` and `it_admin` can change equipment; see `ManagesAssets`. Anyone in the tenant can read it.
+- Every new issue makes a handover act (PDF, `HandoverActs`) in its transaction, numbered `АВ-<year>-<n>` per
+  tenant. The act is stored as made and a trigger keeps it unchanged; `GET .../assignments/{id}/act` returns it.
+  An issue needs an employee of `org`, because the act names them.
+- `AssetLinks` takes devices from connectors (Jamf, Intune): matched by serial, then inventory number; the holder
+  the source names is issued the device with an act. A report without a holder keeps the current one.
+- Rules: `asset.not-returned`, `asset.idle`, `asset.duplicate` (two laptops or two phones).
 - `TenantSession` binds the tenant to the transaction, and RLS
   alone isolates the rows, so queries have no tenant filter.
 
@@ -31,6 +37,8 @@ Company equipment, who holds it and when it is due back. Comparison with the boa
 Company, departments, employees and CostGuard users. `owner` and `it_admin` can change them.
 
 - Dismissal sets `dismissedAt` and publishes `EmployeeDismissed` once; repeating the call changes nothing.
+  An HR connector (`dismissed: true` in an `EMPLOYEE` entity) dismisses through `Staff`; a login switched off in
+  a directory (`active: false`) does not.
 - `GET /api/v1/employees/{id}/dismissal-checklist` is assembled from `DismissalChecklistSection` beans, so a
   module adds its part without `org` depending on it: `assets` adds equipment, `software` adds licenses.
 - `user_account` is not synced with Keycloak yet: roles in tokens still come from the realm.

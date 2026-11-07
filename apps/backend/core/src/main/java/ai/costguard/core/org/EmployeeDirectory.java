@@ -18,4 +18,17 @@ public interface EmployeeDirectory {
 
     /** Dismissed employees and the day each left. */
     Map<UUID, LocalDate> dismissed();
+
+    /** Who the employee is, as documents name them; empty when the tenant has no such employee. */
+    Optional<EmployeeCard> card(UUID employeeId);
+
+    /** The company as documents name it; empty until its settings are saved. */
+    Optional<CompanyCard> company();
+
+    record EmployeeCard(UUID id, String name, String position, String department, String email,
+            LocalDate dismissedAt) {
+    }
+
+    record CompanyCard(String name, String currency) {
+    }
 }

@@ -2,7 +2,9 @@
 
 Every user with an e-mail becomes an employee and holds a Bitrix24 seat; LAST_LOGIN is the activity the audit
 engine needs to find seats nobody uses. Fired users (ACTIVE = false) are reported too, so the core can see a
-seat still paid for someone who left.
+seat still paid for someone who left. Bitrix24 is where these companies keep HR, and a portal deactivates a user
+when they are fired, so such a user is reported as dismissed: the core then dismisses them and shows what they
+still hold.
 """
 
 from __future__ import annotations
@@ -52,7 +54,8 @@ class Bitrix24:
             dept = next((departments.get(str(d)) for d in u.get("UF_DEPARTMENT") or []), None)
             active = u.get("ACTIVE") in (True, "Y", "true", 1)
             person = entities.employee(tenant, name, u.get("EMAIL"), dept, active, source=self.name,
-                                       external_id=str(u["ID"]), position=u.get("WORK_POSITION") or None)
+                                       dismissed=not active, external_id=str(u["ID"]),
+                                       position=u.get("WORK_POSITION") or None)
             if person.payload["email"] is None and person.payload["name"] is None:
                 continue
             batch.entities.append(person)

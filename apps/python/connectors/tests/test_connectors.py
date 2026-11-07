@@ -11,7 +11,7 @@ import httpx
 import pytest
 
 from costguard_common import normalized, schemas
-from costguard_connectors import agent, bitrix24, contract, mail, moysklad, onec, yandex360
+from costguard_connectors import agent, bitrix24, contract, entities, intune, jamf, mail, moysklad, onec, yandex360
 
 TENANT = uuid.UUID("11111111-1111-1111-1111-111111111111")
 
@@ -150,6 +150,7 @@ def test_bitrix24():
                                       "user.get.json": users})).pull(TENANT, None)
     people = of(batch, normalized.EntityType.EMPLOYEE)
     assert [p.payload["active"] for p in people] == [True, False]
+    assert [p.payload["dismissed"] for p in people] == [False, True]  # Bitrix24 keeps HR: deactivated is fired
     assert people[0].payload["department"] == "ИТ"
     licenses = of(batch, normalized.EntityType.LICENSE_ASSIGNMENT)
     assert licenses[0].payload["last_active"] == date(2026, 8, 1)
@@ -216,10 +217,105 @@ def test_cursor_moves_only_after_publish(tmp_path):
 
 def test_build_from_config():
     found = agent.build({"onec": {"url": "http://1c/odata", "user": "u"}, "moysklad": {}, "bitrix24": {},
-                         "yandex360": {"org_id": "1"}},
+                         "yandex360": {"org_id": "1"}, "jamf": {"url": "https://c.jamfcloud.com", "client_id": "j"},
+                         "intune": {"directory_id": "d", "client_id": "i"}},
                         {"ONEC_PASSWORD": "p", "MOYSKLAD_TOKEN": "t", "BITRIX24_WEBHOOK": "https://b/rest/1/x/",
-                         "YANDEX360_TOKEN": "y"})
-    assert [c.name for c in found] == ["1c", "moysklad", "bitrix24", "yandex360"]
+                         "YANDEX360_TOKEN": "y", "JAMF_CLIENT_SECRET": "js", "INTUNE_CLIENT_SECRET": "is"})
+    assert [c.name for c in found] == ["1c", "moysklad", "bitrix24", "yandex360", "jamf", "intune"]
+
+
+# equipment
+
+
+def test_asset_entity_needs_a_number_and_skips_firmware_placeholders():
+    assert entities.asset(TENANT, "x", None, None, "Mac") is None
+    assert entities.asset(TENANT, "x", "To be filled by O.E.M.", None, "PC") is None
+    device = entities.asset(TENANT, "x", " SN1 ", None, "Mac", "TOASTER", holder_email=" Ivanov@Corp.RU ")
+    assert device.payload["serial_number"] == "SN1"
+    assert device.payload["type"] == "OTHER"
+    assert device.payload["holder_email"] == "ivanov@corp.ru"
+    assert device.key == entities.asset(TENANT, "y", "SN1", "INV-1").key  # one device, whoever reports it
+
+
+def test_jamf():
+    tokens: list[dict] = []
+
+    def token(r):
+        tokens.append(parse_qs(r.content.decode()))
+        return {"access_token": "tok", "expires_in": 1200}
+
+    def computers(r):
+        assert r.headers["Authorization"] == "Bearer tok"
+        assert parse_qs(r.url.query.decode())["section"] == ["GENERAL", "HARDWARE", "USER_AND_LOCATION"]
+        page = int(parse_qs(r.url.query.decode())["page"][0])
+        rows = [
+            [{"id": "1", "general": {"name": "MBP-Ivanov", "assetTag": "INV-0042"},
+              "hardware": {"serialNumber": "C02XYZ", "model": "MacBook Pro (14-inch, 2023)"},
+              "userAndLocation": {"email": "ivanov@corp.ru", "realname": "Иванов Иван"}}],
+            [{"id": "2", "general": {"name": "Studio"}, "hardware": {"serialNumber": "H7", "model": "Mac Studio"},
+              "userAndLocation": {}}],
+        ][page]
+        return {"totalCount": 2, "results": rows}
+
+    mobile = {"totalCount": 2, "results": [
+        {"mobileDeviceId": "7", "general": {"displayName": "iPhone Петрова"},
+         "hardware": {"serialNumber": "F2LX", "model": "iPhone 15"},
+         "userAndLocation": {"emailAddress": "petrov@corp.ru", "realName": "Петров Пётр"}},
+        {"mobileDeviceId": "8", "general": {}, "hardware": {"serialNumber": "", "model": "iPad Air"}},
+    ]}
+    http = client({"/api/oauth/token": token, "/api/v1/computers-inventory": computers,
+                   "/api/v2/mobile-devices/detail": mobile})
+    batch = jamf.Jamf(http, "id", "secret").pull(TENANT, None)
+
+    assert tokens == [{"client_id": ["id"], "client_secret": ["secret"], "grant_type": ["client_credentials"]}]
+    devices = of(batch, normalized.EntityType.ASSET)
+    assert [(d.payload["serial_number"], d.payload["type"]) for d in devices] == [
+        ("C02XYZ", "LAPTOP"), ("H7", "OTHER"), ("F2LX", "PHONE")]  # the iPad without a serial is left out
+    first = devices[0].payload
+    assert (first["inventory_number"], first["holder_email"], first["holder_name"], first["cost"]) == (
+        "INV-0042", "ivanov@corp.ru", "Иванов Иван", None)
+    assert devices[1].payload["holder_email"] is None
+    assert devices[2].payload["holder_name"] == "Петров Пётр"
+    for m in contract.messages(TENANT, "jamf", batch):
+        fits(m)
+
+
+def test_intune_reports_company_devices_and_follows_pages():
+    def devices(r):
+        assert r.headers["Authorization"] == "Bearer g"
+        if "skiptoken" in str(r.url):
+            return {"value": [
+                {"id": "c", "manufacturer": "Dell", "model": "OptiPlex 7010", "serialNumber": "D3",
+                 "operatingSystem": "Windows", "managedDeviceOwnerType": "company"},
+                {"id": "d", "manufacturer": "Apple", "model": "iPad Pro", "serialNumber": "D4",
+                 "operatingSystem": "iOS", "managedDeviceOwnerType": "company"}]}
+        assert "serialNumber" in parse_qs(r.url.query.decode())["$select"][0]
+        return {"value": [
+            {"id": "a", "manufacturer": "Lenovo", "model": "ThinkPad T14 Gen 4", "serialNumber": "PF4A",
+             "operatingSystem": "Windows", "emailAddress": "Ivanov@corp.ru", "userDisplayName": "Иванов Иван",
+             "managedDeviceOwnerType": "company"},
+            {"id": "b", "manufacturer": "Samsung", "model": "Galaxy S24", "serialNumber": "R5",
+             "operatingSystem": "Android", "userPrincipalName": "petrov@corp.ru", "managedDeviceOwnerType": "personal"},
+        ], "@odata.nextLink": "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$skiptoken=2"}
+
+    http = client({"/dir/oauth2/v2.0/token": {"access_token": "g", "expires_in": 3600},
+                   "/v1.0/deviceManagement/managedDevices": devices})
+    batch = intune.Intune(http, "dir", "app", "secret").pull(TENANT, None)
+
+    found = [(d.payload["serial_number"], d.payload["type"], d.payload["holder_email"])
+             for d in of(batch, normalized.EntityType.ASSET)]
+    assert found == [("PF4A", "LAPTOP", "ivanov@corp.ru"), ("D3", "OTHER", None), ("D4", "OTHER", None)]
+    assert str(http.seen[0].url) == "https://login.microsoftonline.com/dir/oauth2/v2.0/token"
+    for m in contract.messages(TENANT, "intune", batch):
+        fits(m)
+
+
+@pytest.mark.parametrize(("system", "model", "kind"), [
+    ("iOS", "Apple iPhone 15", "PHONE"), ("Android", "Samsung Galaxy Tab S9", "OTHER"),
+    ("Windows", "HP EliteBook 840 G10", "LAPTOP"), ("macOS", "Apple MacBook Air", "LAPTOP"),
+    ("Windows", "Dell OptiPlex 7010", "OTHER"), (None, None, "OTHER")])
+def test_intune_kinds(system, model, kind):
+    assert intune.kind_of(system, model) == kind
 
 
 # mail

@@ -44,4 +44,14 @@ class UserEmployeeDirectory implements EmployeeDirectory {
     public Map<UUID, LocalDate> dismissed() {
         return org.dismissed();
     }
+
+    @Override
+    public Optional<EmployeeCard> card(UUID employeeId) {
+        return org.card(employeeId);
+    }
+
+    @Override
+    public Optional<CompanyCard> company() {
+        return org.company().map(c -> new CompanyCard(c.name(), c.currency()));
+    }
 }

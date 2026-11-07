@@ -275,6 +275,7 @@ export type NewAsset = {
   model: string;
   type: "LAPTOP" | "PHONE" | "MONITOR" | "OTHER";
   cost: number;
+  serialNumber?: string;
 };
 
 export type NewAssignment = {
@@ -532,6 +533,7 @@ export const operations = {
   assetsTakeBack: { method: "DELETE", path: "/api/v1/assets/{id}/assignment" },
   assetsAssign: { method: "PUT", path: "/api/v1/assets/{id}/assignment" },
   assetsHistory_1: { method: "GET", path: "/api/v1/assets/{id}/assignments" },
+  assetsAct_1: { method: "GET", path: "/api/v1/assets/{id}/assignments/{assignmentId}/act" },
   assetsRetire: { method: "PUT", path: "/api/v1/assets/{id}/retirement" },
   ledgerBudgets: { method: "GET", path: "/api/v1/budgets" },
   ledgerCreate_1: { method: "POST", path: "/api/v1/budgets" },

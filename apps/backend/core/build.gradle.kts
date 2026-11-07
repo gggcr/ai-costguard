@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.spring.modulith.starter.jdbc)
     implementation(libs.spring.modulith.events.kafka)
     implementation(libs.springdoc.webmvc)
+    implementation(libs.pdfbox)
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)

@@ -1,9 +1,11 @@
 package ai.costguard.core.assets.internal;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -17,7 +19,8 @@ record NewAsset(
         @NotBlank String inventoryNumber,
         @NotBlank String model,
         @NotNull AssetType type,
-        @NotNull @DecimalMin("0") @Digits(integer = 12, fraction = 2) BigDecimal cost) {
+        @NotNull @DecimalMin("0") @Digits(integer = 12, fraction = 2) BigDecimal cost,
+        @Size(min = 1, max = 100) String serialNumber) {
 }
 
 record Assignment(
@@ -26,7 +29,9 @@ record Assignment(
         UUID employeeId,
         LocalDate issuedAt,
         LocalDate returnDue,
-        LocalDate returnedAt) {
+        LocalDate returnedAt,
+        @Schema(description = "Number of the handover act made at the issue; null for issues recorded before acts")
+        String actNumber) {
 }
 
 record Asset(
@@ -35,6 +40,7 @@ record Asset(
         String model,
         AssetType type,
         BigDecimal cost,
+        String serialNumber,
         AssetStatus status,
         Assignment currentAssignment) {
 }
