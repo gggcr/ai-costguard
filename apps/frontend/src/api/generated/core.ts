@@ -273,7 +273,7 @@ export type Month = {
 export type NewAsset = {
   inventoryNumber: string;
   model: string;
-  type: "LAPTOP" | "PHONE" | "MONITOR" | "OTHER";
+  type?: "LAPTOP" | "PHONE" | "MONITOR" | "OTHER";
   cost: number;
 };
 
