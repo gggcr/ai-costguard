@@ -40,17 +40,25 @@ pub struct Notary {
 }
 
 fn is_hash(s: &str) -> bool {
-    s.len() == 64 && s.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    s.len() == 64
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 fn decode(s: &str) -> Vec<u8> {
-    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
 }
 
 fn pair(left: &str, right: &str) -> String {
     let mut both = decode(left);
     both.extend(decode(right));
-    env::sha256(&both).iter().map(|b| format!("{b:02x}")).collect()
+    env::sha256(&both)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 #[near]
@@ -59,11 +67,19 @@ impl Notary {
     pub fn new(owner: AccountId) -> Self {
         let mut notaries = IterableSet::new(Key::Notaries);
         notaries.insert(owner.clone());
-        Self { owner, notaries, anchors: LookupMap::new(Key::Anchors), count: 0 }
+        Self {
+            owner,
+            notaries,
+            anchors: LookupMap::new(Key::Anchors),
+            count: 0,
+        }
     }
 
     fn require_owner(&self) {
-        require!(env::predecessor_account_id() == self.owner, "Only the owner can do this");
+        require!(
+            env::predecessor_account_id() == self.owner,
+            "Only the owner can do this"
+        );
     }
 
     pub fn add_notary(&mut self, account_id: AccountId) {
@@ -83,15 +99,33 @@ impl Notary {
 
     /// Stores the root of a batch. The same batch with the same root again is a no-op that returns false, so the
     /// notary can repeat a call after a crash; the same batch with another root is refused.
-    pub fn anchor(&mut self, batch_id: String, merkle_root: String, receipt_count: u32, period_start_ms: u64,
-                  period_end_ms: u64) -> bool {
-        require!(self.notaries.contains(&env::predecessor_account_id()), "Only a notary can anchor");
+    pub fn anchor(
+        &mut self,
+        batch_id: String,
+        merkle_root: String,
+        receipt_count: u32,
+        period_start_ms: u64,
+        period_end_ms: u64,
+    ) -> bool {
+        require!(
+            self.notaries.contains(&env::predecessor_account_id()),
+            "Only a notary can anchor"
+        );
         require!(!batch_id.is_empty() && batch_id.len() <= 64, "Bad batch id");
-        require!(is_hash(&merkle_root), "The root must be 64 lowercase hex digits");
+        require!(
+            is_hash(&merkle_root),
+            "The root must be 64 lowercase hex digits"
+        );
         require!(receipt_count > 0, "A batch holds at least one receipt");
-        require!(period_start_ms <= period_end_ms, "The period ends before it starts");
+        require!(
+            period_start_ms <= period_end_ms,
+            "The period ends before it starts"
+        );
         if let Some(existing) = self.anchors.get(&batch_id) {
-            require!(existing.merkle_root == merkle_root, "This batch is anchored with another root");
+            require!(
+                existing.merkle_root == merkle_root,
+                "This batch is anchored with another root"
+            );
             return false;
         }
         let anchor = Anchor {
@@ -123,7 +157,9 @@ impl Notary {
 
     /// True when the receipt hash, with this proof, leads to the root anchored for the batch.
     pub fn verify(&self, batch_id: String, leaf: String, proof: Vec<String>) -> bool {
-        let Some(anchor) = self.anchors.get(&batch_id) else { return false };
+        let Some(anchor) = self.anchors.get(&batch_id) else {
+            return false;
+        };
         if !is_hash(&leaf) {
             return false;
         }
@@ -155,7 +191,16 @@ mod tests {
     }
 
     fn up(level: &[String]) -> Vec<String> {
-        level.chunks(2).map(|c| if c.len() == 2 { pair(&c[0], &c[1]) } else { c[0].clone() }).collect()
+        level
+            .chunks(2)
+            .map(|c| {
+                if c.len() == 2 {
+                    pair(&c[0], &c[1])
+                } else {
+                    c[0].clone()
+                }
+            })
+            .collect()
     }
 
     fn root(leaves: &[String]) -> String {
@@ -171,7 +216,11 @@ mod tests {
         while level.len() > 1 {
             let sibling = if i % 2 == 0 { i + 1 } else { i - 1 };
             if sibling < level.len() {
-                out.push(format!("{}{}", if i % 2 == 0 { "R:" } else { "L:" }, level[sibling]));
+                out.push(format!(
+                    "{}{}",
+                    if i % 2 == 0 { "R:" } else { "L:" },
+                    level[sibling]
+                ));
             }
             level = up(&level);
             i /= 2;
@@ -180,8 +229,10 @@ mod tests {
     }
 
     fn as_account(name: &str) {
-        testing_env!(VMContextBuilder::new().predecessor_account_id(name.parse().unwrap()).block_timestamp(
-            1_000_000_000).build());
+        testing_env!(VMContextBuilder::new()
+            .predecessor_account_id(name.parse().unwrap())
+            .block_timestamp(1_000_000_000)
+            .build());
     }
 
     fn contract() -> Notary {
@@ -193,7 +244,10 @@ mod tests {
     fn root_matches_the_core_and_the_notary_service() {
         // pinned in MerkleTest of the core and test_notary.py of the notary service
         let leaves: Vec<String> = (0..5).map(leaf).collect();
-        assert_eq!(root(&leaves), "fda95846c507b71d6a40de553d7855aec27b3ada0afa61c177732c7f90afa3e9");
+        assert_eq!(
+            root(&leaves),
+            "fda95846c507b71d6a40de553d7855aec27b3ada0afa61c177732c7f90afa3e9"
+        );
     }
 
     #[test]

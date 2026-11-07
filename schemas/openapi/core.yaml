@@ -2934,7 +2934,6 @@ components:
       - cost
       - inventoryNumber
       - model
-      - type
     IssuedKey:
       type: object
       properties:
