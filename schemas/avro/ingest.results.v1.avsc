@@ -1,0 +1,23 @@
+{
+  "type": "record",
+  "name": "IngestResult",
+  "namespace": "ai.costguard.events",
+  "doc": "What the ingest pipeline found in an uploaded file. Key: file_id.",
+  "fields": [
+    {"name": "file_id", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "tenant_id", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "status", "type": {"type": "enum", "name": "IngestStatus", "symbols": ["PARSED", "FAILED"]}},
+    {"name": "columns", "type": {"type": "array", "items": "string"}, "default": []},
+    {"name": "suggested_mapping", "type": {"type": "map", "values": "string"}, "default": {},
+     "doc": "Column name to FOCUS field of the core imports module."},
+    {"name": "rows", "type": "int", "default": 0},
+    {"name": "total", "type": {"type": "bytes", "logicalType": "decimal", "precision": 18, "scale": 6}},
+    {"name": "errors", "type": {"type": "array", "items": {"type": "record", "name": "IngestRowError",
+      "fields": [{"name": "row", "type": "int"}, {"name": "message", "type": "string"}]}}, "default": []},
+    {"name": "uncertain", "type": {"type": "array", "items": {"type": "record", "name": "IngestUncertainValue",
+      "fields": [{"name": "row", "type": "int"}, {"name": "field", "type": "string"},
+                 {"name": "value", "type": "string"}, {"name": "confidence", "type": "double"}]}}, "default": []},
+    {"name": "failure", "type": ["null", "string"], "default": null},
+    {"name": "reported_at", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "costguard",
+      "credentials": [{ "accessKey": "costguard", "secretKey": "costguard-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

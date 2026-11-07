@@ -1,0 +1,80 @@
+{{- if .Values.monitoring.rules }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: costguard
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: costguard.gateway
+      rules:
+        # The gateway sits in the path of every paid operation: slow means agents wait, errors mean they stop.
+        - alert: GatewaySlow
+          expr: |
+            histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{service="costguard-gateway", uri=~"/v1/.*"}[5m])))
+              > {{ .Values.monitoring.gatewayP99Seconds }}
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Gateway p99 above {{ .Values.monitoring.gatewayP99Seconds }}s"
+            runbook: docs/runbooks/gateway.md
+        - alert: GatewayErrors
+          expr: |
+            sum(rate(http_server_requests_seconds_count{service="costguard-gateway", status=~"5.."}[5m]))
+              / sum(rate(http_server_requests_seconds_count{service="costguard-gateway"}[5m])) > 0.02
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "More than 2% of gateway requests fail"
+            runbook: docs/runbooks/gateway.md
+    - name: costguard.pipelines
+      rules:
+        # Every consumer commits only after its work is done, so lag that grows means it is stuck on a message.
+        - alert: ConsumerLagGrowing
+          expr: sum by (consumergroup) (kafka_consumergroup_lag{consumergroup=~"core-.*|ingest-pipeline|notary|clickhouse-.*"}) > {{ .Values.monitoring.consumerLagMessages }}
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Kafka consumer group {{`{{ $labels.consumergroup }}`}} is behind"
+            runbook: docs/runbooks/kafka-lag.md
+        - alert: NotaryNotAnchoring
+          # The notary anchors every 10 minutes, so its lag reaches zero many times an hour when it works.
+          expr: min_over_time(sum(kafka_consumergroup_lag{consumergroup="notary"})[2h:5m]) > 0
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Receipts are not being anchored in NEAR"
+            runbook: docs/runbooks/notary.md
+    - name: costguard.core
+      rules:
+        - alert: CoreDown
+          expr: sum(up{service="costguard-core"}) == 0
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: "No core instance is up"
+            runbook: docs/runbooks/core.md
+        - alert: DatabasePoolExhausted
+          expr: max by (pod) (hikaricp_connections_pending{service="costguard-core"}) > 5
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "Core waits for database connections"
+            runbook: docs/runbooks/core.md
+{{- end }}
+{{- if .Values.monitoring.dashboard }}
+---
+# Picked up by the Grafana sidecar of kube-prometheus-stack (label grafana_dashboard).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: costguard-dashboard
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  costguard.json: |-
+{{ .Files.Get "dashboards/costguard.json" | indent 4 }}
+{{- end }}

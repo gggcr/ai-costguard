@@ -24,12 +24,16 @@ Requires JDK 25 and Docker.
 
 ```bash
 cp .env.example .env
-make up                 # PostgreSQL, Redis, Kafka, Schema Registry, ClickHouse, MinIO, Keycloak, Vault
+make up                 # PostgreSQL, Redis, Kafka, Schema Registry, ClickHouse, S3 (SeaweedFS), Keycloak, Vault
 ./gradlew build
 ./gradlew :core:bootRun
 ./gradlew :gateway:bootRun
 ```
 
+
+The application connects as an ordinary role, because a superuser bypasses row-level security, and the core
+refuses to start otherwise. On an existing database, run `infra/local/postgres/fix-app-role.sql` as an
+administrator; the first lines of that file show the command.
 
 On Windows without `make`, run `docker compose -f infra/local/docker-compose.yml --env-file .env up -d --wait`.
 

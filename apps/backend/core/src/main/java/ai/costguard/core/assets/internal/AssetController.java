@@ -1,5 +1,6 @@
 package ai.costguard.core.assets.internal;
 
+import ai.costguard.core.shared.security.TenantClaim;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -44,17 +45,8 @@ class AssetController {
         this.service = service;
     }
 
-    /** The tenant comes only from the verified token, never from the request. */
     private static UUID tenant(Jwt jwt) {
-        String claim = jwt.getClaimAsString("tenant_id");
-        if (claim == null) {
-            throw AssetProblem.TENANT_MISSING.failure();
-        }
-        try {
-            return UUID.fromString(claim);
-        } catch (IllegalArgumentException e) {
-            throw AssetProblem.TENANT_MISSING.failure();
-        }
+        return TenantClaim.of(jwt);
     }
 
     @PostMapping("/assets")

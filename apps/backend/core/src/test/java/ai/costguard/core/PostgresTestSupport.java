@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import javax.sql.DataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -34,10 +35,22 @@ public abstract class PostgresTestSupport {
         }
     }
 
+    protected static DataSource adminDataSource() {
+        return POSTGRES.getPostgresDatabase();
+    }
+
+    protected static DataSource appDataSource() {
+        return POSTGRES.getDatabase(APP_ROLE, APP_ROLE);
+    }
+
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", () -> POSTGRES.getJdbcUrl(APP_ROLE, APP_ROLE));
         registry.add("spring.datasource.username", () -> APP_ROLE);
         registry.add("spring.datasource.password", () -> "");
+        // Tests must not depend on the Bank of Russia being reachable.
+        registry.add("costguard.catalog.cbr.enabled", () -> "false");
+        // Kafka is checked by EventMappingTest and the wire format by AvroPublisherTest.
+        registry.add("costguard.events.kafka.enabled", () -> "false");
     }
 }

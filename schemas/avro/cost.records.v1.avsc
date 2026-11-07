@@ -1,0 +1,90 @@
+{
+  "type": "record",
+  "name": "CostRecord",
+  "namespace": "ai.costguard.events",
+  "doc": "One cost in FOCUS terms. Key: tenant_id.",
+  "fields": [
+    {
+      "name": "id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "source",
+      "type": {
+        "type": "enum",
+        "name": "CostSource",
+        "symbols": [
+          "OPERATION",
+          "INVOICE_LINE",
+          "PAYMENT",
+          "SUBSCRIPTION"
+        ]
+      }
+    },
+    {
+      "name": "source_id",
+      "type": "string"
+    },
+    {
+      "name": "billed_cost",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "effective_cost",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "billing_currency",
+      "type": "string"
+    },
+    {
+      "name": "charge_period_start",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    },
+    {
+      "name": "charge_period_end",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    },
+    {
+      "name": "service_provider_name",
+      "type": "string"
+    },
+    {
+      "name": "department_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null
+    }
+  ]
+}

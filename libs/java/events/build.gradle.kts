@@ -6,6 +6,7 @@ val avroTools = configurations.create("avroTools")
 
 dependencies {
     api(libs.avro)
+    implementation(libs.jackson.databind)
     avroTools(libs.avro.tools)
 }
 
@@ -31,4 +32,10 @@ sourceSets {
     main {
         java.srcDir(generateAvro)
     }
+}
+
+tasks.register("printRuntimeClasspath") {
+    description = "Prints the runtime classpath, for tools such as jshell."
+    val files = sourceSets["main"].runtimeClasspath
+    doLast { println(files.asPath) }
 }

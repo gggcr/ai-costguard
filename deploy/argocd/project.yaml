@@ -1,0 +1,22 @@
+# Argo CD project: what CostGuard applications may deploy, and where.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: costguard
+  namespace: argocd
+spec:
+  description: CostGuard platform
+  sourceRepos:
+    - https://git.costguard.example/costguard/costguard.git
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: costguard-staging }
+    - { server: https://kubernetes.default.svc, namespace: costguard }
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - { group: "*", kind: "*" }
+  roles:
+    - name: deployers
+      description: May sync, not edit
+      policies:
+        - p, proj:costguard:deployers, applications, sync, costguard/*, allow
+        - p, proj:costguard:deployers, applications, get, costguard/*, allow

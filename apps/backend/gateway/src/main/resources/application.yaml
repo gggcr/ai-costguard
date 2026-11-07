@@ -14,6 +14,32 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
+costguard:
+  gateway:
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8085}
+    time-zone: ${COMPANY_TIME_ZONE:Europe/Moscow}
+    default-max-tokens: 1024
+    providers:
+      openai:
+        url: https://api.openai.com
+        vendor: OpenAI
+        api-key: ${OPENAI_API_KEY:}
+      anthropic:
+        url: https://api.anthropic.com
+        vendor: Anthropic
+        api-key: ${ANTHROPIC_API_KEY:}
+      gigachat:
+        url: https://gigachat.devices.sberbank.ru/api
+        vendor: Сбер GigaChat
+        api-key: ${GIGACHAT_AUTH_KEY:}
+        oauth-url: https://ngw.devices.sberbank.ru:9443/api/v2/oauth
+        scope: ${GIGACHAT_SCOPE:GIGACHAT_API_CORP}
+      yandex:
+        url: https://llm.api.cloud.yandex.net
+        vendor: Yandex Cloud
+        api-key: ${YANDEX_API_KEY:}
+        folder-id: ${YANDEX_FOLDER_ID:}
+
 management:
   endpoints:
     web:

@@ -1,0 +1,150 @@
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: costguard-{{ $name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  {{- if not $svc.autoscaling }}
+  replicas: {{ $svc.replicas }}
+  {{- end }}
+  {{- if eq (int $svc.replicas) 1 }}
+  # A single consumer must not run twice during a rollout: it would anchor or report the same batch twice.
+  strategy: { type: Recreate }
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: costguard
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: costguard
+        app.kubernetes.io/name: {{ $name }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: {{ $name }}
+          image: {{ include "costguard.image" (dict "root" $ "image" $svc.image) }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          {{- with $svc.command }}
+          command: {{ toJson . }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          envFrom:
+            - secretRef:
+                name: {{ $.Values.secretName }}
+          env:
+            {{- include "costguard.env" $ | nindent 12 }}
+            {{- range $k, $v := $svc.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- with $svc.http }}
+          ports:
+            - name: http
+              containerPort: {{ .port }}
+          {{- end }}
+          {{- if eq ($svc.probes | default "") "spring" }}
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 5
+          {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- if $svc.http }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: costguard-{{ $name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  selector:
+    app.kubernetes.io/part-of: costguard
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- end }}
+{{- if gt (int $svc.replicas) 1 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: costguard-{{ $name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: costguard
+      app.kubernetes.io/name: {{ $name }}
+{{- end }}
+{{- with $svc.autoscaling }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: costguard-{{ $name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: costguard-{{ $name }}
+  minReplicas: {{ .minReplicas }}
+  maxReplicas: {{ .maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .cpu }} }
+{{- end }}
+{{- if and $.Values.monitoring.serviceMonitor $svc.metrics }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: costguard-{{ $name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: costguard
+      app.kubernetes.io/name: {{ $name }}
+  endpoints:
+    - port: http
+      path: {{ $svc.metrics }}
+      interval: 30s
+{{- end }}
+{{- end }}
+{{- end }}
