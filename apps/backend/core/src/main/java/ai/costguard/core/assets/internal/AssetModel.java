@@ -18,9 +18,16 @@ enum AssetType { LAPTOP, PHONE, MONITOR, OTHER }
 record NewAsset(
         @NotBlank String inventoryNumber,
         @NotBlank String model,
-        @NotNull AssetType type,
+        AssetType type,
         @NotNull @DecimalMin("0") @Digits(integer = 12, fraction = 2) BigDecimal cost,
         @Size(min = 1, max = 100) String serialNumber) {
+
+    /** Clients written before the type field existed omit it; such assets count as OTHER. */
+    NewAsset {
+        if (type == null) {
+            type = AssetType.OTHER;
+        }
+    }
 }
 
 record Assignment(

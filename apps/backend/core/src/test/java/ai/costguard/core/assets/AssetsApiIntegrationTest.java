@@ -268,7 +268,9 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
         mvc.perform(json(post("/api/v1/assets"), tooPrecise).with(as(tenant)))
                 .andExpect(status().isBadRequest());
         String noType = laptop(inventoryNumber()).replace("\"type\":\"LAPTOP\",", "");
-        mvc.perform(json(post("/api/v1/assets"), noType).with(as(tenant))).andExpect(status().isBadRequest());
+        // clients written before the type field existed omit it: the asset is OTHER, not rejected
+        mvc.perform(json(post("/api/v1/assets"), noType).with(as(tenant)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.type").value("OTHER"));
         String unknownType = laptop(inventoryNumber()).replace("LAPTOP", "TOASTER");
         mvc.perform(json(post("/api/v1/assets"), unknownType).with(as(tenant))).andExpect(status().isBadRequest());
         String blankModel = laptop(inventoryNumber()).replace("ThinkPad T14", " ");
