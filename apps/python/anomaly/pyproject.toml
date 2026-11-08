@@ -1,9 +1,9 @@
 [project]
 name = "costguard-anomaly"
 version = "0.1.0"
-description = "Anomaly detector: spend spikes and double charges in cost.records.v1, reported to findings.v1"
+description = "Anomaly detector: spend spikes and double charges in cost.records.v1 (findings.v1), and the risk of agents from agent.operations.v1 (agent.risk-signals.v1)"
 requires-python = ">=3.12"
-dependencies = ["costguard-common", "confluent-kafka>=2.6"]
+dependencies = ["costguard-common", "confluent-kafka>=2.6", "scikit-learn>=1.5", "river>=0.22", "mlflow-skinny>=2.17", "tzdata>=2024.1"]
 
 [project.scripts]
 costguard-anomaly = "costguard_anomaly.service:main"

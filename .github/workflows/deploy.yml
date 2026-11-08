@@ -1,9 +1,9 @@
 name: deploy-manifests
 on:
   push:
-    paths: ['deploy/**']
+    paths: ['deploy/**', 'tools/tests/test_helm.py']
   pull_request:
-    paths: ['deploy/**']
+    paths: ['deploy/**', 'tools/tests/test_helm.py']
 jobs:
   helm:
     runs-on: ubuntu-latest
@@ -16,6 +16,10 @@ jobs:
             helm lint deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml
             helm template cg deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml > /tmp/$env.yaml
           done
+      - name: KEDA and MLflow render only where the values switch them on
+        run: |
+          pip install --quiet pyyaml pytest
+          python -m pytest tools/tests/test_helm.py -p no:cacheprovider
       - run: |
           docker run --rm -v /tmp:/w ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -ignore-missing-schemas \
             -kubernetes-version 1.30.0 /w/staging.yaml /w/prod.yaml

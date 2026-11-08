@@ -28,16 +28,21 @@ output "imports_bucket" {
   value = yandex_storage_bucket.imports.bucket
 }
 
+output "mlflow_bucket" {
+  value = yandex_storage_bucket.mlflow.bucket
+}
+
 output "secrets" {
   sensitive = true
   value = {
-    DB_USER             = yandex_mdb_postgresql_user.app.name
-    DB_PASSWORD         = random_password.postgres.result
-    KAFKA_PASSWORD      = random_password.kafka.result
-    CLICKHOUSE_USER     = "costguard"
-    CLICKHOUSE_PASSWORD = random_password.clickhouse.result
-    REDIS_PASSWORD      = random_password.redis.result
-    S3_ACCESS_KEY       = yandex_iam_service_account_static_access_key.storage.access_key
-    S3_SECRET_KEY       = yandex_iam_service_account_static_access_key.storage.secret_key
+    DB_USER                  = yandex_mdb_postgresql_user.app.name
+    DB_PASSWORD              = random_password.postgres.result
+    KAFKA_PASSWORD           = random_password.kafka.result
+    CLICKHOUSE_USER          = "costguard"
+    CLICKHOUSE_PASSWORD      = random_password.clickhouse.result
+    REDIS_PASSWORD           = random_password.redis.result
+    S3_ACCESS_KEY            = yandex_iam_service_account_static_access_key.storage.access_key
+    S3_SECRET_KEY            = yandex_iam_service_account_static_access_key.storage.secret_key
+    MLFLOW_BACKEND_STORE_URI = "postgresql://${yandex_mdb_postgresql_user.app.name}:${random_password.postgres.result}@c-${yandex_mdb_postgresql_cluster.main.id}.rw.mdb.yandexcloud.net:6432/mlflow?sslmode=require"
   }
 }

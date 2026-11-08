@@ -12,4 +12,6 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '25' }
       - uses: gradle/actions/setup-gradle@v4
+      - name: Kafka contracts of the core and the gateway (schemas/avro)
+        run: ./gradlew :core:test --tests '*TopicContractTest' --tests '*EventMappingTest' :gateway:test --tests '*TopicContractTest'
       - run: ./gradlew build

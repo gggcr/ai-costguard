@@ -5,7 +5,7 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | Topic | Producer | Consumers | Key |
 |---|---|---|---|
 | `agent.operations.v1` | Agent gateway | Core ledger and journal, anomaly detector, ClickHouse | agent_id |
-| `agent.risk-signals.v1` (compacted) | Anomaly detector | Agent gateway, core agents and notifications | agent_id or task_id |
+| `agent.risk-signals.v1` (compacted) | Anomaly detector | Agent gateway, core agents and notifications | agent_id, or agent_id:task_id for a task |
 | `policy.snapshots.v1` (compacted) | Core policies | Agent gateway | tenant_id |
 | `agents.state.v1` (compacted) | Core agents | Agent gateway | agent_id |
 | `catalog.prices.v1` (compacted) | Core catalog | Agent gateway | tenant_id:sku_id |
@@ -47,3 +47,7 @@ the hash of every published mandate version and of every approved operation of a
 
 `ingest.results.v1` and `ingest.accepted.v1` are not on the board: the board draws the pipeline reporting columns,
 errors and unsure values back to people, and people releasing the rows, but no topic carries either step.
+
+Every producer and consumer is checked against these files (ADR 0018): `TopicContractTest` of the core and the
+gateway, `EventMappingTest` for what the core publishes, and `tests/contracts` for the Python services, which also
+feed every consumer random messages the schema allows. A listener added without its contract fails those tests.

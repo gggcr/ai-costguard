@@ -165,6 +165,13 @@ resource "yandex_mdb_postgresql_database" "app" {
   owner      = yandex_mdb_postgresql_user.app.name
 }
 
+# Runs and the model registry of MLflow (ADR 0017); its artifacts are in the mlflow bucket below.
+resource "yandex_mdb_postgresql_database" "mlflow" {
+  cluster_id = yandex_mdb_postgresql_cluster.main.id
+  name       = "mlflow"
+  owner      = yandex_mdb_postgresql_user.app.name
+}
+
 # --- Kafka ---------------------------------------------------------------------------------------------------
 
 resource "random_password" "kafka" {
@@ -307,6 +314,19 @@ resource "yandex_storage_bucket" "imports" {
     expiration {
       days = 1826
     }
+  }
+  depends_on = [yandex_resourcemanager_folder_iam_member.storage]
+}
+
+# --- Object Storage: MLflow artifacts (models of the detector and the forecasts) -----------------------------
+
+resource "yandex_storage_bucket" "mlflow" {
+  bucket     = "${local.name}-mlflow"
+  access_key = yandex_iam_service_account_static_access_key.storage.access_key
+  secret_key = yandex_iam_service_account_static_access_key.storage.secret_key
+  anonymous_access_flags {
+    read = false
+    list = false
   }
   depends_on = [yandex_resourcemanager_folder_iam_member.storage]
 }

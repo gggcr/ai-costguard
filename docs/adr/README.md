@@ -20,3 +20,6 @@
 | [0013](0013-llm-invoice-extraction.md) | Извлечение счетов из текста моделью через шлюз CostGuard | Принято |
 | [0014](0014-unified-api-merge.md) | Единый API — Merge, а не Codat или Finch | Принято |
 | [0015](0015-bank-connector-intermediaries.md) | Банковский коннектор (Т-Банк) и платежи через посредников | Принято |
+| [0016](0016-anomaly-risk-score.md) | Риск-оценка агента: правила, Isolation Forest и river, модели в MLflow | Принято |
+| [0017](0017-keda-mlflow.md) | KEDA для Kafka-воркеров и MLflow в Helm-чарте | Принято |
+| [0018](0018-kafka-contract-tests.md) | Контрактные тесты Kafka по schemas/avro | Принято |

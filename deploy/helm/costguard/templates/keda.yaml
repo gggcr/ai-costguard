@@ -1,0 +1,56 @@
+{{- /* Kafka workers scaled by the lag of their consumer group (ADR 0017). Needs the KEDA operator. */}}
+{{- if .Values.keda.enabled }}
+{{- if .Values.keda.kafkaAuth }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: costguard-kafka
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+spec:
+  secretTargetRef:
+    - { parameter: sasl, name: {{ .Values.secretName }}, key: KEDA_KAFKA_SASL }
+    - { parameter: username, name: {{ .Values.secretName }}, key: KEDA_KAFKA_USERNAME }
+    - { parameter: password, name: {{ .Values.secretName }}, key: KAFKA_PASSWORD }
+    - { parameter: tls, name: {{ .Values.secretName }}, key: KEDA_KAFKA_TLS }
+{{- end }}
+{{- range $name, $svc := .Values.services }}
+{{- if and $svc.enabled $svc.keda }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: costguard-{{ $name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: costguard-{{ $name }}
+  minReplicaCount: {{ $svc.keda.minReplicas }}
+  maxReplicaCount: {{ $svc.keda.maxReplicas }}
+  pollingInterval: {{ $.Values.keda.pollingInterval }}
+  cooldownPeriod: {{ $.Values.keda.cooldownPeriod }}
+  triggers:
+    {{- range $topic := $svc.keda.topics }}
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ $.Values.external.kafkaBootstrapServers | quote }}
+        consumerGroup: {{ $svc.keda.consumerGroup | quote }}
+        topic: {{ $topic | quote }}
+        lagThreshold: {{ $svc.keda.lagThreshold | quote }}
+        # a new group has no committed offset: its whole topic is lag, as the worker reads from the start
+        offsetResetPolicy: earliest
+        # replicas beyond the partitions would only sit idle
+        allowIdleConsumers: "false"
+      {{- if $.Values.keda.kafkaAuth }}
+      authenticationRef:
+        name: costguard-kafka
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

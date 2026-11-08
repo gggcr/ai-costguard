@@ -25,4 +25,8 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
   value: "true"
 - name: KEYCLOAK_ISSUER_URI
   value: {{ .Values.external.keycloakIssuerUri | quote }}
+{{- if .Values.mlflow.enabled }}
+- name: MLFLOW_TRACKING_URI
+  value: "http://costguard-mlflow"
+{{- end }}
 {{- end -}}

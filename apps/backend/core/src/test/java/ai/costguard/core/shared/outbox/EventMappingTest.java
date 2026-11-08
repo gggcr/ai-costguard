@@ -17,7 +17,10 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Every mapping must build a record its schema accepts; encoding validates it field by field. */
+/**
+ * Every mapping must build a record its schema accepts; encoding validates it field by field. It is also the
+ * producer contract of the core: the record goes to a topic whose schema in schemas/avro is the record's own.
+ */
 class EventMappingTest {
 
     private final UUID tenant = UUID.randomUUID();
@@ -25,6 +28,9 @@ class EventMappingTest {
 
     private static void encodes(EventMapping.Message m) {
         assertThat(AvroPublisher.encode(1, m.record())).hasSizeGreaterThan(5);
+        assertThat(ai.costguard.core.shared.TopicSchemas.contract(m.record().getSchema()))
+                .as("schema of the record sent to %s", m.topic())
+                .isEqualTo(ai.costguard.core.shared.TopicSchemas.of(m.topic()));
     }
 
     @Test

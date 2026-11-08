@@ -359,3 +359,13 @@ def test_pdf_without_text_is_a_scan():
 def test_broken_pdf():
     with pytest.raises(tables.Unsupported):
         tables.read("broken.pdf", b"%PDF-1.4 garbage")
+
+
+def test_an_accepted_file_that_cannot_be_read_writes_nothing_instead_of_failing(tmp_path):
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t" / "a.bin").write_bytes(b"\x00\x01")
+    handler = service.Handler(storage.LocalFiles(tmp_path))
+    accepted = {"tenant_id": str(uuid.uuid4()), "file_id": str(uuid.uuid4()), "s3_key": "t/a.bin",
+                "file_name": "a.bin", "vendor_id": None, "mapping": {}, "corrections": {}}
+    assert handler.on_accepted(accepted) == []
+    assert handler.on_accepted({**accepted, "s3_key": "t/missing.csv", "file_name": "missing.csv"}) == []

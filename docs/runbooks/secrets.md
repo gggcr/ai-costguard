@@ -9,6 +9,8 @@
 | `DB_USER`, `DB_PASSWORD` | `terraform output -json secrets` |
 | `KAFKA_PASSWORD`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `REDIS_PASSWORD` | Там же |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Там же |
+| `MLFLOW_BACKEND_STORE_URI` | Там же; нужен, когда `mlflow.enabled` (см. [mlflow.md](mlflow.md)) |
+| `KEDA_KAFKA_SASL`, `KEDA_KAFKA_USERNAME`, `KEDA_KAFKA_TLS` | Только при `keda.kafkaAuth: true`: механизм (`scram_sha512`), пользователь Kafka (`costguard`), `enable`; пароль — `KAFKA_PASSWORD` |
 | `JOURNAL_PRIVATE_KEY`, `JOURNAL_PUBLIC_KEY` | Создаётся один раз, хранится вечно: без него старые квитанции не проверить |
 | `NEAR_ACCOUNT_ID`, `NEAR_PRIVATE_KEY` | Аккаунт нотариуса, `near generate-key` |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GIGACHAT_AUTH_KEY`, `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | Договоры с провайдерами |

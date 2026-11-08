@@ -1,3 +1,8 @@
 # The tag is set by the release pipeline (deploy/argocd/prod.yaml points at a git tag).
 image:
   tag: "0.1.0"
+keda:
+  enabled: true
+mlflow:
+  enabled: true
+  artifactsBucket: costguard-prod-mlflow

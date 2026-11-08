@@ -52,22 +52,51 @@ services:
     command: [costguard-ingest]
     replicas: 2
     resources: { requests: { cpu: 200m, memory: 512Mi }, limits: { memory: 1Gi } }
+    # With keda.enabled, KEDA sets the replicas by the lag of the group; maxReplicas is at most the partitions.
+    keda:
+      consumerGroup: ingest-pipeline
+      topics: [ingest.files.v1, ingest.accepted.v1]
+      lagThreshold: 20
+      minReplicas: 1
+      maxReplicas: 6
   anomaly:
     enabled: true
     image: python
     command: [costguard-anomaly]
-    # It keeps its history in memory and reads the topic from the start: one replica per tenant set.
+    # It keeps its history in memory and reads the topic from the start: one replica per tenant set. Not scaled by
+    # KEDA: two copies would each publish every finding and signal.
     replicas: 1
     resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { memory: 2Gi } }
   notary:
     enabled: true
     image: python
     command: [costguard-notary]
+    # Not scaled by KEDA: every copy would sign with the same NEAR key, and their nonces would collide.
     replicas: 1
     resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 256Mi } }
     env:
       NEAR_RPC_URL: https://rpc.mainnet.near.org
       NEAR_CONTRACT_ID: notary.costguard.near
+
+# KEDA (keda.sh) scales the Kafka workers that have a `keda` entry by the lag of their consumer group (ADR 0017).
+# The KEDA operator must be installed in the cluster. Without keda.enabled those workers keep their `replicas`.
+keda:
+  enabled: false
+  pollingInterval: 15
+  cooldownPeriod: 300
+  # When Kafka asks for SASL: a TriggerAuthentication from the keys KEDA_KAFKA_SASL (plaintext, scram_sha256 or
+  # scram_sha512), KEDA_KAFKA_USERNAME, KAFKA_PASSWORD and KEDA_KAFKA_TLS (enable) of the secret.
+  kafkaAuth: false
+
+# MLflow: models of the anomaly detector and of the forecasts (ADR 0016, ADR 0017). Runs are kept in PostgreSQL
+# (the secret's MLFLOW_BACKEND_STORE_URI), artifacts in S3 (`artifactsBucket` at external.s3Endpoint), served by
+# MLflow itself, so services need no S3 keys. Services get MLFLOW_TRACKING_URI when it is enabled.
+mlflow:
+  enabled: false
+  image: mlflow                  # deploy/mlflow/Dockerfile, built with the other images
+  replicas: 1
+  artifactsBucket: costguard-mlflow
+  resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { memory: 1Gi } }
 
 # Connectors run on Airflow (infra/airflow) or as a CronJob here, one per tenant config in the secret.
 connectorsCronJob:

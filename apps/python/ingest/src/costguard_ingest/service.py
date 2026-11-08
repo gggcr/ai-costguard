@@ -127,13 +127,19 @@ class Handler:
         return [pipeline.Message(RESULTS, key, result_of(file, parsed, None))]
 
     def on_accepted(self, accepted: dict) -> list[pipeline.Message]:
+        """Rows of an accepted file. A file that cannot be read writes nothing and is logged: reading the message
+        again would fail the same way and stop every file behind it."""
         vendor = accepted.get("vendor_id")
-        messages, skipped = pipeline.accept(
-            uuid.UUID(str(accepted["tenant_id"])), uuid.UUID(str(accepted["file_id"])), accepted["s3_key"],
-            accepted["file_name"], None if vendor is None else uuid.UUID(str(vendor)), accepted["mapping"],
-            accepted["corrections"], self._files.get(accepted["s3_key"]),
-            read=self._read(accepted["tenant_id"], accepted["s3_key"]), intermediaries=self._intermediaries,
-            services=self._services)
+        try:
+            messages, skipped = pipeline.accept(
+                uuid.UUID(str(accepted["tenant_id"])), uuid.UUID(str(accepted["file_id"])), accepted["s3_key"],
+                accepted["file_name"], None if vendor is None else uuid.UUID(str(vendor)), accepted["mapping"],
+                accepted["corrections"], self._files.get(accepted["s3_key"]),
+                read=self._read(accepted["tenant_id"], accepted["s3_key"]), intermediaries=self._intermediaries,
+                services=self._services)
+        except (tables.Unsupported, FileNotFoundError) as e:
+            log.error("Accepted file %s not written: %s", accepted["file_id"], e or "not in storage")
+            return []
         for row, reason in skipped:
             log.warning("File %s row %s not written: %s", accepted["file_id"], row, reason)
         if self._reader is not None and self._reader.from_text is not None and extraction.learn(

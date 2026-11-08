@@ -158,7 +158,33 @@ services:
       interval: 5s
       retries: 60
 
+  # MLflow for the models of the anomaly detector (ADR 0016, 0017). Not started by `make up`:
+  # `docker compose --profile ml up -d mlflow`. Runs in SQLite on a volume, artifacts in SeaweedFS (bucket
+  # costguard-mlflow, created on start). The detector reaches it at MLFLOW_TRACKING_URI=http://localhost:5000.
+  mlflow:
+    profiles: [ml]
+    build: ../../deploy/mlflow
+    ports: ["5000:5000"]
+    user: "0"        # a new named volume belongs to root; on a laptop only
+    depends_on: [s3]
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://s3:8333
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-costguard}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-costguard-secret}
+    command:
+      - sh
+      - -c
+      - >-
+        python -c "import boto3, os; s3 = boto3.client('s3', endpoint_url=os.environ['MLFLOW_S3_ENDPOINT_URL']);
+        names = [b['Name'] for b in s3.list_buckets().get('Buckets', [])];
+        'costguard-mlflow' in names or s3.create_bucket(Bucket='costguard-mlflow')"
+        && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////data/mlflow.db
+        --artifacts-destination s3://costguard-mlflow --serve-artifacts
+    volumes:
+      - mlflow:/data
+
 volumes:
   postgres:
   clickhouse:
   s3:
+  mlflow:

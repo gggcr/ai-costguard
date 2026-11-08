@@ -1,9 +1,9 @@
 name: python
 on:
   push:
-    paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'pyproject.toml', 'uv.lock']
+    paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'tests/**', 'pyproject.toml', 'uv.lock']
   pull_request:
-    paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'pyproject.toml', 'uv.lock']
+    paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'tests/**', 'pyproject.toml', 'uv.lock']
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -25,7 +25,9 @@ jobs:
       - name: Tesseract for the OCR test of costguard-ingest
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
       - run: uv run ruff check .
-      - run: uv run pytest
+      - name: Kafka contracts of the Python services (schemas/avro)
+        run: uv run pytest tests/contracts
+      - run: uv run pytest --ignore=tests/contracts
       - name: Seed SQL loads on the migrations
         run: |
           docker run -d --name pg -e POSTGRES_PASSWORD=p -e POSTGRES_DB=costguard -p 5432:5432 postgres:17

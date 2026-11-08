@@ -20,3 +20,9 @@ kubectl apply -f deploy/argocd/project.yaml -f deploy/argocd/staging.yaml -f dep
 - Миграции PostgreSQL и ClickHouse вперёд-только. Откат кода на версию до миграции безопасен, пока миграция
   только добавляла столбцы и таблицы; так их и пишут. Удаляющую миграцию выкатывают отдельным релизом, когда
   старый код уже нигде не работает.
+
+## KEDA и MLflow (ADR 0017)
+Включаются values `keda.enabled` и `mlflow.enabled`; в `values-staging.yaml` и `values-prod.yaml` оба включены.
+- Для KEDA в кластере должен стоять оператор KEDA (`helm install keda kedacore/keda -n keda --create-namespace`),
+  иначе Argo CD не создаст `ScaledObject` (нет CRD). Без `keda.enabled` ingest работает с `replicas`.
+- Для MLflow нужны база, бакет и `MLFLOW_BACKEND_STORE_URI` в секрете — см. mlflow.md.

@@ -9,7 +9,8 @@ metadata:
     {{- include "costguard.labels" $ | nindent 4 }}
     app.kubernetes.io/name: {{ $name }}
 spec:
-  {{- if not $svc.autoscaling }}
+  {{- /* an HPA or a KEDA ScaledObject sets the replicas; a fixed count would fight it on every sync */}}
+  {{- if not (or $svc.autoscaling (and $.Values.keda.enabled $svc.keda)) }}
   replicas: {{ $svc.replicas }}
   {{- end }}
   {{- if eq (int $svc.replicas) 1 }}
