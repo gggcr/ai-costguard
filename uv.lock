@@ -1,6 +1,10 @@
 version = 1
 revision = 5
 requires-python = ">=3.12"
+resolution-markers = [
+    "python_full_version >= '3.14'",
+    "python_full_version < '3.14'",
+]
 
 [manifest]
 members = [
@@ -382,15 +386,25 @@ source = { editable = "apps/python/connectors" }
 dependencies = [
     { name = "confluent-kafka" },
     { name = "costguard-common" },
+    { name = "cryptography" },
     { name = "httpx" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pillow" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "confluent-kafka", specifier = ">=2.6" },
     { name = "costguard-common", editable = "libs/python/costguard-common" },
+    { name = "cryptography", specifier = ">=43" },
     { name = "httpx", specifier = ">=0.27" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pillow", specifier = ">=11" }]
 
 [[package]]
 name = "costguard-ingest"

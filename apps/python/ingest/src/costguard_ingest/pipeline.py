@@ -14,11 +14,13 @@ same records again instead of new ones.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from costguard_common import normalized
+from costguard_common import payments as paying
 from costguard_common.focus import CostRecord, CostSource
 from costguard_ingest import mapping, tables, values
 
@@ -50,8 +52,12 @@ def _by_field(row: dict[str, object], columns_to_fields: dict[str, str]) -> dict
     return out
 
 
-def parse(file_name: str, content: bytes) -> Parsed:
-    table = tables.read(file_name, content)
+Read = Callable[[str, bytes], tables.Table]
+
+
+def parse(file_name: str, content: bytes, read: Read = tables.read) -> Parsed:
+    """read is tables.read, or documents.Reader where scans and text invoices are read too."""
+    table = read(file_name, content)
     suggested = mapping.suggest(table.columns)
     result = Parsed(table.columns, suggested, len(table.rows), Decimal(0))
     if "amount" not in suggested.values():
@@ -79,6 +85,13 @@ def parse(file_name: str, content: bytes) -> Parsed:
             code, confidence = values.currency(cells["currency"])
             if code is None or confidence < values.CONFIDENT:
                 result.uncertain.append((number, "currency", values.text(cells["currency"]), confidence))
+    flagged = {(r, f) for r, f, _, _ in result.uncertain}
+    for (number, column), confidence in sorted(table.review.items()):
+        f = suggested.get(column, "skip")
+        f = column if f == "skip" else f
+        if (number, f) not in flagged:
+            row = dict(table.rows).get(number, {})
+            result.uncertain.append((number, f, values.text(row.get(column)), confidence))
     return result
 
 
@@ -93,10 +106,14 @@ def _normalized(tenant: uuid.UUID, file_id: uuid.UUID, kind: str, key: str, payl
 
 def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: str, vendor_id: uuid.UUID | None,
            columns_to_fields: dict[str, str], corrections: dict[str, dict[str, str]], content: bytes,
-           now: datetime | None = None) -> tuple[list[Message], list[tuple[int, str]]]:
-    """Messages to publish, and rows that still could not be written (they are logged, not retried)."""
+           now: datetime | None = None, read: Read = tables.read,
+           intermediaries: Iterable[paying.Intermediary] = (), services: dict[str, str] | None = None
+           ) -> tuple[list[Message], list[tuple[int, str]]]:
+    """Messages to publish, and rows that still could not be written (they are logged, not retried).
+
+    A payment through an intermediary is split into the service and the agent's commission (ADR 0015)."""
     now = now or datetime.now(UTC)
-    table = tables.read(file_name, content)
+    table = read(file_name, content)
     messages: list[Message] = []
     skipped: list[tuple[int, str]] = []
     seen: set[str] = set()
@@ -119,16 +136,26 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
         employee = values.text(cells.get("employee"))
         department = values.text(cells.get("department"))
 
+        # an INN a person corrected comes back as a correction of its column (an extracted invoice)
+        inn = normalized.clean_inn(cells.get("ИНН поставщика") or row.get("ИНН получателя")
+                                   or row.get("ИНН поставщика"))
+        parts: list[paying.Part] = []
+        if payments and vendor and amount_text(cells):
+            value, _ = values.amount(cells["amount"])
+            if value is not None:
+                parts = paying.split(vendor, inn, product, value, intermediaries, services)
         if vendor:
             invoice_vendor = invoice_vendor or vendor
-            inn = normalized.clean_inn(row.get("ИНН получателя"))
-            once(_normalized(tenant, file_id, "VENDOR", normalized.vendor_key(tenant, vendor, inn),
-                             {"name": vendor, "vendor_id": vendor_id, "inn": inn}, now))
-        if payments and vendor and amount_text(cells):
-            once(_normalized(tenant, file_id, "PAYMENT", _entity_key(tenant, "payment", storage_key, str(number)),
-                             {"vendor": vendor, "purpose": product or None, "amount": amount_text(cells),
-                              "date": values.text(cells.get("period_start")) or None,
-                              "inn": values.text(row.get("ИНН получателя")) or None}, now))
+            for name, code in dict.fromkeys((p.vendor, p.inn) for p in parts) if parts else [(vendor, inn)]:
+                once(_normalized(tenant, file_id, "VENDOR", normalized.vendor_key(tenant, name, code),
+                                 {"name": name, "vendor_id": vendor_id if name == vendor else None, "inn": code},
+                                 now))
+        for part in parts:
+            once(_normalized(tenant, file_id, "PAYMENT",
+                             _entity_key(tenant, "payment", storage_key, str(number), *_suffix(part)),
+                             {"vendor": part.vendor, "purpose": product or None, "amount": str(part.amount),
+                              "date": values.text(cells.get("period_start")) or None, "inn": part.inn,
+                              "intermediary": part.intermediary, "role": part.role, "note": part.note}, now))
         if vendor and product and not payments:
             once(_normalized(tenant, file_id, "SUBSCRIPTION", _entity_key(tenant, "subscription", vendor, product),
                              {"vendor": vendor, "product": product}, now))
@@ -159,14 +186,15 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
             continue
         code, _ = values.currency(cells.get("currency"))
         code = code or values.currency_in(cells["amount"]) or DEFAULT_CURRENCY
-        provider = vendor or product or "unknown"
-        source_id = f"{storage_key}:{number}"
-        record = CostRecord(
-            id=CostRecord.stable_id(source, source_id), tenant_id=tenant, source=source, source_id=source_id,
-            billed_cost=amount, effective_cost=amount,
-            billing_currency=code, charge_period_start=start, charge_period_end=end,
-            service_provider_name=provider, department_id=_uuid_or_none(department))
-        messages.append(Message("cost.records.v1", str(tenant), record.avro()))
+        shares = [(p.vendor, p.amount, _suffix(p)) for p in parts] or [(vendor or product or "unknown", amount, ())]
+        for provider, share, suffix in shares:
+            source_id = ":".join((storage_key, str(number), *suffix))
+            record = CostRecord(
+                id=CostRecord.stable_id(source, source_id), tenant_id=tenant, source=source, source_id=source_id,
+                billed_cost=share, effective_cost=share,
+                billing_currency=code, charge_period_start=start, charge_period_end=end,
+                service_provider_name=provider, department_id=_uuid_or_none(department))
+            messages.append(Message("cost.records.v1", str(tenant), record.avro()))
         invoice_total += amount
 
     if invoice_total and not payments:
@@ -174,6 +202,11 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                          {"file_name": file_name, "vendor": invoice_vendor, "vendor_id": vendor_id,
                           "total": str(invoice_total)}, now))
     return messages, skipped
+
+
+def _suffix(part: paying.Part) -> tuple[str, ...]:
+    """The commission is a record of its own; the service keeps the key the whole payment had."""
+    return ("commission",) if part.role == "commission" else ()
 
 
 def amount_text(cells: dict[str, object]) -> str:

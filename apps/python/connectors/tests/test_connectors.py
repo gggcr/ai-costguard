@@ -356,3 +356,26 @@ def test_mail_keeps_a_letter_the_core_refused():
     core = client({"/api/v1/imports": lambda r: httpx.Response(503, text="down")})
     assert mail.MailInvoices(box, core).collect() == 0
     assert box.seen == []
+
+
+def test_mail_uploads_bank_statements():
+    box = FakeMailbox([("1", letter(("statement.sta", b":20:X"), ("statement.ofx", b"OFXHEADER:100"),
+                                    ("camt.xml", b"<Document/>")))])
+    core = client({"/api/v1/imports": lambda r: httpx.Response(201, json={})})
+    assert mail.MailInvoices(box, core).collect() == 3
+
+
+def test_build_the_new_connectors_from_config():
+    config = {"google_workspace": {"admin": "admin@romashka.example", "ignore": ["Портал"],
+                                   "apps": {"Slack": ["Slack Technologies", "Slack Pro"]}},
+              "okta": {"url": "https://romashka.okta.example"}, "entra": {"directory_id": "d", "client_id": "e"},
+              "merge": {}, "tbank": {"accounts": ["40702810000000000001"]},
+              "payments": {"intermediaries": ["7700000009", "ООО Агент"], "services": {"тучкаcrm": "Тучка Софт"}}}
+    env = {"GOOGLE_WORKSPACE_KEY": json.dumps({"client_email": "sa@x", "private_key": "-"}), "OKTA_TOKEN": "o",
+           "ENTRA_CLIENT_SECRET": "es", "MERGE_API_KEY": "m", "MERGE_HRIS_TOKEN": "h", "TBANK_TOKEN": "t"}
+    found = agent.build(config, env)
+    assert [c.name for c in found] == ["google_workspace", "okta", "entra", "merge", "tbank"]
+    bank = found[-1]
+    assert [i.inn for i in bank._intermediaries] == ["7700000009", None]
+    assert bank._services == {"тучкаcrm": "Тучка Софт"}
+    assert found[0]._apps.product("Slack") == ("Slack Technologies", "Slack Pro")

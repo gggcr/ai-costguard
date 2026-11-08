@@ -18,12 +18,27 @@ to Kafka. The config is a TOML file; secrets come from the environment, never fr
     [mail]
     host = "imap.yandex.ru"
     user = "invoices@company.ru"   # password: MAIL_PASSWORD; core: CORE_URL and CORE_TOKEN
+    min_image_kb = 20              # smaller photos are logos, not documents; also min_image_side = 500 (px)
     [jamf]
     url = "https://company.jamfcloud.com"
     client_id = "…"                # secret: JAMF_CLIENT_SECRET
     [intune]
     directory_id = "…"             # the Entra ID tenant
     client_id = "…"                # secret: INTUNE_CLIENT_SECRET
+    [google_workspace]
+    admin = "admin@company.ru"     # service account key (JSON): GOOGLE_WORKSPACE_KEY
+    ignore = ["Портал"]            # apps that cost nothing; [google_workspace.apps] renames apps:
+    [okta]                         #   "Slack" = ["Slack Technologies", "Slack Business+"]
+    url = "https://company.okta.com"   # token: OKTA_TOKEN
+    [entra]
+    directory_id = "…"
+    client_id = "…"                # secret: ENTRA_CLIENT_SECRET
+    [merge]                        # key: MERGE_API_KEY; MERGE_ACCOUNTING_TOKEN and/or MERGE_HRIS_TOKEN
+    [tbank]
+    accounts = ["40702810…"]       # optional, all accounts otherwise; token: TBANK_TOKEN
+    [payments]                     # payments through intermediaries (ADR 0015), for the bank connectors
+    intermediaries = ["7700000009", "ООО Агент"]
+    services = { "тучкаcrm" = "ООО «Тучка Софт»" }
 
 Cursors are kept in the state file and written after each successful publish. With COSTGUARD_ENV_PREFIX=ROMASHKA_
 the variables ROMASHKA_ONEC_PASSWORD and so on take the place of the unprefixed ones.
@@ -43,9 +58,30 @@ from pathlib import Path
 
 import httpx
 
-from costguard_connectors import bitrix24, contract, intune, jamf, mail, moysklad, onec, yandex360
+from costguard_common import payments
+from costguard_connectors import (
+    banks,
+    bitrix24,
+    contract,
+    entra,
+    google_workspace,
+    intune,
+    jamf,
+    mail,
+    merge,
+    moysklad,
+    okta,
+    onec,
+    signins,
+    tbank,
+    yandex360,
+)
 
 log = logging.getLogger("costguard.connectors")
+
+# Sections of a tenant config the agent reads; Airflow adds its own [report].
+SECTIONS = ("onec", "moysklad", "bitrix24", "yandex360", "mail", "jamf", "intune", "google_workspace", "okta",
+            "entra", "merge", "tbank", "payments")
 
 
 def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
@@ -73,6 +109,32 @@ def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
         c = config["intune"]
         found.append(intune.Intune(httpx.Client(timeout=60), c["directory_id"], c["client_id"],
                                    env["INTUNE_CLIENT_SECRET"]))
+    if "google_workspace" in config:
+        c = config["google_workspace"]
+        key = json.loads(env["GOOGLE_WORKSPACE_KEY"])
+        found.append(google_workspace.GoogleWorkspace(httpx.Client(timeout=60), key, c["admin"],
+                                                      c.get("customer", "my_customer"), signins.Apps.of(c)))
+    if "okta" in config:
+        c = config["okta"]
+        found.append(okta.Okta(httpx.Client(base_url=c["url"], timeout=60,
+                                            headers={"Authorization": f"SSWS {env['OKTA_TOKEN']}"}),
+                               signins.Apps.of(c)))
+    if "entra" in config:
+        c = config["entra"]
+        found.append(entra.Entra(httpx.Client(timeout=60), c["directory_id"], c["client_id"],
+                                 env["ENTRA_CLIENT_SECRET"], signins.Apps.of(c)))
+    if "merge" in config:
+        found.append(merge.Merge(httpx.Client(base_url=config["merge"].get("url", merge.BASE_URL), timeout=60,
+                                              headers={"Authorization": f"Bearer {env['MERGE_API_KEY']}"}),
+                                 env.get("MERGE_ACCOUNTING_TOKEN"), env.get("MERGE_HRIS_TOKEN")))
+    paying = config.get("payments", {})
+    intermediaries = [payments.intermediary(i) for i in paying.get("intermediaries", [])]
+    if "tbank" in config:
+        c = config["tbank"]
+        bank = tbank.TBank(httpx.Client(base_url=c.get("url", tbank.BASE_URL), timeout=60,
+                                        headers={"Authorization": f"Bearer {env['TBANK_TOKEN']}"}),
+                           c.get("accounts"))
+        found.append(banks.BankConnector(bank, intermediaries, paying.get("services")))
     return found
 
 
@@ -149,7 +211,8 @@ def main(argv: list[str] | None = None) -> None:
         inbox = mail.MailInvoices(
             mail.Imap(c["host"], c["user"], env["MAIL_PASSWORD"], c.get("folder", "INBOX")),
             httpx.Client(base_url=env["CORE_URL"], headers={"Authorization": f"Bearer {env['CORE_TOKEN']}"},
-                         timeout=60))
+                         timeout=60),
+            int(c.get("min_image_kb", mail.MIN_IMAGE_KB)), int(c.get("min_image_side", mail.MIN_IMAGE_SIDE)))
     while True:
         failures = once(connectors, tenant, state, publish)
         if inbox is not None:

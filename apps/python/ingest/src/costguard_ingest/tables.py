@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 from costguard_ingest import statements
 
@@ -13,12 +13,33 @@ class Unsupported(Exception):
     """The pipeline cannot read this kind of file yet."""
 
 
+class Scan(Unsupported):
+    """A scanned PDF or a photo: there is no text until OCR reads it (documents.Reader)."""
+
+    def __init__(self, message: str, is_pdf: bool) -> None:
+        super().__init__(message)
+        self.is_pdf = is_pdf
+
+
+class TextOnly(Unsupported):
+    """A PDF with text but no table, such as most invoices: the text needs extracting (documents.Reader)."""
+
+    def __init__(self, message: str, text: str) -> None:
+        super().__init__(message)
+        self.text = text
+
+
 @dataclass(frozen=True)
 class Table:
     columns: list[str]
     rows: list[tuple[int, dict[str, object]]]
     # "invoice" for invoices and exports, "statement" for bank statements: their rows are payments.
     kind: str = "invoice"
+    # Cells a person should check, (row, column) to confidence: what LLM extraction was unsure of.
+    review: dict[tuple[int, str], float] = field(default_factory=dict)
+
+
+IMAGES = (".jpg", ".jpeg", ".png", ".heic", ".tif", ".tiff", ".webp", ".bmp")
 
 
 def read(file_name: str, content: bytes) -> Table:
@@ -33,8 +54,8 @@ def read(file_name: str, content: bytes) -> Table:
         raise Unsupported("Old .xls files are not read yet; save the file as .xlsx")
     if name.endswith(".pdf"):
         return _pdf(content)
-    if name.endswith((".jpg", ".jpeg", ".png", ".heic", ".tif", ".tiff")):
-        raise Unsupported("Scans need OCR, which the pipeline does not have yet")
+    if name.endswith(IMAGES):
+        raise Scan("Scans need OCR, which is not set up here", is_pdf=False)
     raise Unsupported(f"Unknown file type: {file_name}")
 
 
@@ -80,19 +101,20 @@ def _pdf(content: bytes) -> Table:
         raise Unsupported(f"Not a readable PDF file: {e}") from e
     lines: list[list] = []
     with pdf:
-        has_text = False
+        texts: list[str] = []
         for page in pdf.pages:
-            has_text = has_text or bool((page.extract_text() or "").strip())
+            texts.append(page.extract_text() or "")
             for found in page.extract_tables():
                 found = [[None if c is None else " ".join(str(c).split()) for c in r] for r in found]
                 if lines and found and found[0] == lines[0]:
                     found = found[1:]
                 lines.extend(found)
     if not lines:
-        if not has_text:
-            raise Unsupported("The PDF has no text layer, it is a scan; scans need OCR, which the pipeline does "
-                              "not have yet")
-        raise Unsupported("No table found in the PDF")
+        text = "".join(texts).strip()
+        if not text:
+            raise Scan("The PDF has no text layer, it is a scan; scans need OCR, which is not set up here",
+                       is_pdf=True)
+        raise TextOnly("No table found in the PDF", text)
     return _table(lines)
 
 

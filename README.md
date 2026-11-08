@@ -24,10 +24,10 @@ The rest of the monorepo, accepted as it is:
 
 | Path | What it is |
 |---|---|
-| `apps/python/ingest` | Ingest pipeline: reads uploaded invoices and exports, suggests the column mapping, writes FOCUS records to `cost.records.v1` |
+| `apps/python/ingest` | Ingest pipeline: reads uploaded invoices, exports and bank statements (1C, MT940, CAMT.053, OFX), scans through OCR and text invoices through LLM extraction; suggests the column mapping, writes FOCUS records to `cost.records.v1` |
 | `apps/python/anomaly` | Anomaly detector: spend spikes and double charges in `cost.records.v1`, reported to `findings.v1` |
 | `apps/python/notary` | NEAR notary: anchors Merkle roots of journal receipts, registers mandates and confirms large operations in `contracts/notary` |
-| `apps/python/connectors` | Connectors to 1C, МойСклад, Bitrix24, Яндекс 360, Jamf, Intune and a mailbox; also run as an agent inside the client's network |
+| `apps/python/connectors` | Connectors to 1C, МойСклад, Bitrix24, Яндекс 360, Jamf, Intune, Google Workspace, Okta, Entra ID, Merge, Т-Банк and a mailbox; also run as an agent inside the client's network |
 | `apps/python/reports` | Spend forecasts and XLSX/PDF reports |
 | `contracts/notary` | The NEAR smart contract (Rust): Merkle roots of receipt batches, mandate hashes, operation confirmations. No tenant on chain ([ADR 0006](docs/adr/0006-notary-near.md)) |
 | `deploy/helm`, `deploy/argocd`, `deploy/terraform` | Kubernetes: the Helm chart, Argo CD applications for staging and prod, Yandex Cloud in Terraform |

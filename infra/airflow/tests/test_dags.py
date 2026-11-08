@@ -13,6 +13,9 @@ from pathlib import Path
 
 import pytest
 
+# Imported before the fixture puts dags/ on the path, where costguard_common is the DAG helper module.
+from costguard_connectors import agent as connector_agent
+
 DAGS = Path(__file__).resolve().parents[1] / "dags"
 
 
@@ -94,3 +97,21 @@ def test_report_command_is_valid_shell(load):
     command = dag.tasks[0].bash_command.replace("{{ data_interval_start.strftime('%Y-%m') }}", "2026-10")
     result = subprocess.run(["bash", "-n", "-c", command], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_a_tenant_with_only_the_new_connectors_gets_its_pull(load, tmp_path):
+    import tomllib
+
+    config = "\n".join([
+        'tenant_id = "33333333-3333-3333-3333-333333333333"',
+        "[google_workspace]", 'admin = "a@x"',
+        "[okta]", 'url = "https://x.okta.example"',
+        "[entra]", 'directory_id = "d"', 'client_id = "c"',
+        "[merge]", "[tbank]",
+        "[payments]", 'intermediaries = ["7700000009"]', ""])
+    (tmp_path / "landysh.toml").write_text(config, "utf-8")
+    dag = load("connectors_hourly")
+    task = next(t for t in dag.tasks if t.task_id == "pull_landysh")
+    assert task.bash_command.endswith("landysh.toml --once")
+    sections = {k for k, v in tomllib.loads(config).items() if isinstance(v, dict)}
+    assert sections <= set(connector_agent.SECTIONS)

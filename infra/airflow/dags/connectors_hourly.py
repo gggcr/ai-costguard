@@ -1,4 +1,5 @@
-"""Pulls every tenant's connectors once an hour: 1C, МойСклад, Bitrix24, Яндекс 360 and the invoice mailbox.
+"""Pulls every tenant's connectors once an hour: 1C, МойСклад, Bitrix24, Яндекс 360, Jamf, Intune, Google
+Workspace, Okta, Entra ID, Merge, Т-Банк and the invoice mailbox — whichever sections the tenant's config has.
 
 Runs `costguard-connector-agent <tenant>.toml --once`; the agent keeps its cursors in the state file of the
 config, so a failed run repeats only what was not published. Runs never overlap (max_active_runs=1).

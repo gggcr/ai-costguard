@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+  <BkToCstmrStmt>
+    <GrpHdr><MsgId>STMT-20261105</MsgId><CreDtTm>2026-11-05T18:00:00</CreDtTm></GrpHdr>
+    <Stmt>
+      <Id>20261105-1</Id>
+      <Acct><Id><Othr><Id>40702810000000000001</Id></Othr></Id><Ccy>RUB</Ccy></Acct>
+      <Ntry>
+        <Amt Ccy="RUB">12000.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2026-11-02</Dt></BookgDt>
+        <ValDt><Dt>2026-11-02</Dt></ValDt>
+        <AcctSvcrRef>BANKREF1</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>1045</EndToEndId></Refs>
+          <RltdPties><Cdtr><Pty>
+            <Nm>ООО "Тучка Софт"</Nm>
+            <Id><OrgId><Othr><Id>7700000002</Id><SchmeNm><Prtry>INN</Prtry></SchmeNm></Othr></OrgId></Id>
+          </Pty></Cdtr></RltdPties>
+          <RmtInf><Ustrd>Оплата по счету 77 за ТучкаCRM,</Ustrd><Ustrd>ноябрь 2026</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="RUB">50000.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2026-11-03</Dt></BookgDt>
+        <NtryDtls><TxDtls>
+          <RltdPties><Dbtr><Pty><Nm>ООО "Ландыш"</Nm></Pty></Dbtr></RltdPties>
+          <RmtInf><Ustrd>Оплата по договору поставки</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">300.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2026-11-04</Dt></BookgDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>NOTPROVIDED</EndToEndId><InstrId>B-1</InstrId></Refs>
+            <AmtDtls><TxAmt><Amt Ccy="EUR">200.00</Amt></TxAmt></AmtDtls>
+            <RltdPties><Cdtr><Nm>Cloudlet Hosting GmbH</Nm></Cdtr></RltdPties>
+            <RmtInf><Ustrd>Server rent November</Ustrd></RmtInf>
+          </TxDtls>
+          <TxDtls>
+            <Refs><EndToEndId>B-2</EndToEndId></Refs>
+            <AmtDtls><TxAmt><Amt Ccy="EUR">100.00</Amt></TxAmt></AmtDtls>
+            <RltdPties><Cdtr><Nm>Mailbird Ltd</Nm></Cdtr></RltdPties>
+            <RmtInf><Ustrd>Newsletter plan</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="RUB">700.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>PDNG</Cd></Sts>
+        <BookgDt><Dt>2026-11-05</Dt></BookgDt>
+        <AddtlNtryInf>Ожидает списания</AddtlNtryInf>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>
