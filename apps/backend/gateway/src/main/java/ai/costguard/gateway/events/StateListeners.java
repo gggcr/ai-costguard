@@ -1,0 +1,101 @@
+package ai.costguard.gateway.events;
+
+import ai.costguard.events.AgentRiskSignal;
+import ai.costguard.events.AgentState;
+import ai.costguard.events.ApprovalDecision;
+import ai.costguard.events.BudgetLimit;
+import ai.costguard.events.CatalogPrice;
+import ai.costguard.events.PolicySnapshot;
+import ai.costguard.events.wire.AvroWire;
+import ai.costguard.events.wire.SchemaRegistryClient;
+import ai.costguard.gateway.approvals.ApprovalBoard;
+import ai.costguard.gateway.budget.BudgetReserve;
+import ai.costguard.gateway.budget.BudgetTree;
+import ai.costguard.gateway.keys.AgentDirectory;
+import ai.costguard.gateway.risk.RiskBoard;
+import ai.costguard.gateway.rules.PriceBook;
+import ai.costguard.gateway.rules.RuleBook;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+/**
+ * Every instance reads every state topic from the start, with a group of its own, so each one holds the full
+ * state in memory. The topics are compacted, so that read stays short. A tombstone (null value) is skipped.
+ */
+@Component
+public class StateListeners {
+
+    private static final String GROUP = "gateway-#{T(java.util.UUID).randomUUID()}";
+
+    private final SchemaRegistryClient registry;
+    private final AgentDirectory agents;
+    private final RuleBook rules;
+    private final PriceBook prices;
+    private final BudgetTree budgets;
+    private final BudgetReserve reserve;
+    private final RiskBoard risk;
+    private final ApprovalBoard approvals;
+
+    public StateListeners(SchemaRegistryClient registry, AgentDirectory agents, RuleBook rules, PriceBook prices,
+            BudgetTree budgets, BudgetReserve reserve, RiskBoard risk, ApprovalBoard approvals) {
+        this.registry = registry;
+        this.agents = agents;
+        this.rules = rules;
+        this.prices = prices;
+        this.budgets = budgets;
+        this.reserve = reserve;
+        this.risk = risk;
+        this.approvals = approvals;
+    }
+
+    private <T extends org.apache.avro.specific.SpecificRecord> T read(ConsumerRecord<String, byte[]> r, Class<T> type) {
+        return AvroWire.decode(r.value(), registry, type);
+    }
+
+    @KafkaListener(topics = "agents.state.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void agents(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            agents.apply(read(r, AgentState.class));
+        }
+    }
+
+    @KafkaListener(topics = "policy.snapshots.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void policies(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            rules.apply(read(r, PolicySnapshot.class));
+        }
+    }
+
+    @KafkaListener(topics = "catalog.prices.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void prices(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            prices.apply(read(r, CatalogPrice.class));
+        }
+    }
+
+    /** The tree is in memory; the limit goes to Redis, where every instance shares it. */
+    @KafkaListener(topics = "budgets.limits.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void budgets(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            BudgetLimit limit = read(r, BudgetLimit.class);
+            budgets.apply(limit);
+            reserve.applyLimit(limit.getTenantId(), limit.getBudgetId(), limit.getLimitAmount(), limit.getVersion(),
+                    limit.getCorrection()).block();
+        }
+    }
+
+    @KafkaListener(topics = "agent.risk-signals.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void risk(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            risk.apply(read(r, AgentRiskSignal.class));
+        }
+    }
+
+    @KafkaListener(topics = "approvals.decisions.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void approvals(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            approvals.apply(read(r, ApprovalDecision.class));
+        }
+    }
+}

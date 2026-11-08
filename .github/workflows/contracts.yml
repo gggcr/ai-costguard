@@ -1,0 +1,47 @@
+name: contracts
+# The API and event contracts: no breaking change to OpenAPI against the target branch, generated types up to
+# date, and Avro schemas only grow with defaults (checked by the Schema Registry compatibility of the stack).
+on:
+  pull_request:
+    paths: ['schemas/**', 'apps/frontend/src/api/generated/**', 'tools/codegen/**']
+jobs:
+  openapi-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Breaking changes against ${{ github.base_ref }}
+        run: |
+          mkdir -p /tmp/base
+          for spec in core gateway; do
+            if git show "origin/${{ github.base_ref }}:schemas/openapi/$spec.yaml" > /tmp/base/$spec.yaml 2>/dev/null; then
+              docker run --rm -v /tmp/base:/base -v "$PWD/schemas/openapi:/head" tufin/oasdiff:v1.10.27 \
+                breaking /base/$spec.yaml /head/$spec.yaml --fail-on ERR --format githubactions
+              docker run --rm -v /tmp/base:/base -v "$PWD/schemas/openapi:/head" tufin/oasdiff:v1.10.27 \
+                changelog /base/$spec.yaml /head/$spec.yaml >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "$spec.yaml is new, nothing to compare" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+  avro-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: astral-sh/setup-uv@v5
+        with: { version: '0.5.11' }
+      - run: uv sync --frozen --all-packages
+      - name: Every changed schema reads the old messages
+        run: |
+          for f in $(git diff --name-only "origin/${{ github.base_ref }}" -- 'schemas/avro/*.avsc'); do
+            git show "origin/${{ github.base_ref }}:$f" > /tmp/old.avsc 2>/dev/null || continue
+            uv run python tools/codegen/avro_compat.py /tmp/old.avsc "$f"
+          done
+  codegen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { version: '0.5.11' }
+      - run: uv sync --frozen --all-packages
+      - run: uv run python tools/codegen/openapi_ts.py --check

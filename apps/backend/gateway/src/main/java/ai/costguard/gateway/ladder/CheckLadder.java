@@ -1,0 +1,32 @@
+package ai.costguard.gateway.ladder;
+
+import java.util.Comparator;
+import java.util.List;
+import org.springframework.core.Ordered;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@Component
+public class CheckLadder {
+
+    static final int STEPS = 7;
+    private final List<CheckStep> steps;
+
+    public CheckLadder(List<CheckStep> steps) {
+        // An empty or incomplete ladder would pass everything, so the gateway refuses to start
+        if (steps.size() != STEPS) {
+            throw new IllegalStateException("Expected " + STEPS + " check steps, got " + steps.size());
+        }
+        this.steps = steps.stream().sorted(Comparator.comparingInt(Ordered::getOrder)).toList();
+    }
+
+    /** Steps run in order; the first one that does not pass stops the ladder. */
+    public Mono<StepResult> run(Operation op) {
+        return Flux.fromIterable(steps)
+                .concatMap(step -> step.check(op))
+                .filter(r -> !(r instanceof StepResult.Pass))
+                .next()
+                .defaultIfEmpty(new StepResult.Pass());
+    }
+}

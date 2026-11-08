@@ -1,0 +1,56 @@
+{
+  "type": "record",
+  "name": "IngestFile",
+  "namespace": "ai.costguard.events",
+  "doc": "An uploaded file waiting for the pipeline. Key: file_id.",
+  "fields": [
+    {
+      "name": "file_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "s3_key",
+      "type": "string"
+    },
+    {
+      "name": "sha256",
+      "type": "string"
+    },
+    {
+      "name": "file_name",
+      "type": "string"
+    },
+    {
+      "name": "content_type",
+      "type": "string"
+    },
+    {
+      "name": "source_template_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "uploaded_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

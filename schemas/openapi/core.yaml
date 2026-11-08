@@ -1,0 +1,3238 @@
+openapi: 3.1.0
+info:
+  title: CostGuard Core API
+  version: v1
+servers:
+- url: /
+security:
+- bearer: []
+tags:
+- name: Approvals
+  description: Operations waiting for a human decision
+- name: Analytics
+  description: Spending and savings for the dashboard
+- name: Assets
+  description: "Employee equipment: who holds what and when it is due back"
+- name: Notifications
+  description: The company feed and its live stream
+- name: Journal
+  description: Signed receipts of operations and their anchoring in NEAR
+- name: Ledger
+  description: Budgets and the journal of entries
+- name: Organisation
+  description: "Company, departments, employees, users and dismissals"
+- name: Catalog
+  description: "Prices of models and paid APIs, Bank of Russia exchange rates"
+- name: Findings
+  description: Findings of the audit engine and their life cycle
+- name: Software
+  description: "Vendors, contracts, subscriptions and licenses"
+- name: Policies
+  description: "Company rules over agent operations, simulation and publication"
+- name: Imports
+  description: "Uploads, column mapping and manual review"
+- name: Agents
+  description: "AI agents, their virtual keys and mandates"
+paths:
+  /api/v1/vendors/{id}:
+    put:
+      tags:
+      - Software
+      summary: Change a vendor
+      operationId: updateVendor
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vendor"
+  /api/v1/users/{id}/role:
+    put:
+      tags:
+      - Organisation
+      summary: Change a user's role
+      description: The last owner cannot be demoted.
+      operationId: changeRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleChange"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+  /api/v1/subscriptions/{id}:
+    get:
+      tags:
+      - Software
+      summary: Get a subscription
+      operationId: subscription
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+    put:
+      tags:
+      - Software
+      summary: Change a subscription
+      description: Seats cannot drop below assigned licenses.
+      operationId: updateSubscription
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+  /api/v1/policies/rules/{id}:
+    put:
+      tags:
+      - Policies
+      summary: Change a rule
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RuleDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyRule"
+    delete:
+      tags:
+      - Policies
+      summary: Delete a rule
+      operationId: delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/notifications/{id}/read:
+    put:
+      tags:
+      - Notifications
+      summary: Mark one as read
+      operationId: read
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/notifications/read:
+    put:
+      tags:
+      - Notifications
+      summary: Mark all as read
+      operationId: readAll
+      responses:
+        "204":
+          description: No Content
+  /api/v1/mandates/{id}:
+    get:
+      tags:
+      - Agents
+      summary: Get a mandate
+      operationId: mandate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mandate"
+    put:
+      tags:
+      - Agents
+      summary: Edit a mandate
+      description: It becomes a draft until published again.
+      operationId: updateMandate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MandateDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mandate"
+    delete:
+      tags:
+      - Agents
+      summary: Delete a mandate that no agent uses
+      operationId: deleteMandate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/mandates/{id}/publication:
+    put:
+      tags:
+      - Agents
+      summary: Publish a mandate to the gateway
+      description: Idempotent.
+      operationId: publishMandate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mandate"
+  /api/v1/licenses/{id}/activity:
+    put:
+      tags:
+      - Software
+      summary: Record the last login
+      description: Only moves forward.
+      operationId: activity
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Activity"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/License"
+  /api/v1/imports/{id}/review-tasks/{taskId}:
+    put:
+      tags:
+      - Imports
+      summary: Resolve a value the pipeline was unsure about
+      operationId: resolve
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Resolution"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJob"
+  /api/v1/imports/{id}/mapping:
+    put:
+      tags:
+      - Imports
+      summary: Confirm how columns map to FOCUS fields
+      operationId: mapping
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MappingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJob"
+  /api/v1/employees/{id}:
+    get:
+      tags:
+      - Organisation
+      summary: Get an employee
+      operationId: employee
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+    put:
+      tags:
+      - Organisation
+      summary: Update an employee
+      operationId: updateEmployee
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+  /api/v1/employees/{id}/dismissal:
+    put:
+      tags:
+      - Organisation
+      summary: Mark an employee as dismissed
+      description: Idempotent.
+      operationId: dismiss
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+  /api/v1/contracts/{id}:
+    put:
+      tags:
+      - Software
+      summary: Change a contract
+      operationId: updateContract
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContractDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+  /api/v1/company:
+    get:
+      tags:
+      - Organisation
+      summary: Get the company of the current token
+      operationId: company
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+    put:
+      tags:
+      - Organisation
+      summary: Create or update the company
+      description: Idempotent.
+      operationId: saveCompany
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanySettings"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+  /api/v1/budgets/{id}/limit:
+    put:
+      tags:
+      - Ledger
+      summary: Change a limit
+      description: A limit below the spent amount is allowed.
+      operationId: setLimit
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitChange"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+  /api/v1/assets/{id}/retirement:
+    put:
+      tags:
+      - Assets
+      summary: Retire an asset that nobody holds
+      description: Idempotent.
+      operationId: retire
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "409":
+          description: "code: asset_already_assigned or asset_retired"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}/assignment:
+    put:
+      tags:
+      - Assets
+      summary: Issue an asset to an employee or move its return date
+      description: "Idempotent. A new issue makes its handover act (PDF), see actNumber;\
+        \ moving the return date of the same holder makes none."
+      operationId: assign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewAssignment"
+        required: true
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found or employee_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "409":
+          description: "code: asset_already_assigned or asset_retired"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+    delete:
+      tags:
+      - Assets
+      summary: Take an asset back from its holder
+      description: Idempotent.
+      operationId: takeBack
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "204":
+          description: No Content
+  /api/v1/approvals/{id}/decision:
+    put:
+      tags:
+      - Approvals
+      summary: Approve or reject
+      description: A closed request answers 409.
+      operationId: decide
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Decision"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+  /api/v1/agents/{id}:
+    get:
+      tags:
+      - Agents
+      summary: Get an agent
+      operationId: agent
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+    put:
+      tags:
+      - Agents
+      summary: Update an agent
+      operationId: update_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+    delete:
+      tags:
+      - Agents
+      summary: Delete an agent and its keys
+      operationId: delete_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/agents/{id}/suspension:
+    put:
+      tags:
+      - Agents
+      summary: Stop an agent
+      description: Idempotent.
+      operationId: suspend
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+    delete:
+      tags:
+      - Agents
+      summary: Start a stopped agent
+      description: Idempotent.
+      operationId: resume
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+  /api/v1/vendors:
+    get:
+      tags:
+      - Software
+      summary: List vendors
+      operationId: vendors
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vendor"
+    post:
+      tags:
+      - Software
+      summary: Add a vendor
+      operationId: createVendor
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorDetails"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vendor"
+  /api/v1/users:
+    get:
+      tags:
+      - Organisation
+      summary: List CostGuard users
+      operationId: users
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserAccount"
+    post:
+      tags:
+      - Organisation
+      summary: Add a CostGuard user
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewUser"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+  /api/v1/subscriptions:
+    get:
+      tags:
+      - Software
+      summary: List subscriptions with assigned seats
+      operationId: subscriptions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subscription"
+    post:
+      tags:
+      - Software
+      summary: Add a subscription
+      operationId: createSubscription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionDetails"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+  /api/v1/subscriptions/{id}/licenses:
+    get:
+      tags:
+      - Software
+      summary: Who holds a license of a subscription
+      operationId: licenses
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/License"
+    post:
+      tags:
+      - Software
+      summary: Give an employee a license
+      description: Idempotent.
+      operationId: assign_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewLicense"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/License"
+  /api/v1/policies/simulation:
+    post:
+      tags:
+      - Policies
+      summary: Try rules on sample operations
+      description: Changes nothing.
+      operationId: simulate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationResult"
+  /api/v1/policies/rules:
+    get:
+      tags:
+      - Policies
+      summary: List rules
+      operationId: rules
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PolicyRule"
+    post:
+      tags:
+      - Policies
+      summary: Add a rule
+      description: The gateway sees it only after publication.
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RuleDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyRule"
+  /api/v1/policies/publication:
+    get:
+      tags:
+      - Policies
+      summary: The version the gateway has
+      description: 404 before the first publication.
+      operationId: publication
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publication"
+    post:
+      tags:
+      - Policies
+      summary: Publish the enabled rules to the gateway
+      operationId: publish
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publication"
+  /api/v1/mandates:
+    get:
+      tags:
+      - Agents
+      summary: List mandates
+      operationId: mandates
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mandate"
+    post:
+      tags:
+      - Agents
+      summary: Create a draft mandate
+      operationId: createMandate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MandateDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mandate"
+  /api/v1/imports:
+    get:
+      tags:
+      - Imports
+      summary: "List imports, newest first"
+      operationId: list
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImportJob"
+    post:
+      tags:
+      - Imports
+      summary: Upload a file
+      description: "201 for a new file, 200 if this file was uploaded before."
+      operationId: upload
+      parameters:
+      - name: vendorId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJob"
+  /api/v1/findings/{id}/actions:
+    post:
+      tags:
+      - Findings
+      summary: Move a finding along its life cycle
+      description: Board frame 8.
+      operationId: act
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Finding"
+  /api/v1/employees:
+    get:
+      tags:
+      - Organisation
+      summary: "List employees, optionally of one department"
+      operationId: employees
+      parameters:
+      - name: departmentId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+    post:
+      tags:
+      - Organisation
+      summary: Add an employee
+      operationId: createEmployee
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+  /api/v1/departments:
+    get:
+      tags:
+      - Organisation
+      summary: List departments
+      operationId: departments
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+    post:
+      tags:
+      - Organisation
+      summary: Create a department
+      operationId: createDepartment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewDepartment"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+  /api/v1/contracts:
+    get:
+      tags:
+      - Software
+      summary: "List contracts, soonest end first"
+      operationId: contracts
+      parameters:
+      - name: vendorId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contract"
+    post:
+      tags:
+      - Software
+      summary: Add a contract
+      operationId: createContract
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContractDetails"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+  /api/v1/catalog/prices:
+    get:
+      tags:
+      - Catalog
+      summary: "Prices in force on a date, today by default"
+      operationId: prices
+      parameters:
+      - name: date
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Price"
+    post:
+      tags:
+      - Catalog
+      summary: Set a price from a date
+      description: Earlier prices stay for past operations.
+      operationId: add
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPrice"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Price"
+  /api/v1/budgets:
+    get:
+      tags:
+      - Ledger
+      summary: List budgets of all levels
+      operationId: budgets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Budget"
+    post:
+      tags:
+      - Ledger
+      summary: Create a budget
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBudget"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+  /api/v1/assets:
+    get:
+      tags:
+      - Assets
+      summary: "List assets, optionally by status"
+      operationId: list_1
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - IN_STOCK
+          - ASSIGNED
+          - RETIRED
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+    post:
+      tags:
+      - Assets
+      summary: Register an asset
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewAsset"
+        required: true
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "409":
+          description: "code: inventory_number_taken or serial_number_taken"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/agents:
+    get:
+      tags:
+      - Agents
+      summary: List agents
+      operationId: agents
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
+    post:
+      tags:
+      - Agents
+      summary: Connect an agent
+      operationId: create_3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+  /api/v1/agents/{id}/keys:
+    get:
+      tags:
+      - Agents
+      summary: "List an agent's keys, without secrets"
+      operationId: keys
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VirtualKey"
+    post:
+      tags:
+      - Agents
+      summary: Issue a key
+      description: The secret is in this response only.
+      operationId: issueKey
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssuedKey"
+  /api/v1/operations/{operationId}/receipt:
+    get:
+      tags:
+      - Journal
+      summary: Receipt of an operation with its Merkle path once anchored
+      operationId: receipt
+      parameters:
+      - name: operationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptView"
+  /api/v1/notifications:
+    get:
+      tags:
+      - Notifications
+      summary: Latest 200 notifications and the unread count
+      operationId: page
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPage"
+    delete:
+      tags:
+      - Notifications
+      summary: Clear the feed
+      operationId: clear
+      responses:
+        "204":
+          description: No Content
+  /api/v1/notifications/stream:
+    get:
+      tags:
+      - Notifications
+      summary: New notifications as Server-Sent Events
+      operationId: stream
+      responses:
+        "200":
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/SseEmitter"
+  /api/v1/journal/verification:
+    get:
+      tags:
+      - Journal
+      summary: Check the whole receipt chain of the company
+      operationId: verify
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChainVerification"
+  /api/v1/journal/signing-key:
+    get:
+      tags:
+      - Journal
+      summary: Public key that verifies receipt signatures
+      operationId: key
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SigningKey"
+  /api/v1/imports/{id}:
+    get:
+      tags:
+      - Imports
+      summary: Get an import with its review tasks
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJob"
+  /api/v1/findings:
+    get:
+      tags:
+      - Findings
+      summary: "List findings, optionally by status"
+      operationId: list_2
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Finding"
+  /api/v1/findings/{id}:
+    get:
+      tags:
+      - Findings
+      summary: Get a finding with its history
+      operationId: get_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Finding"
+  /api/v1/findings/totals:
+    get:
+      tags:
+      - Findings
+      summary: "Open findings and savings, expected and confirmed"
+      operationId: totals
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FindingTotals"
+  /api/v1/employees/{id}/dismissal-checklist:
+    get:
+      tags:
+      - Organisation
+      summary: What must be collected or revoked from an employee
+      operationId: checklist
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissalChecklist"
+  /api/v1/employees/{employeeId}/assets:
+    get:
+      tags:
+      - Assets
+      summary: "What an employee still holds, with its total cost"
+      operationId: heldBy
+      parameters:
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/catalog/prices/{skuId}/history:
+    get:
+      tags:
+      - Catalog
+      summary: "Every price of one SKU, newest first"
+      operationId: history
+      parameters:
+      - name: skuId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Price"
+  /api/v1/catalog/fx-rates:
+    get:
+      tags:
+      - Catalog
+      summary: "Bank of Russia rates in force on a date, roubles per unit"
+      operationId: rates
+      parameters:
+      - name: date
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FxRate"
+  /api/v1/catalog/fx-conversion:
+    get:
+      tags:
+      - Catalog
+      summary: Convert an amount to roubles
+      operationId: convert
+      parameters:
+      - name: amount
+        in: query
+        required: true
+        schema:
+          type: number
+      - name: currency
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversion"
+  /api/v1/budgets/{id}:
+    get:
+      tags:
+      - Ledger
+      summary: Get a budget
+      operationId: budget
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+  /api/v1/budgets/{id}/entries:
+    get:
+      tags:
+      - Ledger
+      summary: "Entries of a budget, newest first"
+      operationId: entries
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerPage"
+  /api/v1/assets/{id}:
+    get:
+      tags:
+      - Assets
+      summary: Get an asset
+      operationId: get_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}/assignments:
+    get:
+      tags:
+      - Assets
+      summary: "Assignment history, newest first"
+      operationId: history_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "404":
+          description: "code: asset_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/assets/{id}/assignments/{assignmentId}/act:
+    get:
+      tags:
+      - Assets
+      summary: "Handover act of an issue, as made at the issue"
+      description: The X-Content-SHA256 header carries the SHA-256 of the PDF.
+      operationId: act_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: assignmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: "code: tenant_missing or role_required"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+        "200":
+          description: The act
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: "code: asset_not_found or act_not_found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemBody"
+  /api/v1/approvals:
+    get:
+      tags:
+      - Approvals
+      summary: "List requests, optionally by status"
+      operationId: list_3
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+          - expired
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Approval"
+  /api/v1/approvals/{id}:
+    get:
+      tags:
+      - Approvals
+      summary: Get a request
+      operationId: get_3
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+  /api/v1/analytics/summary:
+    get:
+      tags:
+      - Analytics
+      summary: Agent spend per month and findings totals
+      operationId: summary
+      parameters:
+      - name: months
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 12
+          maximum: 36
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Summary"
+  /api/v1/licenses/{id}:
+    delete:
+      tags:
+      - Software
+      summary: Take a license back
+      operationId: revoke
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/agents/{id}/keys/{keyId}:
+    delete:
+      tags:
+      - Agents
+      summary: Revoke a key
+      description: Idempotent.
+      operationId: revokeKey
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: keyId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+components:
+  schemas:
+    VendorDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        inn:
+          type: string
+        category:
+          type: string
+      required:
+      - category
+      - inn
+      - name
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        inn:
+          type: string
+        category:
+          type: string
+    RoleChange:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+          - owner
+          - finance
+          - it_admin
+          - agent_owner
+          - auditor
+      required:
+      - role
+    UserAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+          - owner
+          - finance
+          - it_admin
+          - agent_owner
+          - auditor
+        employeeId:
+          type: string
+          format: uuid
+    SubscriptionDetails:
+      type: object
+      properties:
+        vendorId:
+          type: string
+          format: uuid
+        product:
+          type: string
+          minLength: 1
+        contractId:
+          type: string
+          format: uuid
+        departmentId:
+          type: string
+          format: uuid
+        seats:
+          type: integer
+          format: int32
+          minimum: 0
+        pricePerSeat:
+          type: number
+          minimum: 0
+        billingPeriod:
+          type: string
+          enum:
+          - month
+          - year
+        renewalDate:
+          type: string
+          format: date
+      required:
+      - billingPeriod
+      - departmentId
+      - pricePerSeat
+      - product
+      - renewalDate
+      - vendorId
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorId:
+          type: string
+          format: uuid
+        product:
+          type: string
+        contractId:
+          type: string
+          format: uuid
+        departmentId:
+          type: string
+          format: uuid
+        seats:
+          type: integer
+          format: int32
+        pricePerSeat:
+          type: number
+        billingPeriod:
+          type: string
+          enum:
+          - month
+          - year
+        renewalDate:
+          type: string
+          format: date
+        assigned:
+          type: integer
+          format: int32
+    RuleDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        expression:
+          type: string
+          minLength: 1
+        effect:
+          type: string
+          enum:
+          - DENY
+          - REQUIRE_APPROVAL
+        enabled:
+          type: boolean
+      required:
+      - effect
+      - expression
+      - name
+    PolicyRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        expression:
+          type: string
+        effect:
+          type: string
+          enum:
+          - DENY
+          - REQUIRE_APPROVAL
+        enabled:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+    MandateDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        models:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        vendors:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        maxPerOperation:
+          type: number
+          minimum: 0
+        approvalThreshold:
+          type: number
+          minimum: 0
+        hours:
+          type: string
+          pattern: "круглосуточно|только рабочие дни|([01]\\d|2[0-3]):[0-5]\\d[–-]([01]\\\
+            d|2[0-3]):[0-5]\\d"
+      required:
+      - approvalThreshold
+      - hours
+      - maxPerOperation
+      - models
+      - name
+      - vendors
+    Mandate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        models:
+          type: array
+          items:
+            type: string
+        vendors:
+          type: array
+          items:
+            type: string
+        maxPerOperation:
+          type: number
+        approvalThreshold:
+          type: number
+        hours:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - published
+        version:
+          type: integer
+          format: int32
+        updatedAt:
+          type: string
+          format: date-time
+    Activity:
+      type: object
+      properties:
+        lastActive:
+          type: string
+          format: date
+      required:
+      - lastActive
+    License:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        subscriptionId:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        lastActive:
+          type: string
+          format: date
+    Resolution:
+      type: object
+      properties:
+        value:
+          type: string
+          minLength: 1
+      required:
+      - value
+    ImportJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        type:
+          type: string
+          enum:
+          - excel
+          - csv
+          - pdf
+          - scan
+          - bank
+        vendorId:
+          type: string
+          format: uuid
+        uploadedAt:
+          type: string
+          format: date-time
+        uploadedBy:
+          type: string
+        status:
+          type: string
+          enum:
+          - uploaded
+          - mapping
+          - review
+          - done
+          - failed
+        rows:
+          type: integer
+          format: int32
+        total:
+          type: number
+        columns:
+          type: array
+          items:
+            type: string
+        mapping:
+          type: object
+          additionalProperties:
+            type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/RowError"
+        reviewTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewTask"
+        templateSaved:
+          type: boolean
+        failure:
+          type: string
+        sha256:
+          type: string
+    ReviewTask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        row:
+          type: integer
+          format: int32
+        field:
+          type: string
+        value:
+          type: string
+        confidence:
+          type: number
+        resolved:
+          type: boolean
+        resolvedValue:
+          type: string
+    RowError:
+      type: object
+      properties:
+        row:
+          type: integer
+          format: int32
+        message:
+          type: string
+    MappingRequest:
+      type: object
+      properties:
+        mapping:
+          type: object
+          additionalProperties:
+            type: string
+        saveTemplate:
+          type: boolean
+      required:
+      - mapping
+    EmployeeDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        departmentId:
+          type: string
+          format: uuid
+        position:
+          type: string
+          minLength: 1
+      required:
+      - departmentId
+      - email
+      - name
+      - position
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        departmentId:
+          type: string
+          format: uuid
+        position:
+          type: string
+        active:
+          type: boolean
+        dismissedAt:
+          type: string
+          format: date
+    ContractDetails:
+      type: object
+      properties:
+        vendorId:
+          type: string
+          format: uuid
+        number:
+          type: string
+          minLength: 1
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        noticeDays:
+          type: integer
+          format: int32
+          minimum: 0
+        autoRenew:
+          type: boolean
+        amount:
+          type: number
+          minimum: 0
+      required:
+      - amount
+      - endDate
+      - number
+      - startDate
+      - vendorId
+    Contract:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorId:
+          type: string
+          format: uuid
+        number:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        noticeDays:
+          type: integer
+          format: int32
+        autoRenew:
+          type: boolean
+        amount:
+          type: number
+    CompanySettings:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        currency:
+          type: string
+          pattern: "[A-Z]{3}"
+      required:
+      - currency
+      - name
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        currency:
+          type: string
+        plan:
+          type: string
+    LimitChange:
+      type: object
+      properties:
+        limit:
+          type: number
+          minimum: 0
+      required:
+      - limit
+    Budget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        level:
+          type: string
+          enum:
+          - company
+          - department
+          - agent
+        refId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+        limit:
+          type: number
+        currency:
+          type: string
+        spent:
+          type: number
+        version:
+          type: integer
+          format: int64
+    ProblemBody:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+    NewAssignment:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+        returnDue:
+          type: string
+          format: date
+      required:
+      - employeeId
+    Decision:
+      type: object
+      properties:
+        verdict:
+          type: string
+          enum:
+          - approve
+          - reject
+        comment:
+          type: string
+      required:
+      - verdict
+    Approval:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        operationId:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+          - expired
+        escalated:
+          type: boolean
+        decidedBy:
+          type: string
+        comment:
+          type: string
+    AgentDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        framework:
+          type: string
+          minLength: 1
+        departmentId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        mandateId:
+          type: string
+          format: uuid
+      required:
+      - departmentId
+      - description
+      - framework
+      - mandateId
+      - name
+      - ownerId
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        framework:
+          type: string
+        departmentId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - active
+          - suspended
+        riskScore:
+          type: integer
+          format: int32
+        riskReason:
+          type: string
+        mandateId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    NewUser:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        role:
+          type: string
+          enum:
+          - owner
+          - finance
+          - it_admin
+          - agent_owner
+          - auditor
+        employeeId:
+          type: string
+          format: uuid
+      required:
+      - email
+      - name
+      - role
+    NewLicense:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+      required:
+      - employeeId
+    SampleOperation:
+      type: object
+      properties:
+        agentId:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          minLength: 1
+        vendor:
+          type: string
+          minLength: 1
+        model:
+          type: string
+        cost:
+          type: number
+          format: double
+          minimum: 0
+        time:
+          type: string
+          pattern: "([01]\\d|2[0-3]):[0-5]\\d"
+        weekday:
+          type: integer
+          format: int64
+          maximum: 7
+          minimum: 1
+      required:
+      - agentId
+      - kind
+      - time
+      - vendor
+    SimulationRequest:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleDetails"
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SampleOperation"
+          maxItems: 10000
+          minItems: 0
+      required:
+      - operations
+    SimulatedOperation:
+      type: object
+      properties:
+        index:
+          type: integer
+          format: int32
+        outcome:
+          type: string
+          enum:
+          - ALLOW
+          - REQUIRE_APPROVAL
+          - DENY
+        matchedRules:
+          type: array
+          items:
+            type: string
+    SimulationResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int32
+        denied:
+          type: integer
+          format: int32
+        requireApproval:
+          type: integer
+          format: int32
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SimulatedOperation"
+    Publication:
+      type: object
+      properties:
+        version:
+          type: integer
+          format: int64
+        publishedAt:
+          type: string
+          format: date-time
+    ActionRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - assign
+          - accept
+          - postpone
+          - reject
+          - createTask
+          - confirm
+          - missInvoice
+        ownerId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        reason:
+          type: string
+      required:
+      - action
+    Finding:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule:
+          type: string
+        fingerprint:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        subscriptionId:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+        expectedSavings:
+          type: number
+        status:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        postponedUntil:
+          type: string
+          format: date
+        rejectReason:
+          type: string
+        missedInvoices:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/FindingEvent"
+    FindingEvent:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        by:
+          type: string
+        text:
+          type: string
+    NewDepartment:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+      required:
+      - name
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    NewPrice:
+      type: object
+      properties:
+        skuId:
+          type: string
+          minLength: 1
+        vendor:
+          type: string
+          minLength: 1
+        model:
+          type: string
+        unit:
+          type: string
+          enum:
+          - INPUT_TOKEN
+          - OUTPUT_TOKEN
+          - REQUEST
+        unitPrice:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: "[A-Z]{3}"
+        validFrom:
+          type: string
+          format: date
+      required:
+      - currency
+      - skuId
+      - unit
+      - unitPrice
+      - validFrom
+      - vendor
+    Price:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        skuId:
+          type: string
+        vendor:
+          type: string
+        model:
+          type: string
+        unit:
+          type: string
+          enum:
+          - INPUT_TOKEN
+          - OUTPUT_TOKEN
+          - REQUEST
+        unitPrice:
+          type: number
+        currency:
+          type: string
+        validFrom:
+          type: string
+          format: date
+    NewBudget:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        level:
+          type: string
+          enum:
+          - company
+          - department
+          - agent
+        refId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+        limit:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: "[A-Z]{3}"
+      required:
+      - currency
+      - level
+      - limit
+      - name
+    NewAsset:
+      type: object
+      properties:
+        inventoryNumber:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+          - LAPTOP
+          - PHONE
+          - MONITOR
+          - OTHER
+        cost:
+          type: number
+          minimum: 0
+        serialNumber:
+          type: string
+          maxLength: 100
+          minLength: 1
+      required:
+      - cost
+      - inventoryNumber
+      - model
+    IssuedKey:
+      type: object
+      properties:
+        key:
+          $ref: "#/components/schemas/VirtualKey"
+        secret:
+          type: string
+    VirtualKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+        prefix:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - active
+          - revoked
+    ReceiptView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        operationId:
+          type: string
+          format: uuid
+        payload:
+          type: string
+        hash:
+          type: string
+        previousHash:
+          type: string
+        signature:
+          type: string
+        keyId:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - anchored
+        batchId:
+          type: string
+          format: uuid
+        merkleRoot:
+          type: string
+        txHash:
+          type: string
+        merklePath:
+          type: array
+          items:
+            type: string
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        text:
+          type: string
+        link:
+          type: string
+        level:
+          type: string
+          enum:
+          - info
+          - warning
+          - critical
+          - good
+        read:
+          type: boolean
+    NotificationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        unread:
+          type: integer
+          format: int32
+    SseEmitter:
+      type: object
+      properties:
+        timeout:
+          type: integer
+          format: int64
+    ChainVerification:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        receipts:
+          type: integer
+          format: int64
+        brokenAtSeq:
+          type: integer
+          format: int64
+        problem:
+          type: string
+    SigningKey:
+      type: object
+      properties:
+        keyId:
+          type: string
+        algorithm:
+          type: string
+        publicKey:
+          type: string
+    FindingTotals:
+      type: object
+      properties:
+        open:
+          type: integer
+          format: int32
+        expectedSavings:
+          type: number
+        confirmedSavings:
+          type: number
+    ChecklistSection:
+      type: object
+      properties:
+        name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+        totalCost:
+          type: number
+    DismissalChecklist:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+        dismissed:
+          type: boolean
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistSection"
+    Item:
+      type: object
+      properties:
+        title:
+          type: string
+        cost:
+          type: number
+    FxRate:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        currency:
+          type: string
+        rate:
+          type: number
+    Conversion:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        date:
+          type: string
+          format: date
+        rub:
+          type: number
+    LedgerEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        budgetId:
+          type: string
+          format: uuid
+        operationId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - charge
+          - reversal
+        amount:
+          type: number
+        occurredAt:
+          type: string
+          format: date-time
+    LedgerPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+    Month:
+      type: object
+      properties:
+        month:
+          type: string
+        amount:
+          type: number
+    Summary:
+      type: object
+      properties:
+        agentSpend:
+          type: array
+          items:
+            $ref: "#/components/schemas/Month"
+        findings:
+          $ref: "#/components/schemas/Totals"
+    Totals:
+      type: object
+      properties:
+        open:
+          type: integer
+          format: int32
+        expectedSavings:
+          type: number
+        confirmedSavings:
+          type: number
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

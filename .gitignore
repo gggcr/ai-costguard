@@ -1,0 +1,61 @@
+# Build output
+build/
+.gradle/
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+out/
+
+# Secrets and local config: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+application-local.yaml
+
+# Office documents and archives stay out of the repo, except anonymised demo and test samples
+*.docx
+*.xlsx
+*.xls
+*.pdf
+*.zip
+*.tar.gz
+*.rar
+!tools/seed/**
+!apps/backend/ingest/tests/fixtures/**
+
+# Package files, except the Gradle wrapper, which the build needs
+*.jar
+*.war
+*.nar
+*.ear
+!gradle/wrapper/gradle-wrapper.jar
+
+# BlueJ and J2ME
+*.ctxt
+.mtj.tmp/
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python tooling caches
+.venv/
+.pytest_cache/
+.ruff_cache/
+__pycache__/

@@ -1,0 +1,16 @@
+{
+  "realm": "costguard",
+  "users": [
+    {
+      "username": "demo",
+      "email": "demo@romashka.example",
+      "firstName": "Демо",
+      "lastName": "Владелец",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": { "tenant_id": ["0d6f8a1e-5b2c-4c3e-9a7d-1f2e3d4c5b6a"] },
+      "credentials": [{ "type": "password", "value": "demo", "temporary": false }],
+      "realmRoles": ["owner"]
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+openapi: 3.1.0
+info:
+  title: CostGuard Agent Gateway API
+  version: v1
+servers:
+- url: /
+security:
+- virtualKey: []
+tags:
+- name: Spend
+  description: "Authorize, settle and release spending of an agent"
+paths:
+  /v1/spend/settle:
+    post:
+      tags:
+      - Spend
+      summary: Charge the actual amount and return the rest of the reserve
+      description: Repeating it is safe.
+      operationId: settle
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettleRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /v1/spend/release:
+    post:
+      tags:
+      - Spend
+      summary: Give the whole reserve back
+      operationId: release
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /v1/spend/authorize:
+    post:
+      tags:
+      - Spend
+      summary: Run the check ladder and reserve the amount
+      description: "Idempotency-Key is the operation id, a UUID. A retry of an approved\
+        \ operation uses the same key."
+      operationId: authorize
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        description: "Operation id, a UUID"
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorizeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /v1/spend/approvals/{id}:
+    get:
+      tags:
+      - Spend
+      summary: Whether a held operation was decided
+      description: "approved means: retry the operation with the same Idempotency-Key."
+      operationId: approval
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+components:
+  schemas:
+    SettleRequest:
+      type: object
+      properties:
+        authorizationId:
+          type: string
+        amount:
+          type: number
+    ReleaseRequest:
+      type: object
+      properties:
+        authorizationId:
+          type: string
+    AuthorizeRequest:
+      type: object
+      properties:
+        taskId:
+          type: string
+        kind:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        amount:
+          type: number
+  securitySchemes:
+    virtualKey:
+      type: http
+      description: "The agent's virtual key, cg_live_..."
+      scheme: bearer

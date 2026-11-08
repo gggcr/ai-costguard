@@ -1,0 +1,65 @@
+{
+  "type": "record",
+  "name": "ApprovalDecision",
+  "namespace": "ai.costguard.events",
+  "doc": "Outcome of a human approval, for the gateway. Compacted. Key: operation_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "approval_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "operation_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "agent_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "ApprovalOutcome",
+        "symbols": [
+          "APPROVED",
+          "REJECTED",
+          "EXPIRED"
+        ]
+      }
+    },
+    {
+      "name": "amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      },
+      "doc": "The amount that was approved; a retry may not cost more."
+    },
+    {
+      "name": "decided_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

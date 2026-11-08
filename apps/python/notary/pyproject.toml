@@ -1,0 +1,19 @@
+[project]
+name = "costguard-notary"
+version = "0.1.0"
+description = "NEAR notary: anchors Merkle roots of journal receipts in a NEAR contract and reports to journal.anchors.v1"
+requires-python = ">=3.12"
+dependencies = ["costguard-common", "confluent-kafka>=2.6", "httpx>=0.27", "cryptography>=43"]
+
+[project.scripts]
+costguard-notary = "costguard_notary.service:main"
+
+[tool.uv.sources]
+costguard-common = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/costguard_notary"]

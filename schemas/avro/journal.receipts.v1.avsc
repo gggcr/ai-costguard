@@ -1,0 +1,55 @@
+{
+  "type": "record",
+  "name": "JournalReceipt",
+  "namespace": "ai.costguard.events",
+  "doc": "Signed receipt of an allowed operation. Key: receipt_id.",
+  "fields": [
+    {
+      "name": "receipt_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "operation_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "hash",
+      "type": "string",
+      "doc": "SHA-256 of the receipt, hex."
+    },
+    {
+      "name": "previous_hash",
+      "type": "string",
+      "doc": "Hash chain link, hex."
+    },
+    {
+      "name": "signature",
+      "type": "string",
+      "doc": "Ed25519, base64."
+    },
+    {
+      "name": "signing_key_id",
+      "type": "string"
+    },
+    {
+      "name": "issued_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

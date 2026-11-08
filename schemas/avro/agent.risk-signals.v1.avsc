@@ -1,0 +1,63 @@
+{
+  "type": "record",
+  "name": "AgentRiskSignal",
+  "namespace": "ai.costguard.events",
+  "doc": "Latest risk of an agent or task. Compacted. Key: agent_id or task_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "agent_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "score",
+      "type": "int",
+      "doc": "From 0 to 100."
+    },
+    {
+      "name": "action",
+      "type": {
+        "type": "enum",
+        "name": "RiskAction",
+        "symbols": [
+          "NORMAL",
+          "SLOW_DOWN",
+          "REQUIRE_APPROVAL",
+          "STOP"
+        ]
+      }
+    },
+    {
+      "name": "reasons",
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "doc": "Explanation shown to people."
+    },
+    {
+      "name": "detected_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

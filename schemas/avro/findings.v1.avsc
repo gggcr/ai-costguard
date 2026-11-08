@@ -1,0 +1,54 @@
+{
+  "type": "record",
+  "name": "Finding",
+  "namespace": "ai.costguard.events",
+  "doc": "A finding of the audit engine. Key: fingerprint.",
+  "fields": [
+    {
+      "name": "fingerprint",
+      "type": "string"
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "rule",
+      "type": "string"
+    },
+    {
+      "name": "title",
+      "type": "string"
+    },
+    {
+      "name": "expected_savings",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "currency",
+      "type": "string"
+    },
+    {
+      "name": "entity_ids",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    },
+    {
+      "name": "detected_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

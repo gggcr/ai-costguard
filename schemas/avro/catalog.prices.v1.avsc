@@ -1,0 +1,63 @@
+{
+  "type": "record",
+  "name": "CatalogPrice",
+  "namespace": "ai.costguard.events",
+  "doc": "Price of one SKU for one tenant. Compacted. Key: tenant_id:sku_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "sku_id",
+      "type": "string"
+    },
+    {
+      "name": "provider",
+      "type": "string"
+    },
+    {
+      "name": "model",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "unit",
+      "type": {
+        "type": "enum",
+        "name": "PriceUnit",
+        "symbols": [
+          "INPUT_TOKEN",
+          "OUTPUT_TOKEN",
+          "REQUEST"
+        ]
+      }
+    },
+    {
+      "name": "unit_price",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 6
+      }
+    },
+    {
+      "name": "currency",
+      "type": "string"
+    },
+    {
+      "name": "valid_from",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    }
+  ]
+}
