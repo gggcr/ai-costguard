@@ -3,12 +3,14 @@ package ai.costguard.core.shared.inbox;
 import ai.costguard.core.agents.MandateNotarizations;
 import ai.costguard.core.approvals.ApprovalRequests;
 import ai.costguard.core.approvals.OperationConfirmations;
+import ai.costguard.core.connections.ConnectorRuns;
 import ai.costguard.core.findings.FindingsIntake;
 import ai.costguard.core.imports.ImportResults;
 import ai.costguard.core.imports.NormalizedEntities;
 import ai.costguard.core.journal.Receipts;
 import ai.costguard.core.ledger.OperationPosting;
 import ai.costguard.events.AgentOperation;
+import ai.costguard.events.ConnectorRun;
 import ai.costguard.events.Finding;
 import ai.costguard.events.JournalAnchor;
 import ai.costguard.events.NotaryConfirmation;
@@ -33,7 +35,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Reads {@code agent.operations.v1}, {@code ingest.results.v1}, {@code ingest.normalized.v1},
- * {@code findings.v1}, {@code journal.anchors.v1} and {@code notary.confirmations.v1}. The offset is committed only after the handler returns, so
+ * {@code findings.v1}, {@code journal.anchors.v1}, {@code notary.confirmations.v1} and {@code connectors.runs.v1}. The offset is committed only after the handler returns, so
  * a crash replays the message instead of losing it.
  */
 @Configuration(proxyBeanMethods = false)
@@ -83,6 +85,11 @@ class InboxConfig {
         return new NotaryInbox(mandates, operations);
     }
 
+    @Bean
+    ConnectorRunInbox connectorRunInbox(ConnectorRuns runs) {
+        return new ConnectorRunInbox(runs);
+    }
+
     @Component
     @ConditionalOnProperty(name = "costguard.events.kafka.enabled", havingValue = "true", matchIfMissing = true)
     static class Listener {
@@ -93,10 +100,11 @@ class InboxConfig {
         private final FindingInbox findings;
         private final AnchorInbox anchors;
         private final NotaryInbox notary;
+        private final ConnectorRunInbox connectorRuns;
         private final SchemaRegistryClient registry;
 
         Listener(OperationInbox inbox, ImportResultInbox imports, NormalizedInbox normalized, FindingInbox findings,
-                AnchorInbox anchors, NotaryInbox notary,
+                AnchorInbox anchors, NotaryInbox notary, ConnectorRunInbox connectorRuns,
                 @Value("${costguard.events.schema-registry-url:http://localhost:8085}") URI registry) {
             this.inbox = inbox;
             this.imports = imports;
@@ -104,6 +112,7 @@ class InboxConfig {
             this.findings = findings;
             this.anchors = anchors;
             this.notary = notary;
+            this.connectorRuns = connectorRuns;
             this.registry = new SchemaRegistryClient(registry);
         }
 
@@ -139,6 +148,12 @@ class InboxConfig {
                 containerFactory = "inboxListenerFactory")
         void onNotary(ConsumerRecord<String, byte[]> record) {
             notary.handle(AvroWire.decode(record.value(), registry, NotaryConfirmation.class));
+        }
+
+        @KafkaListener(topics = "connectors.runs.v1", groupId = "core-connections",
+                containerFactory = "inboxListenerFactory")
+        void onConnectorRun(ConsumerRecord<String, byte[]> record) {
+            connectorRuns.handle(AvroWire.decode(record.value(), registry, ConnectorRun.class));
         }
     }
 }

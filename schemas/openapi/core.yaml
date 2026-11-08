@@ -13,6 +13,8 @@ tags:
   description: Spending and savings for the dashboard
 - name: Assets
   description: "Employee equipment: who holds what and when it is due back"
+- name: Connections
+  description: Systems the connector agent pulls and how each pull went
 - name: Notifications
   description: The company feed and its live stream
 - name: Journal
@@ -1216,6 +1218,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contract"
+  /api/v1/connections:
+    get:
+      tags:
+      - Connections
+      summary: List connected systems
+      description: "Every system the company connected, and every system its agent\
+        \ reported pulling."
+      operationId: listConnections
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Connection"
+    post:
+      tags:
+      - Connections
+      summary: Connect a system
+      description: Settings that are not secrets only. Connecting a disconnected system
+        again reuses it.
+      operationId: connectSystem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionDetails"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+  /api/v1/connections/{id}/sync:
+    post:
+      tags:
+      - Connections
+      summary: Sync a system now
+      description: "A running agent pulls it at once, an agent on Airflow on its next\
+        \ hourly round."
+      operationId: syncConnection
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
   /api/v1/catalog/prices:
     get:
       tags:
@@ -1647,6 +1708,81 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemBody"
+  /api/v1/connections/{id}:
+    get:
+      tags:
+      - Connections
+      summary: Get a connected system
+      operationId: getConnection
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+    delete:
+      tags:
+      - Connections
+      summary: Disconnect a system
+      description: The agent stops pulling it; the history stays.
+      operationId: disconnectSystem
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/connections/{id}/runs:
+    get:
+      tags:
+      - Connections
+      summary: The last 20 pulls of a connected system
+      operationId: listConnectionRuns
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectionRun"
+  /api/v1/connections/types:
+    get:
+      tags:
+      - Connections
+      summary: Systems that can be connected
+      description: Each with the settings it needs and the secrets the agent must
+        have in its environment.
+      operationId: listConnectionTypes
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SystemType"
   /api/v1/catalog/prices/{skuId}/history:
     get:
       tags:
@@ -2881,6 +3017,70 @@ components:
           format: uuid
         name:
           type: string
+    ConnectionDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          maxLength: 120
+          minLength: 0
+        settings:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - name
+      - settings
+      - type
+    Connection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - connected
+          - failing
+          - sync_requested
+          - disconnected
+        enabled:
+          type: boolean
+        managedInCore:
+          type: boolean
+        settings:
+          type: object
+          additionalProperties:
+            type: string
+        lastSyncAt:
+          type: string
+          format: date-time
+        recordsLastSync:
+          type: integer
+          format: int32
+        recordsTotal:
+          type: integer
+          format: int64
+        lastError:
+          type: string
+        lastErrorAt:
+          type: string
+          format: date-time
+        syncRequestedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
     NewPrice:
       type: object
       properties:
@@ -3156,6 +3356,46 @@ components:
           type: string
         cost:
           type: number
+    ConnectionRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        records:
+          type: integer
+          format: int32
+        error:
+          type: string
+    SystemType:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        kind:
+          type: string
+        required:
+          type: array
+          items:
+            type: string
+        optional:
+          type: array
+          items:
+            type: string
+        secrets:
+          type: array
+          items:
+            type: string
     FxRate:
       type: object
       properties:

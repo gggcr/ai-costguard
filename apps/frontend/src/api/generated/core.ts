@@ -88,6 +88,38 @@ export type CompanySettings = {
   currency: string;
 };
 
+export type Connection = {
+  id?: string;  // uuid
+  type?: string;
+  name?: string;
+  status?: "pending" | "connected" | "failing" | "sync_requested" | "disconnected";
+  enabled?: boolean;
+  managedInCore?: boolean;
+  settings?: Record<string, string>;
+  lastSyncAt?: string;  // date-time
+  recordsLastSync?: number;
+  recordsTotal?: number;
+  lastError?: string;
+  lastErrorAt?: string;  // date-time
+  syncRequestedAt?: string;  // date-time
+  createdAt?: string;  // date-time
+};
+
+export type ConnectionDetails = {
+  type: string;
+  name: string;
+  settings: Record<string, string>;
+};
+
+export type ConnectionRun = {
+  id?: string;  // uuid
+  startedAt?: string;  // date-time
+  finishedAt?: string;  // date-time
+  status?: string;
+  records?: number;
+  error?: string;
+};
+
 export type Contract = {
   id?: string;  // uuid
   vendorId?: string;  // uuid
@@ -481,6 +513,15 @@ export type Summary = {
   findings?: Totals;
 };
 
+export type SystemType = {
+  type?: string;
+  title?: string;
+  kind?: string;
+  required?: Array<string>;
+  optional?: Array<string>;
+  secrets?: Array<string>;
+};
+
 export type Totals = {
   open?: number;
   expectedSavings?: number;
@@ -551,6 +592,13 @@ export const operations = {
   catalogHistory: { method: "GET", path: "/api/v1/catalog/prices/{skuId}/history" },
   organisationCompany: { method: "GET", path: "/api/v1/company" },
   organisationSaveCompany: { method: "PUT", path: "/api/v1/company" },
+  connectionsListConnections: { method: "GET", path: "/api/v1/connections" },
+  connectionsConnectSystem: { method: "POST", path: "/api/v1/connections" },
+  connectionsListConnectionTypes: { method: "GET", path: "/api/v1/connections/types" },
+  connectionsDisconnectSystem: { method: "DELETE", path: "/api/v1/connections/{id}" },
+  connectionsGetConnection: { method: "GET", path: "/api/v1/connections/{id}" },
+  connectionsListConnectionRuns: { method: "GET", path: "/api/v1/connections/{id}/runs" },
+  connectionsSyncConnection: { method: "POST", path: "/api/v1/connections/{id}/sync" },
   softwareContracts: { method: "GET", path: "/api/v1/contracts" },
   softwareCreateContract: { method: "POST", path: "/api/v1/contracts" },
   softwareUpdateContract: { method: "PUT", path: "/api/v1/contracts/{id}" },

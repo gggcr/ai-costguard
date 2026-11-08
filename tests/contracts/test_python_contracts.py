@@ -15,7 +15,7 @@ from samples import fits, samples
 from costguard_anomaly import detector, scorer
 from costguard_anomaly import service as anomaly
 from costguard_common import schemas
-from costguard_connectors import contract, entities
+from costguard_connectors import contract, control, entities
 from costguard_ingest import pipeline
 from costguard_ingest import service as ingest
 from costguard_notary import batches, notarize
@@ -30,7 +30,7 @@ TENANT = uuid.UUID("11111111-1111-1111-1111-111111111111")
 @pytest.mark.parametrize("topic", sorted({
     ingest.FILES, ingest.ACCEPTED, ingest.RESULTS, notary.RECEIPTS, notary.ANCHORS, notary.REQUESTS,
     notary.CONFIRMATIONS, anomaly.COSTS, anomaly.FINDINGS, anomaly.OPERATIONS, anomaly.SIGNALS, contract.COSTS,
-    "ingest.normalized.v1"}))
+    "ingest.normalized.v1", control.CONFIG, control.RUNS}))
 def test_every_topic_a_service_names_has_a_schema(topic):
     assert topic in schemas.topics()
 
@@ -124,3 +124,18 @@ def test_connector_messages_fit():
     batch.costs.append(entities.cost(TENANT, "test", "77", Decimal("12000"), "RUB", NOW.date(), "ООО Ландыш"))
     for m in contract.messages(TENANT, "test", batch, now=NOW):
         fits(m.topic, m.value)
+
+
+def test_the_connector_agent_takes_any_connection_of_the_core():
+    connections = samples(control.CONFIG)
+    for c in connections:
+        c["tenant_id"] = str(TENANT)
+    known = control.latest(connections, TENANT)
+    merged, ids = control.merge({"tenant_id": str(TENANT)}, known)
+    control.due(known, {})
+    assert set(ids) == set(known)
+
+
+def test_connector_run_reports_fit():
+    fits(control.RUNS, control.run_message(TENANT, "okta", uuid.uuid4(), NOW, NOW, 10, None).value)
+    fits(control.RUNS, control.run_message(TENANT, "onec", None, NOW, NOW, 0, "ConnectError: refused").value)

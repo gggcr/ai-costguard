@@ -61,6 +61,13 @@ def messages(tenant: uuid.UUID, connector: str, batch: Batch, now: datetime | No
 def run(connector: Connector, tenant: uuid.UUID, cursor: str | None,
         publish: Callable[[list[Message]], None]) -> str | None:
     """One pull. The new cursor is returned only after publish returned, so a failed publish repeats the pull."""
+    return run_counted(connector, tenant, cursor, publish)[0]
+
+
+def run_counted(connector: Connector, tenant: uuid.UUID, cursor: str | None,
+                publish: Callable[[list[Message]], None]) -> tuple[str | None, int]:
+    """One pull, with the number of messages it published, for the report of the run."""
     batch = connector.pull(tenant, cursor)
-    publish(messages(tenant, connector.name, batch))
-    return batch.cursor if batch.cursor is not None else cursor
+    out = messages(tenant, connector.name, batch)
+    publish(out)
+    return (batch.cursor if batch.cursor is not None else cursor), len(out)

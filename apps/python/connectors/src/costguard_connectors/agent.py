@@ -40,6 +40,12 @@ to Kafka. The config is a TOML file; secrets come from the environment, never fr
     intermediaries = ["7700000009", "ООО Агент"]
     services = { "тучкаcrm" = "ООО «Тучка Софт»" }
 
+Systems connected on the page of the core come from connectors.config.v1 and are merged over this file: their
+settings that are not secrets add to or replace a section, a system disconnected there is not pulled even if it
+is in the file. Secrets stay in the environment. Each pull is reported to connectors.runs.v1 (ADR 0019). A running
+agent checks every minute whether a person asked to sync a system now; with --once it simply pulls everything.
+from_core = false in the file keeps the agent on the file alone.
+
 Cursors are kept in the state file and written after each successful publish. With COSTGUARD_ENV_PREFIX=ROMASHKA_
 the variables ROMASHKA_ONEC_PASSWORD and so on take the place of the unprefixed ones.
 """
@@ -54,6 +60,7 @@ import time
 import tomllib
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -63,6 +70,7 @@ from costguard_connectors import (
     banks,
     bitrix24,
     contract,
+    control,
     entra,
     google_workspace,
     intune,
@@ -153,16 +161,102 @@ class State:
         tmp.replace(self._path)
 
 
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+class Reporter:
+    """Reports each pull to connectors.runs.v1. A report that cannot be sent is logged and does not fail the pull."""
+
+    def __init__(self, tenant: uuid.UUID, publish: Callable[[list[contract.Message]], None],
+                 env: dict[str, str] | None = None, ids: dict[str, uuid.UUID] | None = None) -> None:
+        self._tenant = tenant
+        self._publish = publish
+        self._env = env or {}
+        self.ids = ids or {}
+        self.started: dict[str, datetime] = {}
+
+    def __call__(self, kind: str, started: datetime, records: int, error: str | None) -> None:
+        self.started[kind] = started
+        if error is not None:
+            error = control.redact(error, self._env)
+        try:
+            self._publish([control.run_message(self._tenant, kind, self.ids.get(kind), started, _now(), records,
+                                               error)])
+        except Exception:
+            log.exception("The run of %s was not reported", kind)
+
+
 def once(connectors: list[contract.Connector], tenant: uuid.UUID, state: State,
-         publish: Callable[[list[contract.Message]], None]) -> dict[str, str]:
+         publish: Callable[[list[contract.Message]], None], report: Reporter | None = None) -> dict[str, str]:
     """Runs every connector; one failing does not stop the others. Returns the failures by connector."""
     failures: dict[str, str] = {}
     for c in connectors:
+        started = _now()
         try:
-            state.put(c.name, contract.run(c, tenant, state.get(c.name), publish))
+            cursor, records = contract.run_counted(c, tenant, state.get(c.name), publish)
+            state.put(c.name, cursor)
         except Exception as e:  # a connector's system is down or refuses us; the next round tries again
             log.exception("Connector %s failed", c.name)
             failures[c.name] = str(e)
+            if report is not None:
+                report(control.type_of(c), started, 0, f"{type(e).__name__}: {e}")
+        else:
+            if report is not None:
+                report(control.type_of(c), started, records, None)
+    return failures
+
+
+def build_each(config: dict, env: dict[str, str]) -> tuple[list[contract.Connector], dict[str, str]]:
+    """Like build, but a section that cannot be set up (a secret missing in the environment) does not stop the
+    others. Returns the connectors and why each broken section could not be set up."""
+    found: list[contract.Connector] = []
+    broken: dict[str, str] = {}
+    for section in SECTIONS:
+        if section in ("mail", "payments") or section not in config:
+            continue
+        try:
+            found.extend(build({section: config[section], "payments": config.get("payments", {})}, env))
+        except KeyError as e:
+            broken[section] = f"Missing setting or secret {e}"
+        except Exception as e:
+            broken[section] = f"Cannot set up: {type(e).__name__}: {e}"
+    return found, broken
+
+
+def mail_inbox(config: dict, env: dict[str, str]) -> mail.MailInvoices:
+    c = config["mail"]
+    return mail.MailInvoices(
+        mail.Imap(c["host"], c["user"], env["MAIL_PASSWORD"], c.get("folder", "INBOX")),
+        httpx.Client(base_url=env["CORE_URL"], headers={"Authorization": f"Bearer {env['CORE_TOKEN']}"},
+                     timeout=60),
+        int(c.get("min_image_kb", mail.MIN_IMAGE_KB)), int(c.get("min_image_side", mail.MIN_IMAGE_SIDE)))
+
+
+def round_(config: dict, env: dict[str, str], tenant: uuid.UUID, state: State,
+           publish: Callable[[list[contract.Message]], None], report: Reporter,
+           only: set[str] | None = None,
+           inbox: Callable[[dict, dict[str, str]], object] = mail_inbox) -> dict[str, str]:
+    """One round over the systems of the config, or over only some of them. Returns the failures."""
+    connectors, broken = build_each(config, env)
+    if only is not None:
+        connectors = [c for c in connectors if control.type_of(c) in only]
+        broken = {k: v for k, v in broken.items() if k in only}
+    failures = once(connectors, tenant, state, publish, report)
+    for kind, why in broken.items():
+        log.error("Connector %s: %s", kind, why)
+        report(kind, _now(), 0, why)
+        failures[kind] = why
+    if "mail" in config and (only is None or "mail" in only):
+        started = _now()
+        try:
+            uploaded = inbox(config, env).collect()
+            log.info("Mail: %d new files uploaded", uploaded)
+            report("mail", started, uploaded, None)
+        except Exception as e:  # the mailbox is down; the next round tries again
+            log.exception("Mail connector failed")
+            failures["mail"] = str(e)
+            report("mail", started, 0, f"{type(e).__name__}: {e}")
     return failures
 
 
@@ -201,30 +295,36 @@ def main(argv: list[str] | None = None) -> None:
     if prefix:  # Airflow runs one agent per tenant: ROMASHKA_ONEC_PASSWORD becomes ONEC_PASSWORD
         env.update({k.removeprefix(prefix): v for k, v in os.environ.items() if k.startswith(prefix)})
     tenant = uuid.UUID(config["tenant_id"])
-    connectors = build(config, env)
     state = State(Path(config.get("state_file", "connector-state.json")))
-    publish = kafka_publisher(env.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-                              env.get("SCHEMA_REGISTRY_URL", "http://localhost:8085"))
-    inbox = None
-    if "mail" in config:
-        c = config["mail"]
-        inbox = mail.MailInvoices(
-            mail.Imap(c["host"], c["user"], env["MAIL_PASSWORD"], c.get("folder", "INBOX")),
-            httpx.Client(base_url=env["CORE_URL"], headers={"Authorization": f"Bearer {env['CORE_TOKEN']}"},
-                         timeout=60),
-            int(c.get("min_image_kb", mail.MIN_IMAGE_KB)), int(c.get("min_image_side", mail.MIN_IMAGE_SIDE)))
-    while True:
-        failures = once(connectors, tenant, state, publish)
-        if inbox is not None:
-            try:
-                log.info("Mail: %d new files uploaded", inbox.collect())
-            except Exception:  # the mailbox is down; the next round tries again
-                log.exception("Mail connector failed")
-                failures["mail"] = "see log"
-        if args.once:
-            raise SystemExit(1 if failures else 0)
-        time.sleep(60 * int(config.get("interval_minutes", 60)))
+    bootstrap = env.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    registry = env.get("SCHEMA_REGISTRY_URL", "http://localhost:8085")
+    publish = kafka_publisher(bootstrap, registry)
+    report = Reporter(tenant, publish, env)
+    from_core = bool(config.get("from_core", True))
 
+    def connections() -> dict[str, dict]:
+        if not from_core:
+            return {}
+        try:
+            return control.read_config(bootstrap, registry, tenant)
+        except Exception:  # the core's list is out of reach; the file alone still works
+            log.exception("Cannot read %s; pulling what the file says", control.CONFIG)
+            return {}
+
+    interval = 60 * int(config.get("interval_minutes", 60))
+    next_full = 0.0
+    while True:
+        known = connections()
+        merged, report.ids = control.merge(config, known)
+        if args.once or time.monotonic() >= next_full:
+            failures = round_(merged, env, tenant, state, publish, report)
+            if args.once:
+                raise SystemExit(1 if failures else 0)
+            next_full = time.monotonic() + interval
+        elif due := control.due(known, report.started):
+            log.info("Sync asked for %s", ", ".join(sorted(due)))
+            round_(merged, env, tenant, state, publish, report, only=due)
+        time.sleep(60)
 
 if __name__ == "__main__":
     main()

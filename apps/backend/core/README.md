@@ -151,6 +151,14 @@ resolve uncertain values, and then `ImportAccepted` tells the pipeline to write 
   subscription and person are known and the subscription has a free seat; its activity only moves forward.
   Unmatched entities (`linked_id is null`) wait for people; there is no screen for them yet.
 
+## connections
+
+The page of connected systems (ADR 0019): `GET /api/v1/connections` lists each system with its status, last sync,
+records and last error; `POST` connects one, `DELETE /{id}` disconnects it, `POST /{id}/sync` asks the agent to pull
+it now, `GET /types` says which settings each type takes and which secrets the agent needs. Only settings that are
+not secrets are kept; changes need `owner` or `it_admin`. Every change goes to the compacted
+`connectors.config.v1`, and the agent's reports come back in `connectors.runs.v1`.
+
 ## analytics
 
 `GET /api/v1/analytics/summary` gives agent spend per month from the ledger and findings totals. Software costs
@@ -175,7 +183,7 @@ Not published yet: approval decisions (the board has no topic the gateway reads 
 
 `shared/inbox` reads `agent.operations.v1`: an allowed operation is charged to the ledger and gets a receipt, a
 held one opens an approval. It also reads `ingest.results.v1` (imports) and `ingest.normalized.v1`
-(`NormalizedEntities`). Offsets are committed after the handler, and every target is idempotent.
+(`NormalizedEntities`) and `connectors.runs.v1` (`ConnectorRuns`). Offsets are committed after the handler, and every target is idempotent.
 `journal.anchors.v1` is not read yet: it carries no tenant id, and the journal needs one for RLS.
 
 ## Tests

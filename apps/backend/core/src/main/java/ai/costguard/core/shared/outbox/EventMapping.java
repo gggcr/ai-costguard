@@ -6,6 +6,7 @@ import ai.costguard.core.approvals.ApprovalDecided;
 import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.core.catalog.CatalogPriceChanged;
+import ai.costguard.core.connections.ConnectionChanged;
 import ai.costguard.core.imports.ImportAccepted;
 import ai.costguard.core.imports.ImportFileUploaded;
 import ai.costguard.core.journal.ReceiptIssued;
@@ -21,6 +22,7 @@ import ai.costguard.events.AssetKind;
 import ai.costguard.events.AssetState;
 import ai.costguard.events.BudgetLimit;
 import ai.costguard.events.CatalogPrice;
+import ai.costguard.events.ConnectorConfig;
 import ai.costguard.events.CostRecord;
 import ai.costguard.events.CostSource;
 import ai.costguard.events.IngestAccepted;
@@ -113,6 +115,14 @@ final class EventMapping {
                 .setRequestId(id).setTenantId(e.tenantId()).setKind(NotaryRequestKind.OPERATION)
                 .setSubjectId(e.operationId()).setMandateVersion(null).setSubjectHash(e.operationHash())
                 .setApproverHash(e.approverHash()).setRequestedAt(e.approvedAt()).build());
+    }
+
+    /** Keyed by tenant and type: one connection per type, and compaction keeps the latest state of each. */
+    static Message of(ConnectionChanged e) {
+        return new Message("connectors.config.v1", e.tenantId() + ":" + e.type(), ConnectorConfig.newBuilder()
+                .setTenantId(e.tenantId()).setConnectionId(e.connectionId()).setType(e.type()).setName(e.name())
+                .setEnabled(e.enabled()).setSettings(new java.util.HashMap<>(e.settings()))
+                .setSyncRequestedAt(e.syncRequestedAt()).setUpdatedAt(e.updatedAt()).build());
     }
 
     static Message of(ImportFileUploaded e) {

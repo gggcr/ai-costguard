@@ -1,0 +1,64 @@
+{
+  "type": "record",
+  "name": "ConnectorConfig",
+  "namespace": "ai.costguard.events",
+  "doc": "A system a company connected in the core, for the connector agent. Compacted. Key: tenant_id:type.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "connection_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "type",
+      "type": "string",
+      "doc": "The section of the agent's config: onec, moysklad, bitrix24, yandex360, mail, jamf, intune, google_workspace, okta, entra, merge, tbank."
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "doc": "What people call it on the page."
+    },
+    {
+      "name": "enabled",
+      "type": "boolean",
+      "doc": "False once disconnected: the agent stops pulling it."
+    },
+    {
+      "name": "settings",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "doc": "Settings of the section that are not secrets (url, org_id, client_id...). Secrets stay in the agent's environment."
+    },
+    {
+      "name": "sync_requested_at",
+      "type": [
+        "null",
+        {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        }
+      ],
+      "default": null,
+      "doc": "A person asked to sync now: an agent that has not run the connector since runs it at once."
+    },
+    {
+      "name": "updated_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

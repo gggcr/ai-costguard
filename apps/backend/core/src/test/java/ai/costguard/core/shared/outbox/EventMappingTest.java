@@ -51,6 +51,10 @@ class EventMappingTest {
         encodes(EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, id, 2, "a".repeat(64), now)));
         encodes(EventMapping.of(new ai.costguard.core.approvals.LargeOperationApproved(tenant, id, id,
                 "b".repeat(64), "c".repeat(64), now)));
+        encodes(EventMapping.of(new ai.costguard.core.connections.ConnectionChanged(tenant, id, "okta", "Okta", true,
+                java.util.Map.of("url", "https://romashka.okta.example"), now, now)));
+        encodes(EventMapping.of(new ai.costguard.core.connections.ConnectionChanged(tenant, id, "onec", "1С", false,
+                java.util.Map.of(), null, now)));
     }
 
     /** The outbox may send an event twice; the notary must see the same request id both times. */

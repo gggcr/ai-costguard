@@ -1,0 +1,77 @@
+{
+  "type": "record",
+  "name": "ConnectorRun",
+  "namespace": "ai.costguard.events",
+  "doc": "One pull of one connector by the connector agent, whether it ran on Airflow, on a schedule or inside the client's network. Key: tenant_id:type.",
+  "fields": [
+    {
+      "name": "run_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "connection_id",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "logicalType": "uuid"
+        }
+      ],
+      "default": null,
+      "doc": "Set when the connector came from connectors.config.v1; null for one configured only in the agent's file."
+    },
+    {
+      "name": "type",
+      "type": "string"
+    },
+    {
+      "name": "started_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "finished_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "ConnectorRunStatus",
+        "symbols": [
+          "SUCCEEDED",
+          "FAILED"
+        ]
+      }
+    },
+    {
+      "name": "records",
+      "type": "int",
+      "doc": "Entities and cost records the pull published."
+    },
+    {
+      "name": "error",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Why it failed, for people. Never a secret."
+    }
+  ]
+}

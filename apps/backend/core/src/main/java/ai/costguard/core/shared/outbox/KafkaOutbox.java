@@ -6,6 +6,7 @@ import ai.costguard.core.approvals.ApprovalDecided;
 import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.core.catalog.CatalogPriceChanged;
+import ai.costguard.core.connections.ConnectionChanged;
 import ai.costguard.core.imports.ImportAccepted;
 import ai.costguard.core.imports.ImportFileUploaded;
 import ai.costguard.core.journal.ReceiptIssued;
@@ -64,6 +65,11 @@ class KafkaOutbox {
 
     @ApplicationModuleListener
     void on(LargeOperationApproved e) {
+        send(EventMapping.of(e));
+    }
+
+    @ApplicationModuleListener
+    void on(ConnectionChanged e) {
         send(EventMapping.of(e));
     }
 

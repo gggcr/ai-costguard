@@ -2,3 +2,6 @@
 *                   @gggcr
 /apps/backend/      @gggcr
 /schemas/           @gggcr
+# Frontend team. PLACEHOLDER: replace @frontend-owner-placeholder with the real GitHub login or team
+# (for example @org/frontend) before relying on this rule; GitHub ignores owners it cannot resolve.
+/apps/frontend/     @frontend-owner-placeholder

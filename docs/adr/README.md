@@ -23,3 +23,4 @@
 | [0016](0016-anomaly-risk-score.md) | Риск-оценка агента: правила, Isolation Forest и river, модели в MLflow | Принято |
 | [0017](0017-keda-mlflow.md) | KEDA для Kafka-воркеров и MLflow в Helm-чарте | Принято |
 | [0018](0018-kafka-contract-tests.md) | Контрактные тесты Kafka по schemas/avro | Принято |
+| [0019](0019-connected-systems.md) | Подключённые системы: список в ядре, команды и отчёты агента через Kafka | Принято |

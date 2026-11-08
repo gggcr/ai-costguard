@@ -36,6 +36,11 @@ Every connector implements `contract.Connector`: `pull(tenant, cursor) -> Batch`
 Airflow). Inside the client's network it only connects out, to Kafka. The config format and the environment
 variables for secrets are in `agent.py`.
 
+Systems connected on the core's page come from `connectors.config.v1` and are merged over the file; a system
+disconnected there is not pulled. Every pull is reported to `connectors.runs.v1`, with the secrets of the
+environment cut out of errors. A running agent pulls a system at once when a person asks to sync it; with `--once`
+it waits for the next round (`control.py`, ADR 0019).
+
 ## Not there yet
 
 - The connectors were tested against recorded API shapes (`httpx.MockTransport`), not against live 1C,

@@ -22,6 +22,8 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `approvals.decisions.v1` (compacted) | Core approvals | Agent gateway | operation_id |
 | `notary.requests.v1` | Core agents and approvals | NEAR notary | request_id |
 | `notary.confirmations.v1` | NEAR notary | Core agents and approvals | request_id |
+| `connectors.config.v1` (compacted) | Core connections | Connector agent | tenant_id:type |
+| `connectors.runs.v1` | Connector agent | Core connections | tenant_id:type |
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
 Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
@@ -47,6 +49,9 @@ the hash of every published mandate version and of every approved operation of a
 
 `ingest.results.v1` and `ingest.accepted.v1` are not on the board: the board draws the pipeline reporting columns,
 errors and unsure values back to people, and people releasing the rows, but no topic carries either step.
+
+`connectors.config.v1` and `connectors.runs.v1` are not on the board: the page of connected systems needs
+the core to tell the agent what to pull and the agent to tell the core how it went (ADR 0019).
 
 Every producer and consumer is checked against these files (ADR 0018): `TopicContractTest` of the core and the
 gateway, `EventMappingTest` for what the core publishes, and `tests/contracts` for the Python services, which also
