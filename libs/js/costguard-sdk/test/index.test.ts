@@ -78,3 +78,26 @@ test("provider url", () => {
   assert.equal(cg.providerUrl("openai"), "http://gw/v1/providers/openai");
   assert.throws(() => cg.providerUrl("mistral" as never));
 });
+
+test("the task goal travels percent-encoded and stays out of the body", async () => {
+  const { cg, calls } = gateway({ "/v1/spend/authorize": OK, "/v1/spend/settle": [200, {}] });
+  await cg.spend({ vendor: "Ozon", amount: 1290, taskGoal: "Картриджи для бухгалтерии, 2 шт." }, async () => {});
+  const header = calls[0].headers["X-CostGuard-Task-Goal"];
+  assert.match(header, /^[!-~]+$/);
+  assert.equal(decodeURIComponent(header), "Картриджи для бухгалтерии, 2 шт.");
+  assert.equal((calls[0].body as Record<string, unknown>).taskGoal, undefined);
+});
+
+test("without a goal no goal header is sent", async () => {
+  const { cg, calls } = gateway({ "/v1/spend/authorize": OK, "/v1/spend/settle": [200, {}] });
+  await cg.spend({ vendor: "Ozon", amount: 1290, taskGoal: "   " }, async () => {});
+  assert.equal("X-CostGuard-Task-Goal" in calls[0].headers, false);
+});
+
+test("headers for a provider client", () => {
+  assert.deepEqual(CostGuard.headers({ taskId: "t-1", taskGoal: "Отчёт по ИНН 7707083893" }), {
+    "X-CostGuard-Task": "t-1",
+    "X-CostGuard-Task-Goal": "%D0%9E%D1%82%D1%87%D1%91%D1%82%20%D0%BF%D0%BE%20%D0%98%D0%9D%D0%9D%207707083893",
+  });
+  assert.deepEqual(CostGuard.headers(), {});
+});

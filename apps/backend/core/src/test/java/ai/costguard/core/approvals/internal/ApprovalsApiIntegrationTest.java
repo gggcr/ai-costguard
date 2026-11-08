@@ -1,6 +1,8 @@
 package ai.costguard.core.approvals.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,6 +15,9 @@ import ai.costguard.core.PostgresTestSupport;
 import ai.costguard.core.approvals.ApprovalDecided;
 import ai.costguard.core.approvals.ApprovalEscalated;
 import ai.costguard.core.approvals.ApprovalRequests;
+import ai.costguard.core.approvals.LargeOperationApproved;
+import ai.costguard.core.approvals.OperationConfirmations;
+import ai.costguard.platform.errors.ApiException;
 import ai.costguard.core.shared.security.RealmRoles;
 import com.jayway.jsonpath.JsonPath;
 import java.math.BigDecimal;
@@ -39,7 +44,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@SpringBootTest(properties = "costguard.approvals.timer-delay=PT1H")
+@SpringBootTest(properties = {"costguard.approvals.timer-delay=PT1H", "costguard.notary.confirm-above=1000"})
 @AutoConfigureMockMvc
 @Import(ApprovalsApiIntegrationTest.Support.class)
 class ApprovalsApiIntegrationTest extends PostgresTestSupport {
@@ -71,6 +76,7 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
     static class Support {
         final List<ApprovalDecided> decided = new CopyOnWriteArrayList<>();
         final List<ApprovalEscalated> escalated = new CopyOnWriteArrayList<>();
+        final List<LargeOperationApproved> large = new CopyOnWriteArrayList<>();
 
         @Bean
         @Primary
@@ -87,6 +93,11 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
         void on(ApprovalEscalated event) {
             escalated.add(event);
         }
+
+        @EventListener
+        void on(LargeOperationApproved event) {
+            large.add(event);
+        }
     }
 
     @Autowired MockMvc mvc;
@@ -95,6 +106,7 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
     @Autowired ApprovalTimer timer;
     @Autowired MovableClock clock;
     @Autowired Support support;
+    @Autowired OperationConfirmations confirmations;
 
     private final UUID tenant = UUID.randomUUID();
 
@@ -256,5 +268,80 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
         mvc.perform(get("/api/v1/approvals/" + id).with(as(other, "a@x.ru", "owner"))).andExpect(status().isNotFound());
         mvc.perform(json(put("/api/v1/approvals/" + id + "/decision"), "{\"verdict\":\"approve\"}")
                 .with(as(other, "a@x.ru", "owner"))).andExpect(status().isNotFound());
+    }
+
+    private List<LargeOperationApproved> largeFor(UUID id) {
+        return support.large.stream().filter(e -> e.approvalId().equals(id)).toList();
+    }
+
+    private void approve(UUID id) throws Exception {
+        mvc.perform(json(put("/api/v1/approvals/" + id + "/decision"), "{\"verdict\":\"approve\"}").with(finance()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void aLargeApprovedOperationGoesToTheNotaryAsHashesOnly() throws Exception {
+        UUID operation = UUID.randomUUID();
+        UUID agent = UUID.randomUUID();
+        UUID id = requests.open(tenant, operation, agent, "Big call", new BigDecimal("1500"), "r");
+
+        approve(id);
+
+        assertThat(largeFor(id)).singleElement().satisfies(e -> {
+            assertThat(e.operationId()).isEqualTo(operation);
+            assertThat(e.operationHash())
+                    .isEqualTo(NotaryHashes.operation(tenant, operation, agent, new BigDecimal("1500"), id));
+            assertThat(e.approverHash()).isEqualTo(NotaryHashes.approver(tenant, id, "fin@x.ru"))
+                    .doesNotContain("fin@x.ru");
+        });
+        mvc.perform(get("/api/v1/approvals/" + id).with(finance()))
+                .andExpect(jsonPath("$.notaryHash").value(largeFor(id).getFirst().operationHash()))
+                .andExpect(jsonPath("$.nearTxHash").value(nullValue()));
+    }
+
+    @Test
+    void theThresholdIsInclusiveAndOnlyApprovalsCount() throws Exception {
+        UUID atThreshold = requests.open(tenant, UUID.randomUUID(), UUID.randomUUID(), "d", new BigDecimal("1000"), "r");
+        UUID below = requests.open(tenant, UUID.randomUUID(), UUID.randomUUID(), "d", new BigDecimal("999.99"), "r");
+        UUID rejected = request();
+        UUID expired = request();
+
+        approve(atThreshold);
+        approve(below);
+        mvc.perform(json(put("/api/v1/approvals/" + rejected + "/decision"), "{\"verdict\":\"reject\"}")
+                .with(finance())).andExpect(status().isOk());
+        clock.advance(Duration.ofHours(5));
+        timer.tick();
+
+        assertThat(largeFor(atThreshold)).hasSize(1);
+        assertThat(largeFor(below)).isEmpty();
+        assertThat(largeFor(rejected)).isEmpty();
+        assertThat(largeFor(expired)).isEmpty();
+        mvc.perform(get("/api/v1/approvals/" + below).with(finance())).andExpect(jsonPath("$.notaryHash").value(nullValue()));
+    }
+
+    @Test
+    void theNotaryTransactionIsShownOnTheApproval() throws Exception {
+        UUID id = request();
+        approve(id);
+        LargeOperationApproved e = largeFor(id).getFirst();
+
+        confirmations.confirmed(tenant, e.operationId(), e.operationHash(), "TX1", e.approvedAt());
+        confirmations.confirmed(tenant, e.operationId(), e.operationHash(), "TX-again", e.approvedAt());
+
+        mvc.perform(get("/api/v1/approvals/" + id).with(finance())).andExpect(jsonPath("$.nearTxHash").value("TX1"));
+    }
+
+    @Test
+    void aConfirmationOfAnotherHashOrTenantIsRefused() throws Exception {
+        UUID id = request();
+        approve(id);
+        LargeOperationApproved e = largeFor(id).getFirst();
+
+        assertThatThrownBy(() -> confirmations.confirmed(tenant, e.operationId(), "f".repeat(64), "TX", e.approvedAt()))
+                .isInstanceOf(ApiException.class).hasMessageContaining("did not compute");
+        assertThatThrownBy(() -> confirmations.confirmed(UUID.randomUUID(), e.operationId(), e.operationHash(), "TX",
+                e.approvedAt())).isInstanceOf(ApiException.class);
+        mvc.perform(get("/api/v1/approvals/" + id).with(finance())).andExpect(jsonPath("$.nearTxHash").value(nullValue()));
     }
 }

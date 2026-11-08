@@ -1,7 +1,9 @@
 package ai.costguard.core.agents;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -12,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.costguard.core.PostgresTestSupport;
 import ai.costguard.core.shared.security.RealmRoles;
+import ai.costguard.platform.errors.ApiException;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 import java.util.Map;
@@ -37,10 +40,21 @@ class AgentsApiIntegrationTest extends PostgresTestSupport {
     @TestConfiguration
     static class States {
         final List<AgentStateChanged> seen = new CopyOnWriteArrayList<>();
+        final List<MandatePublished> published = new CopyOnWriteArrayList<>();
 
         @EventListener
         void on(AgentStateChanged event) {
             seen.add(event);
+        }
+
+        @EventListener
+        void on(MandatePublished event) {
+            published.add(event);
+        }
+
+        List<MandatePublished> published(String mandateId) {
+            UUID id = UUID.fromString(mandateId);
+            return published.stream().filter(e -> e.mandateId().equals(id)).toList();
         }
 
         AgentStateChanged last(String agentId) {
@@ -52,6 +66,7 @@ class AgentsApiIntegrationTest extends PostgresTestSupport {
     @Autowired MockMvc mvc;
     @Autowired RealmRoles realmRoles;
     @Autowired States states;
+    @Autowired MandateNotarizations notarizations;
 
     private final UUID tenant = UUID.randomUUID();
     private final UUID owner = UUID.randomUUID();
@@ -308,6 +323,56 @@ class AgentsApiIntegrationTest extends PostgresTestSupport {
     void workdaysOnlyIsAccepted() throws Exception {
         mvc.perform(json(post("/api/v1/mandates"), mandateBody(UUID.randomUUID().toString(), "только рабочие дни"))
                 .with(admin())).andExpect(status().isCreated());
+    }
+
+    @Test
+    void everyPublishedVersionGoesToTheNotaryOnce() throws Exception {
+        String mandate = mandate();
+        mvc.perform(put("/api/v1/mandates/" + mandate + "/publication").with(admin()));
+        mvc.perform(put("/api/v1/mandates/" + mandate + "/publication").with(admin()));
+        mvc.perform(json(put("/api/v1/mandates/" + mandate), mandateBody(UUID.randomUUID().toString(), "круглосуточно"))
+                .with(admin()));
+        mvc.perform(get("/api/v1/mandates/" + mandate).with(admin()))
+                .andExpect(jsonPath("$.status").value("draft")).andExpect(jsonPath("$.mandateHash").isString());
+        mvc.perform(put("/api/v1/mandates/" + mandate + "/publication").with(admin()));
+
+        List<MandatePublished> sent = states.published(mandate);
+        assertThat(sent).extracting(MandatePublished::version).containsExactly(1, 2);
+        assertThat(sent).allSatisfy(e -> {
+            assertThat(e.tenantId()).isEqualTo(tenant);
+            assertThat(e.mandateHash()).matches("[0-9a-f]{64}");
+        });
+        assertThat(sent.get(0).mandateHash()).isNotEqualTo(sent.get(1).mandateHash());
+        mvc.perform(get("/api/v1/mandates/" + mandate).with(admin()))
+                .andExpect(jsonPath("$.version").value(2)).andExpect(jsonPath("$.mandateHash").value(sent.get(1).mandateHash()))
+                .andExpect(jsonPath("$.nearTxHash").value(nullValue()));
+    }
+
+    @Test
+    void theNotaryTransactionIsShownOnTheMandate() throws Exception {
+        String mandate = mandate();
+        mvc.perform(get("/api/v1/mandates/" + mandate).with(admin()))
+                .andExpect(jsonPath("$.mandateHash").value(nullValue()));
+        mvc.perform(put("/api/v1/mandates/" + mandate + "/publication").with(admin()));
+        MandatePublished v1 = states.published(mandate).getFirst();
+
+        notarizations.notarized(tenant, v1.mandateId(), 1, v1.mandateHash(), "TX1", v1.publishedAt());
+        notarizations.notarized(tenant, v1.mandateId(), 1, v1.mandateHash(), "TX-again", v1.publishedAt());
+
+        mvc.perform(get("/api/v1/mandates/" + mandate).with(admin())).andExpect(jsonPath("$.nearTxHash").value("TX1"));
+    }
+
+    @Test
+    void aHashTheCoreDidNotComputeIsRefused() throws Exception {
+        String mandate = mandate();
+        mvc.perform(put("/api/v1/mandates/" + mandate + "/publication").with(admin()));
+        UUID id = UUID.fromString(mandate);
+
+        assertThatThrownBy(() -> notarizations.notarized(tenant, id, 1, "f".repeat(64), "TX", java.time.Instant.now()))
+                .isInstanceOf(ApiException.class).hasMessageContaining("did not compute");
+        assertThatThrownBy(() -> notarizations.notarized(UUID.randomUUID(), id, 1, "f".repeat(64), "TX",
+                java.time.Instant.now())).isInstanceOf(ApiException.class);
+        mvc.perform(get("/api/v1/mandates/" + mandate).with(admin())).andExpect(jsonPath("$.nearTxHash").value(nullValue()));
     }
 
     @Test

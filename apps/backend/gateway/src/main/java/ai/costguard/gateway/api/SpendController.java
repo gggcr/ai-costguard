@@ -7,6 +7,7 @@ import ai.costguard.gateway.keys.AgentDirectory;
 import ai.costguard.gateway.ladder.Decisions;
 import ai.costguard.gateway.ladder.Operation;
 import ai.costguard.gateway.ladder.StepResult;
+import ai.costguard.gateway.ladder.TaskGoal;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.math.BigDecimal;
@@ -74,6 +75,9 @@ public class SpendController {
     public Mono<ResponseEntity<Object>> authorize(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Parameter(description = "Operation id, a UUID") @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Parameter(description = "The goal of the agent's task, percent-encoded UTF-8. Above the approval "
+                    + "threshold the AI assessor checks the operation against it; without it a person decides.")
+            @RequestHeader(value = TaskGoal.HEADER, required = false) String taskGoal,
             @RequestBody AuthorizeRequest request) {
         Optional<UUID> id = uuid(idempotencyKey);
         if (id.isEmpty()) {
@@ -85,6 +89,7 @@ public class SpendController {
         OperationKind kind = "llm_call".equalsIgnoreCase(request.kind()) ? OperationKind.LLM_CALL : OperationKind.PAID_API;
         Operation op = new Operation(id.get(), secret(authorization), request.taskId(), kind, request.vendor(),
                 request.product(), request.amount(), clock.instant());
+        op.taskGoal(TaskGoal.fromHeader(taskGoal));
         return decisions.decide(op).map(result -> switch (result) {
             case StepResult.Pass pass -> ResponseEntity.ok(
                     new Authorized(op.operationId().toString(), "authorized", op.estimatedCost()));

@@ -55,3 +55,18 @@ def test_seed_is_stable_and_names_the_demo_tenant():
     assert str(seed.TENANT) in first and "on conflict do nothing" in first
     users = json.loads((ROOT / "infra/keycloak/costguard-users-0.json").read_text("utf-8"))
     assert users["users"][0]["attributes"]["tenant_id"] == [str(seed.TENANT)]
+
+
+def test_the_demo_user_stays_local():
+    """infra/keycloak/costguard-users-0.json (demo / demo) is for the local compose stack only."""
+    demo = "costguard-users-0"
+    assert any(demo in p.name for p in (ROOT / "infra/keycloak").iterdir())
+    for path in (ROOT / "deploy").rglob("*"):
+        if path.is_file() and path.suffix in {".yaml", ".yml", ".tpl", ".tf", ".json", ".example"}:
+            text = path.read_text("utf-8")
+            assert demo not in text and "infra/keycloak" not in text, path
+    for dockerfile in (ROOT / "apps").rglob("Dockerfile*"):
+        text = dockerfile.read_text("utf-8")
+        assert "infra" not in text and "COPY . " not in text, dockerfile
+    compose = (ROOT / "infra/local/docker-compose.yml").read_text("utf-8")
+    assert "../keycloak:/opt/keycloak/data/import" in compose

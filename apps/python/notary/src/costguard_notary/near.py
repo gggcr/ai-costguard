@@ -85,6 +85,10 @@ def sign(signer: Signer, tx: bytes) -> tuple[bytes, str]:
     return tx + b"\0" + signer.key.sign(digest), b58encode(digest)
 
 
+class ContractRefused(RuntimeError):
+    """The contract refused the transaction. Sending it again would fail the same way."""
+
+
 class Rpc:
     def __init__(self, client: httpx.Client) -> None:
         """client carries base_url: the RPC endpoint, such as https://rpc.testnet.near.org."""
@@ -110,5 +114,7 @@ class Rpc:
                                         "wait_until": "FINAL"})
         failure = result.get("status", {}).get("Failure") if isinstance(result.get("status"), dict) else None
         if failure:
-            raise RuntimeError(f"NEAR transaction {tx_hash} failed: {failure}")
+            # A panic of the contract (a require! that failed) repeats on every retry; running out of gas does not.
+            error = ContractRefused if "Smart contract panicked" in json.dumps(failure) else RuntimeError
+            raise error(f"NEAR transaction {tx_hash} failed: {failure}")
         return tx_hash

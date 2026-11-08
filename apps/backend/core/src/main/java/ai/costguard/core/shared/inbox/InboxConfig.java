@@ -1,6 +1,8 @@
 package ai.costguard.core.shared.inbox;
 
+import ai.costguard.core.agents.MandateNotarizations;
 import ai.costguard.core.approvals.ApprovalRequests;
+import ai.costguard.core.approvals.OperationConfirmations;
 import ai.costguard.core.findings.FindingsIntake;
 import ai.costguard.core.imports.ImportResults;
 import ai.costguard.core.imports.NormalizedEntities;
@@ -9,6 +11,7 @@ import ai.costguard.core.ledger.OperationPosting;
 import ai.costguard.events.AgentOperation;
 import ai.costguard.events.Finding;
 import ai.costguard.events.JournalAnchor;
+import ai.costguard.events.NotaryConfirmation;
 import ai.costguard.events.IngestNormalized;
 import ai.costguard.events.IngestResult;
 import ai.costguard.events.wire.AvroWire;
@@ -30,7 +33,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Reads {@code agent.operations.v1}, {@code ingest.results.v1}, {@code ingest.normalized.v1},
- * {@code findings.v1} and {@code journal.anchors.v1}. The offset is committed only after the handler returns, so
+ * {@code findings.v1}, {@code journal.anchors.v1} and {@code notary.confirmations.v1}. The offset is committed only after the handler returns, so
  * a crash replays the message instead of losing it.
  */
 @Configuration(proxyBeanMethods = false)
@@ -75,6 +78,11 @@ class InboxConfig {
         return new AnchorInbox(receipts);
     }
 
+    @Bean
+    NotaryInbox notaryInbox(MandateNotarizations mandates, OperationConfirmations operations) {
+        return new NotaryInbox(mandates, operations);
+    }
+
     @Component
     @ConditionalOnProperty(name = "costguard.events.kafka.enabled", havingValue = "true", matchIfMissing = true)
     static class Listener {
@@ -84,16 +92,18 @@ class InboxConfig {
         private final NormalizedInbox normalized;
         private final FindingInbox findings;
         private final AnchorInbox anchors;
+        private final NotaryInbox notary;
         private final SchemaRegistryClient registry;
 
         Listener(OperationInbox inbox, ImportResultInbox imports, NormalizedInbox normalized, FindingInbox findings,
-                AnchorInbox anchors,
+                AnchorInbox anchors, NotaryInbox notary,
                 @Value("${costguard.events.schema-registry-url:http://localhost:8085}") URI registry) {
             this.inbox = inbox;
             this.imports = imports;
             this.normalized = normalized;
             this.findings = findings;
             this.anchors = anchors;
+            this.notary = notary;
             this.registry = new SchemaRegistryClient(registry);
         }
 
@@ -123,6 +133,12 @@ class InboxConfig {
         @KafkaListener(topics = "journal.anchors.v1", groupId = "core-journal", containerFactory = "inboxListenerFactory")
         void onAnchor(ConsumerRecord<String, byte[]> record) {
             anchors.handle(AvroWire.decode(record.value(), registry, JournalAnchor.class));
+        }
+
+        @KafkaListener(topics = "notary.confirmations.v1", groupId = "core-notary",
+                containerFactory = "inboxListenerFactory")
+        void onNotary(ConsumerRecord<String, byte[]> record) {
+            notary.handle(AvroWire.decode(record.value(), registry, NotaryConfirmation.class));
         }
     }
 }

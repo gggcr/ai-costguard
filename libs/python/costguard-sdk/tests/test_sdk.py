@@ -1,4 +1,5 @@
 import json
+import urllib.parse
 
 import httpx
 import pytest
@@ -88,3 +89,27 @@ def test_provider_url():
     assert cg.provider_url("openai") == "http://gw/v1/providers/openai"
     with pytest.raises(ValueError):
         cg.provider_url("mistral")
+
+
+def test_the_task_goal_travels_percent_encoded():
+    cg, calls = gateway({"/v1/spend/authorize": OK, "/v1/spend/settle": (200, {})})
+    with cg.spend("Ozon", 1290, task_id="t-1", task_goal="Картриджи для бухгалтерии, 2 шт."):
+        pass
+    _, _, body, headers = calls[0]
+    assert headers["x-costguard-task-goal"].isascii()
+    assert urllib.parse.unquote(headers["x-costguard-task-goal"]) == "Картриджи для бухгалтерии, 2 шт."
+    assert "taskGoal" not in body
+
+
+def test_without_a_goal_no_goal_header_is_sent():
+    cg, calls = gateway({"/v1/spend/authorize": OK, "/v1/spend/settle": (200, {})})
+    with cg.spend("Ozon", 1290, task_goal="   "):
+        pass
+    assert "x-costguard-task-goal" not in calls[0][3]
+
+
+def test_headers_for_a_provider_client():
+    assert CostGuard.headers(task_id="t-1", task_goal="Отчёт по ИНН 7707083893") == {
+        "X-CostGuard-Task": "t-1",
+        "X-CostGuard-Task-Goal": "%D0%9E%D1%82%D1%87%D1%91%D1%82%20%D0%BF%D0%BE%20%D0%98%D0%9D%D0%9D%207707083893"}
+    assert CostGuard.headers() == {}

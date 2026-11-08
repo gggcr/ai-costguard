@@ -20,6 +20,8 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `findings.v1` | Audit engine | Core findings and notifications | finding fingerprint |
 | `assets.assignments.v1` | Core assets | Audit engine | asset_id |
 | `approvals.decisions.v1` (compacted) | Core approvals | Agent gateway | operation_id |
+| `notary.requests.v1` | Core agents and approvals | NEAR notary | request_id |
+| `notary.confirmations.v1` | NEAR notary | Core agents and approvals | request_id |
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
 Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
@@ -37,6 +39,11 @@ would keep one tenant's price and drop the others.
 The core publishes its topics from the Spring Modulith outbox (`ai.costguard.core.shared.outbox`): an event
 is stored in the same transaction as the change and sent after commit, again until Kafka takes it. Messages
 use the Schema Registry wire format: byte 0, a 4-byte schema id, then Avro binary.
+
+`notary.requests.v1` and `notary.confirmations.v1` are not on the board either. The core asks the notary to write
+the hash of every published mandate version and of every approved operation of at least
+`COSTGUARD_NOTARY_CONFIRM_ABOVE`; the notary answers with the NEAR transaction. Only hashes reach the contract, see
+[ADR 0009](../../docs/adr/0009-notary-mandates-confirmations.md).
 
 `ingest.results.v1` and `ingest.accepted.v1` are not on the board: the board draws the pipeline reporting columns,
 errors and unsure values back to people, and people releasing the rows, but no topic carries either step.

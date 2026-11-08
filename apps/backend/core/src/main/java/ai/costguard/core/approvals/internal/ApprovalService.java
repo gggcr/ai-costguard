@@ -4,6 +4,7 @@ import ai.costguard.core.agents.AgentOwners;
 import ai.costguard.core.approvals.ApprovalDecided;
 import ai.costguard.core.approvals.ApprovalEscalated;
 import ai.costguard.core.approvals.ApprovalRequests;
+import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
@@ -28,10 +29,12 @@ class ApprovalService implements ApprovalRequests {
     private final EmployeeDirectory directory;
     private final AgentOwners owners;
     private final Duration ttl;
+    private final BigDecimal confirmAbove;
 
     ApprovalService(ApprovalRepository approvals, TenantSession session, Clock clock,
             ApplicationEventPublisher events, EmployeeDirectory directory, AgentOwners owners,
-            @Value("${costguard.approvals.ttl:PT4H}") Duration ttl) {
+            @Value("${costguard.approvals.ttl:PT4H}") Duration ttl,
+            @Value("${costguard.notary.confirm-above:100000}") BigDecimal confirmAbove) {
         this.approvals = approvals;
         this.session = session;
         this.clock = clock;
@@ -39,6 +42,7 @@ class ApprovalService implements ApprovalRequests {
         this.directory = directory;
         this.owners = owners;
         this.ttl = ttl;
+        this.confirmAbove = confirmAbove;
     }
 
     @Override
@@ -96,7 +100,19 @@ class ApprovalService implements ApprovalRequests {
         approvals.removeTimer(approval.id());
         events.publishEvent(new ApprovalDecided(tenantId, approval.id(), approval.operationId(), approval.agentId(),
                 status.name(), approval.amount(), clock.instant()));
+        if (status == ApprovalStatus.approved && approval.amount().compareTo(confirmAbove) >= 0) {
+            requestConfirmation(tenantId, approval, by);
+        }
         return approvals.find(approval.id()).orElseThrow();
+    }
+
+    /** A large approved operation goes to the NEAR notary as hashes only (ADR 0009). */
+    private void requestConfirmation(UUID tenantId, Approval approval, String by) {
+        String operationHash = NotaryHashes.operation(tenantId, approval.operationId(), approval.agentId(),
+                approval.amount(), approval.id());
+        approvals.setNotaryHash(approval.id(), operationHash);
+        events.publishEvent(new LargeOperationApproved(tenantId, approval.id(), approval.operationId(), operationHash,
+                NotaryHashes.approver(tenantId, approval.id(), by), clock.instant()));
     }
 
     @Transactional(readOnly = true)

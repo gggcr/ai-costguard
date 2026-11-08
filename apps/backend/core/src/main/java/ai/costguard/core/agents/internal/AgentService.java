@@ -1,6 +1,7 @@
 package ai.costguard.core.agents.internal;
 
 import ai.costguard.core.agents.AgentStateChanged;
+import ai.costguard.core.agents.MandatePublished;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
@@ -181,7 +182,10 @@ class AgentService {
         return mandate(id);
     }
 
-    /** Publishing an already published mandate changes nothing. */
+    /**
+     * Publishing an already published mandate changes nothing. A new version also goes to the NEAR notary as a
+     * hash of its terms (ADR 0009).
+     */
     @Transactional
     Mandate publishMandate(UUID tenantId, UUID id) {
         session.bind(tenantId);
@@ -189,8 +193,13 @@ class AgentService {
         if (current.status() == MandateStatus.published) {
             return current;
         }
-        agents.publishMandate(id, MandateExpression.of(current), current.approvalThreshold(), clock.instant());
+        String expression = MandateExpression.of(current);
+        agents.publishMandate(id, expression, current.approvalThreshold(), clock.instant());
         agents.agentsOfMandate(id).forEach(agent -> publish(tenantId, agent));
+        int version = current.version() + 1;
+        String hash = MandateHash.of(tenantId, id, version, current.approvalThreshold(), expression);
+        agents.insertNotarization(tenantId, id, version, hash, clock.instant());
+        events.publishEvent(new MandatePublished(tenantId, id, version, hash, clock.instant()));
         return mandate(id);
     }
 

@@ -163,6 +163,11 @@ budget limits, receipts, uploaded files, charged operations as cost records, and
 outbox entry stored with the change and retried until Kafka takes the message; `KafkaOutbox` documents this.
 `CORE_EVENTS_KAFKA_ENABLED=false` keeps events inside the core.
 
+`notary.requests.v1` asks the NEAR notary to write a hash: agents send every published mandate version, approvals
+every approved operation of at least `COSTGUARD_NOTARY_CONFIRM_ABOVE` (100 000 by default). The notary answers in
+`notary.confirmations.v1`, which `shared/inbox` hands back to agents (`MandateNotarizations`) and approvals
+(`OperationConfirmations`); a hash that is not the core's own is refused. See ADR 0009.
+
 Not published yet: approval decisions (the board has no topic the gateway reads them from) and accepted imports
 (none for the pipeline either). The core does not consume any topic yet.
 

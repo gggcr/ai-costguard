@@ -2241,6 +2241,10 @@ components:
         updatedAt:
           type: string
           format: date-time
+        mandateHash:
+          type: string
+        nearTxHash:
+          type: string
     Activity:
       type: object
       properties:
@@ -2600,6 +2604,10 @@ components:
         decidedBy:
           type: string
         comment:
+          type: string
+        notaryHash:
+          type: string
+        nearTxHash:
           type: string
     AgentDetails:
       type: object

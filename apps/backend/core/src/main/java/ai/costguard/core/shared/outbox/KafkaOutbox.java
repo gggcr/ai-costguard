@@ -1,7 +1,9 @@
 package ai.costguard.core.shared.outbox;
 
 import ai.costguard.core.agents.AgentStateChanged;
+import ai.costguard.core.agents.MandatePublished;
 import ai.costguard.core.approvals.ApprovalDecided;
+import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.core.catalog.CatalogPriceChanged;
 import ai.costguard.core.imports.ImportAccepted;
@@ -52,6 +54,16 @@ class KafkaOutbox {
 
     @ApplicationModuleListener
     void on(ApprovalDecided e) {
+        send(EventMapping.of(e));
+    }
+
+    @ApplicationModuleListener
+    void on(MandatePublished e) {
+        send(EventMapping.of(e));
+    }
+
+    @ApplicationModuleListener
+    void on(LargeOperationApproved e) {
         send(EventMapping.of(e));
     }
 

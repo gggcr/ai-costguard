@@ -21,7 +21,8 @@ class MandateExpressionTest {
     private static boolean allows(String kind, String hours, String model, String vendor, double cost, String time,
             long weekday) {
         Mandate mandate = new Mandate(UUID.randomUUID(), "m", List.of("gpt-5", "a\"b"), List.of("OpenAI, Inc"),
-                new BigDecimal("500"), BigDecimal.ONE, hours, MandateStatus.published, 1, Instant.EPOCH);
+                new BigDecimal("500"), BigDecimal.ONE, hours, MandateStatus.published, 1, Instant.EPOCH,
+                null, null);
         return OperationRules.compile(MandateExpression.of(mandate))
                 .matches(new OperationFacts("a", kind, vendor, model, cost, time, weekday));
     }

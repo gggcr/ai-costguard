@@ -1,7 +1,9 @@
 package ai.costguard.core.shared.outbox;
 
 import ai.costguard.core.agents.AgentStateChanged;
+import ai.costguard.core.agents.MandatePublished;
 import ai.costguard.core.approvals.ApprovalDecided;
+import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.core.catalog.CatalogPriceChanged;
 import ai.costguard.core.imports.ImportAccepted;
@@ -24,6 +26,8 @@ import ai.costguard.events.CostSource;
 import ai.costguard.events.IngestAccepted;
 import ai.costguard.events.IngestFile;
 import ai.costguard.events.JournalReceipt;
+import ai.costguard.events.NotaryRequest;
+import ai.costguard.events.NotaryRequestKind;
 import ai.costguard.events.PolicyEffect;
 import ai.costguard.events.PolicyRule;
 import ai.costguard.events.PolicySnapshot;
@@ -92,6 +96,23 @@ final class EventMapping {
                 .setReceiptId(e.receiptId()).setTenantId(e.tenantId()).setOperationId(e.operationId())
                 .setHash(e.hash()).setPreviousHash(e.previousHash()).setSignature(e.signature())
                 .setSigningKeyId(e.signingKeyId()).setIssuedAt(e.issuedAt()).build());
+    }
+
+    /** The request id is derived from the version, so the outbox sending it again sends the same request. */
+    static Message of(MandatePublished e) {
+        UUID id = UUID.nameUUIDFromBytes(("notary:mandate:" + e.mandateId() + ":" + e.version()).getBytes());
+        return new Message("notary.requests.v1", id.toString(), NotaryRequest.newBuilder()
+                .setRequestId(id).setTenantId(e.tenantId()).setKind(NotaryRequestKind.MANDATE)
+                .setSubjectId(e.mandateId()).setMandateVersion(e.version()).setSubjectHash(e.mandateHash())
+                .setApproverHash(null).setRequestedAt(e.publishedAt()).build());
+    }
+
+    static Message of(LargeOperationApproved e) {
+        UUID id = UUID.nameUUIDFromBytes(("notary:operation:" + e.operationId()).getBytes());
+        return new Message("notary.requests.v1", id.toString(), NotaryRequest.newBuilder()
+                .setRequestId(id).setTenantId(e.tenantId()).setKind(NotaryRequestKind.OPERATION)
+                .setSubjectId(e.operationId()).setMandateVersion(null).setSubjectHash(e.operationHash())
+                .setApproverHash(e.approverHash()).setRequestedAt(e.approvedAt()).build());
     }
 
     static Message of(ImportFileUploaded e) {

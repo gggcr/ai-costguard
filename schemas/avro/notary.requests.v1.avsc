@@ -1,0 +1,73 @@
+{
+  "type": "record",
+  "name": "NotaryRequest",
+  "namespace": "ai.costguard.events",
+  "doc": "A hash the NEAR notary must write to the contract: a published mandate version or a large operation a person approved. Key: request_id.",
+  "fields": [
+    {
+      "name": "request_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      },
+      "doc": "Derived from the subject, so a request sent again has the same id."
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      },
+      "doc": "For the confirmation back to the core. It never goes to the contract."
+    },
+    {
+      "name": "kind",
+      "type": {
+        "type": "enum",
+        "name": "NotaryRequestKind",
+        "symbols": [
+          "MANDATE",
+          "OPERATION"
+        ]
+      }
+    },
+    {
+      "name": "subject_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      },
+      "doc": "The mandate id for MANDATE, the operation id for OPERATION."
+    },
+    {
+      "name": "mandate_version",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null,
+      "doc": "The published version, for MANDATE only."
+    },
+    {
+      "name": "subject_hash",
+      "type": "string",
+      "doc": "sha256 hex of the canonical mandate or operation; the forms are in docs/adr/0009."
+    },
+    {
+      "name": "approver_hash",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "sha256 hex of the canonical approver, for OPERATION only. Never a name or an email."
+    },
+    {
+      "name": "requested_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

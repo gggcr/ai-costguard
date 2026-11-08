@@ -3,7 +3,8 @@
  *
  * ```ts
  * const cg = new CostGuard({ apiKey: "cg_live_...", baseUrl: "https://gateway.example.ru" });
- * const total = await cg.spend({ vendor: "Ozon", amount: 1290, product: "Картридж" }, async (op) => {
+ * const total = await cg.spend({ vendor: "Ozon", amount: 1290, product: "Картридж",
+ *   taskGoal: "Картриджи для принтеров бухгалтерии" }, async (op) => {
  *   const order = await buy();       // runs only if the gateway allowed the amount
  *   return order.total;              // settled as the real amount; nothing returned settles the reserve
  * });
@@ -12,11 +13,17 @@
  * An error thrown by the callback releases the reserve and is thrown again. A refusal throws `Refused`; an
  * operation held for a person throws `ApprovalRequired`, and `waitForApproval(e.approvalId)` waits for the
  * decision; after "approved", spending again with the same `operationId` goes through.
+ *
+ * `taskGoal` is the goal of the agent's task. Above the approval threshold of the mandate the gateway's AI assessor
+ * checks the operation against it and lets it pass without a person when it clearly fits; without a goal a person
+ * always decides. For a provider's own client, pass `CostGuard.headers({ taskId, taskGoal })` as default headers.
  */
 
 export const PROVIDERS = ["openai", "anthropic", "gigachat", "yandex"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 export type ApprovalState = "pending" | "approved" | "rejected" | "expired";
+export const TASK_HEADER = "X-CostGuard-Task";
+export const GOAL_HEADER = "X-CostGuard-Task-Goal";
 
 export class CostGuardError extends Error {
   readonly status: number;
@@ -46,6 +53,8 @@ export interface SpendRequest {
   amount: number;
   product?: string;
   taskId?: string;
+  /** The goal of the task, for the AI assessor. Sent percent-encoded in X-CostGuard-Task-Goal. */
+  taskGoal?: string;
   kind?: "paid_api" | "llm_call";
   /** The operation id; reuse it to retry an operation after an approval. A new UUID when absent. */
   operationId?: string;
@@ -102,6 +111,22 @@ export class CostGuard {
     throw new Refused(response.status, type, error.message ?? "");
   }
 
+  /**
+   * Headers that tell the gateway the task and its goal. A header carries only ASCII, so the goal is
+   * percent-encoded UTF-8; the gateway decodes it.
+   */
+  static headers({ taskId, taskGoal }: { taskId?: string; taskGoal?: string } = {}): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (taskId) {
+      out[TASK_HEADER] = taskId;
+    }
+    const goal = taskGoal?.trim();
+    if (goal) {
+      out[GOAL_HEADER] = encodeURIComponent(goal);
+    }
+    return out;
+  }
+
   /** Runs the check ladder and reserves the amount. */
   async authorize(request: SpendRequest): Promise<Authorization> {
     const operationId = request.operationId ?? crypto.randomUUID();
@@ -111,7 +136,7 @@ export class CostGuard {
       product: request.product ?? null,
       taskId: request.taskId ?? null,
       kind: request.kind ?? "paid_api",
-    }, { "Idempotency-Key": operationId });
+    }, { "Idempotency-Key": operationId, ...CostGuard.headers({ taskGoal: request.taskGoal }) });
     return { authorizationId: body.authorizationId ?? operationId, reserved: body.reserved ?? request.amount };
   }
 

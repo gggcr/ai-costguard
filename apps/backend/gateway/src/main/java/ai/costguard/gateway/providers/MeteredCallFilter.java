@@ -2,9 +2,13 @@ package ai.costguard.gateway.providers;
 
 import ai.costguard.events.OperationKind;
 import ai.costguard.gateway.budget.BudgetReserve;
+import ai.costguard.gateway.egress.EgressPricing;
+import ai.costguard.gateway.egress.EgressProperties;
+import ai.costguard.gateway.egress.EgressRoutes;
 import ai.costguard.gateway.ladder.Decisions;
 import ai.costguard.gateway.ladder.Operation;
 import ai.costguard.gateway.ladder.StepResult;
+import ai.costguard.gateway.ladder.TaskGoal;
 import ai.costguard.gateway.metering.CostEstimator;
 import ai.costguard.gateway.metering.TokenCounter;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,7 +46,7 @@ import reactor.core.publisher.Mono;
 /**
  * Checks, reserves and settles every proxied call (board frame 2). Before the call: count input tokens, cap
  * {@code max_tokens}, run the ladder. After it: read the usage from the response, settle, record. A provider error
- * gives the reserve back. If the response carries no usage, the reserved amount is charged: it is the most the call
+ * gives the reserve back and is recorded as denied with {@code upstream_error}. If the response carries no usage, the reserved amount is charged: it is the most the call
  * could cost.
  */
 @Component
@@ -52,6 +56,8 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
     private static final int MAX_CAPTURE = 4 * 1024 * 1024;
 
     private final ProviderProperties properties;
+    private final EgressProperties egress;
+    private final EgressPricing egressPricing;
     private final ProviderCredentials credentials;
     private final Decisions decisions;
     private final BudgetReserve reserve;
@@ -59,9 +65,12 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
     private final CostEstimator estimator;
     private final Clock clock;
 
-    MeteredCallFilter(ProviderProperties properties, ProviderCredentials credentials, Decisions decisions,
-            BudgetReserve reserve, TokenCounter tokens, CostEstimator estimator, Clock clock) {
+    MeteredCallFilter(ProviderProperties properties, EgressProperties egress, EgressPricing egressPricing,
+            ProviderCredentials credentials, Decisions decisions, BudgetReserve reserve, TokenCounter tokens,
+            CostEstimator estimator, Clock clock) {
         this.properties = properties;
+        this.egress = egress;
+        this.egressPricing = egressPricing;
         this.credentials = credentials;
         this.decisions = decisions;
         this.reserve = reserve;
@@ -86,7 +95,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
         Object provider = route.getMetadata().get(ProviderRoutes.PROVIDER);
-        Object egress = route.getMetadata().get(ProviderRoutes.EGRESS);
+        Object egress = route.getMetadata().get(EgressRoutes.EGRESS);
         if (provider == null && egress == null) {
             return chain.filter(exchange);
         }
@@ -148,6 +157,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                 .getFirst("X-CostGuard-Task"), OperationKind.LLM_CALL, p.vendor(), model, BigDecimal.ZERO,
                 clock.instant());
         op.tokens(input, maxOutput);
+        op.taskGoal(TaskGoal.fromHeader(exchange.getRequest().getHeaders().getFirst(TaskGoal.HEADER)));
         return estimateThenDecide(op, exchange, () -> estimator.llm(op.tenantId(), p.vendor(), model, input, maxOutput,
                 today()))
                 .flatMap(passed -> {
@@ -162,17 +172,21 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                 });
     }
 
+    /**
+     * A paid API (ADR 0010): one call costs the price of its endpoint, reserved before the call and charged after it.
+     * The product of the endpoint goes to {@code agent.operations.v1} as the model.
+     */
     private Mono<Void> paid(ServerWebExchange exchange, GatewayFilterChain chain, UUID id, String name, byte[] body) {
-        ProviderProperties.Egress e = properties.egress().get(name);
-        Operation op = new Operation(id, secret(exchange.getRequest()), exchange.getRequest().getHeaders()
-                .getFirst("X-CostGuard-Task"), OperationKind.PAID_API, e.vendor(), null, BigDecimal.ZERO, clock.instant());
-        return estimateThenDecide(op, exchange, () -> estimator.request(op.tenantId(), e.vendor(), null, today()))
+        ServerHttpRequest request = exchange.getRequest();
+        EgressProperties.Route route = egress.route(name).orElseThrow();
+        EgressPricing.Endpoint endpoint = egressPricing.endpoint(name, request.getMethod().name(),
+                EgressRoutes.apiPath(name, request.getPath().value())).orElseThrow();
+        Operation op = new Operation(id, secret(request), request.getHeaders().getFirst("X-CostGuard-Task"),
+                OperationKind.PAID_API, endpoint.vendor(), endpoint.product(), BigDecimal.ZERO, clock.instant());
+        op.taskGoal(TaskGoal.fromHeader(request.getHeaders().getFirst(TaskGoal.HEADER)));
+        return estimateThenDecide(op, exchange, () -> egressPricing.price(op.tenantId(), endpoint, today()))
                 .flatMap(passed -> !passed ? Mono.empty() : forward(exchange, chain, op, body, headers -> {
-                    headers.remove(HttpHeaders.AUTHORIZATION);
-                    headers.remove("x-api-key");
-                    if (e.header() != null) {
-                        headers.set(e.header(), e.value());
-                    }
+                    EgressRoutes.credentials(route, headers);
                     return Mono.empty();
                 }, response -> Mono.just(op.estimatedCost())));
     }
@@ -262,6 +276,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
         headers.addAll(exchange.getRequest().getHeaders());
         headers.remove("Idempotency-Key");
         headers.remove("X-CostGuard-Task");
+        headers.remove(TaskGoal.HEADER);
         headers.setContentLength(body.length);
         return auth.apply(headers).then(Mono.defer(() -> {
             ServerHttpRequest request = new ServerHttpRequestDecorator(exchange.getRequest()) {
@@ -315,11 +330,13 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                     .then(Mono.defer(this::finish));
         }
 
+        /** The API failed: the reserve goes back, nothing is charged, and the failure is recorded (ADR 0010). */
         Mono<Void> fail() {
             if (!done.compareAndSet(false, true)) {
                 return Mono.empty();
             }
-            return reserve.release(op.tenantId(), op.operationId().toString()).onErrorReturn(false).then();
+            return reserve.release(op.tenantId(), op.operationId().toString()).onErrorReturn(false)
+                    .doOnNext(released -> decisions.failed(op, "upstream_error")).then();
         }
 
         private Mono<Void> finish() {

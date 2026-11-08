@@ -37,8 +37,14 @@ record VirtualKey(UUID id, UUID agentId, String prefix, Instant createdAt, KeySt
 record IssuedKey(VirtualKey key, String secret) {
 }
 
+/**
+ * {@code mandateHash} and {@code nearTxHash} belong to the published version: the hash registered in NEAR (ADR 0009)
+ * and the transaction that registered it. Both are null before the first publication; the transaction is null
+ * until the notary reports it.
+ */
 record Mandate(UUID id, String name, List<String> models, List<String> vendors, BigDecimal maxPerOperation,
-        BigDecimal approvalThreshold, String hours, MandateStatus status, int version, Instant updatedAt) {
+        BigDecimal approvalThreshold, String hours, MandateStatus status, int version, Instant updatedAt,
+        String mandateHash, String nearTxHash) {
 }
 
 record MandateDetails(

@@ -11,7 +11,8 @@ enum AgentProblem implements ProblemCode {
     MANDATE_NOT_FOUND(HttpStatus.NOT_FOUND, "Mandate not found"),
     MANDATE_NAME_TAKEN(HttpStatus.CONFLICT, "A mandate with this name exists"),
     MANDATE_IN_USE(HttpStatus.CONFLICT, "Agents still use this mandate"),
-    THRESHOLD_ABOVE_LIMIT(HttpStatus.BAD_REQUEST, "The approval threshold cannot be above the operation limit");
+    THRESHOLD_ABOVE_LIMIT(HttpStatus.BAD_REQUEST, "The approval threshold cannot be above the operation limit"),
+    NOTARY_HASH_MISMATCH(HttpStatus.CONFLICT, "The notary registered a hash the core did not compute");
 
     private final HttpStatus status;
     private final String detail;

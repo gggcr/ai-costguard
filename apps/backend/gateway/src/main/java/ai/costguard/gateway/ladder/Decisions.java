@@ -53,6 +53,16 @@ public class Decisions {
         }
     }
 
+    /**
+     * Called when the provider or the paid API failed after the operation passed: nothing is charged, so the
+     * operation is recorded as denied with this code and an actual cost of zero (ADR 0010).
+     */
+    public void failed(Operation op, String code) {
+        if (op.agent() != null) {
+            log.record(event(op, OperationDecision.DENIED, code, BigDecimal.ZERO));
+        }
+    }
+
     /** Called once the actual cost is known. */
     public void allowed(Operation op, BigDecimal actual, Long inputTokens, Long outputTokens) {
         AgentOperation e = event(op, OperationDecision.ALLOWED, null, actual);

@@ -42,6 +42,30 @@ class EventMappingTest {
                 java.util.Map.of("Сумма", "amount"), java.util.Map.of(2, java.util.Map.of("amount", "1500")), now)));
         encodes(EventMapping.of(new AssetChanged(tenant, id, "INV-1", "ThinkPad", "LAPTOP", new BigDecimal("80000"),
                 "ASSIGNED", id, LocalDate.of(2026, 11, 1), null, now)));
+        encodes(EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, id, 2, "a".repeat(64), now)));
+        encodes(EventMapping.of(new ai.costguard.core.approvals.LargeOperationApproved(tenant, id, id,
+                "b".repeat(64), "c".repeat(64), now)));
+    }
+
+    /** The outbox may send an event twice; the notary must see the same request id both times. */
+    @Test
+    void notaryRequestsAreKeyedByTheirSubject() {
+        UUID mandate = UUID.randomUUID();
+        var v2 = EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, mandate, 2, "a".repeat(64), now));
+        var again = EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, mandate, 2, "a".repeat(64),
+                now.plusSeconds(5)));
+        var v3 = EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, mandate, 3, "a".repeat(64), now));
+        assertThat(v2.topic()).isEqualTo("notary.requests.v1");
+        assertThat(again.key()).isEqualTo(v2.key());
+        assertThat(v3.key()).isNotEqualTo(v2.key());
+
+        UUID operation = UUID.randomUUID();
+        var op = EventMapping.of(new ai.costguard.core.approvals.LargeOperationApproved(tenant, UUID.randomUUID(),
+                operation, "b".repeat(64), "c".repeat(64), now));
+        var request = (ai.costguard.events.NotaryRequest) op.record();
+        assertThat(request.getKind()).isEqualTo(ai.costguard.events.NotaryRequestKind.OPERATION);
+        assertThat(request.getSubjectId()).isEqualTo(operation);
+        assertThat(op.key()).isEqualTo(request.getRequestId().toString()).isNotEqualTo(v2.key());
     }
 
     @Test

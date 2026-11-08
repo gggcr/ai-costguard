@@ -21,7 +21,11 @@ class AgentRepository {
             created_at
             """;
     private static final String MANDATE_COLUMNS = """
-            id, name, models, vendors, max_per_operation, approval_threshold, hours, status, version, updated_at
+            id, name, models, vendors, max_per_operation, approval_threshold, hours, status, version, updated_at,
+            (select n.mandate_hash from mandate_notarization n
+              where n.mandate_id = mandate.id and n.version = mandate.version) as mandate_hash,
+            (select n.near_tx_hash from mandate_notarization n
+              where n.mandate_id = mandate.id and n.version = mandate.version) as near_tx_hash
             """;
 
     private static final RowMapper<Agent> AGENT = (rs, n) -> new Agent(rs.getObject("id", UUID.class),
@@ -39,7 +43,7 @@ class AgentRepository {
             rs.getBigDecimal("max_per_operation").stripTrailingZeros(),
             rs.getBigDecimal("approval_threshold").stripTrailingZeros(), rs.getString("hours"),
             MandateStatus.valueOf(rs.getString("status")), rs.getInt("version"),
-            rs.getTimestamp("updated_at").toInstant());
+            rs.getTimestamp("updated_at").toInstant(), rs.getString("mandate_hash"), rs.getString("near_tx_hash"));
 
     private final JdbcClient jdbc;
 
@@ -184,6 +188,27 @@ class AgentRepository {
                 .query((rs, n) -> new PublishedTerms(rs.getInt("version"), rs.getString("published_expression"),
                         rs.getBigDecimal("published_threshold")))
                 .optional();
+    }
+
+    /** The hash of a version just published, waiting for the notary. Publishing the version twice keeps the first. */
+    void insertNotarization(UUID tenantId, UUID mandateId, int version, String hash, Instant now) {
+        jdbc.sql("""
+                insert into mandate_notarization (tenant_id, mandate_id, version, mandate_hash, requested_at)
+                values (?, ?, ?, ?, ?) on conflict do nothing
+                """).params(tenantId, mandateId, version, hash, at(now)).update();
+    }
+
+    Optional<String> notarizationHash(UUID mandateId, int version) {
+        return jdbc.sql("select mandate_hash from mandate_notarization where mandate_id = ? and version = ?")
+                .params(mandateId, version).query(String.class).optional();
+    }
+
+    /** The first transaction reported wins: a repeat changes nothing. */
+    void notarized(UUID mandateId, int version, String txHash, Instant at) {
+        jdbc.sql("""
+                update mandate_notarization set near_tx_hash = ?, notarized_at = ?
+                where mandate_id = ? and version = ? and near_tx_hash is null
+                """).params(txHash, at(at), mandateId, version).update();
     }
 
     boolean mandateInUse(UUID id) {

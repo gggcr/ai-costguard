@@ -1,8 +1,12 @@
-"""The Kafka loop: journal.receipts.v1 in, a NEAR transaction per batch, journal.anchors.v1 out.
+"""The Kafka loop of the notary, with two consumers of their own groups.
 
-Receipts collect until NOTARY_BATCH_SIZE of them or NOTARY_INTERVAL_SECONDS passed; then every batch is anchored
-and published, and only then are the offsets committed. A crash in between replays the receipts and builds the
-same batches again.
+journal.receipts.v1 in, a NEAR transaction per batch, journal.anchors.v1 out. Receipts collect until
+NOTARY_BATCH_SIZE of them or NOTARY_INTERVAL_SECONDS passed; then every batch is anchored and published, and only
+then are the offsets committed. A crash in between replays the receipts and builds the same batches again.
+
+notary.requests.v1 in, a NEAR transaction per request, notary.confirmations.v1 out (costguard_notary.notarize).
+Each request is committed once its confirmation is delivered. The groups are separate, so committing a request
+never commits receipts that are still waiting for their batch.
 """
 
 from __future__ import annotations
@@ -17,12 +21,14 @@ import httpx
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
-from costguard_notary import batches, near
+from costguard_notary import batches, near, notarize
 
 log = logging.getLogger("costguard.notary")
 
 RECEIPTS = "journal.receipts.v1"
 ANCHORS = "journal.anchors.v1"
+REQUESTS = "notary.requests.v1"
+CONFIRMATIONS = "notary.confirmations.v1"
 
 
 class NotarySettings(Settings):
@@ -33,6 +39,7 @@ class NotarySettings(Settings):
     notary_batch_size: int = 1000
     notary_interval_seconds: int = 600
     notary_group_id: str = "notary"
+    notary_requests_group_id: str = "notary-requests"
 
 
 def receipt(record: dict) -> batches.Receipt:
@@ -48,42 +55,68 @@ def run(settings: NotarySettings) -> None:
     signer = near.Signer.from_secret(settings.near_account_id, settings.near_private_key)
     rpc = near.Rpc(httpx.Client(base_url=settings.near_rpc_url, timeout=120))
     codec = Codec(SchemaRegistry(settings.schema_registry_url))
-    consumer = Consumer({"bootstrap.servers": settings.kafka_bootstrap_servers, "group.id": settings.notary_group_id,
-                         "enable.auto.commit": False, "auto.offset.reset": "earliest"})
+
+    def consumer(group: str, topic: str) -> Consumer:
+        c = Consumer({"bootstrap.servers": settings.kafka_bootstrap_servers, "group.id": group,
+                      "enable.auto.commit": False, "auto.offset.reset": "earliest"})
+        c.subscribe([topic])
+        return c
+
+    receipts = consumer(settings.notary_group_id, RECEIPTS)
+    requests = consumer(settings.notary_requests_group_id, REQUESTS)
     producer = Producer({"bootstrap.servers": settings.kafka_bootstrap_servers, "enable.idempotence": True,
                          "acks": "all"})
 
-    def publish(value: dict) -> None:
-        failed: list[str] = []
-        producer.produce(ANCHORS, key=value["batch_id"].encode(), value=codec.encode(ANCHORS, value),
-                         on_delivery=lambda err, _m: failed.append(str(err)) if err else None)
-        producer.flush(30)
-        if failed or len(producer):
-            raise RuntimeError(f"Anchor not delivered: {failed[:1]}")
+    def publisher(topic: str, key: str):
+        def publish(value: dict) -> None:
+            failed: list[str] = []
+            producer.produce(topic, key=value[key].encode(), value=codec.encode(topic, value),
+                             on_delivery=lambda err, _m: failed.append(str(err)) if err else None)
+            producer.flush(30)
+            if failed or len(producer):
+                raise RuntimeError(f"{topic} not delivered: {failed[:1]}")
+        return publish
 
-    consumer.subscribe([RECEIPTS])
+    def call(method: str, args: dict) -> str:
+        return rpc.call(signer, settings.near_contract_id, method, args)
+
+    publish_anchor = publisher(ANCHORS, "batch_id")
+    publish_confirmation = publisher(CONFIRMATIONS, "request_id")
+
+    def polled(c: Consumer, timeout: float):
+        msg = c.poll(timeout)
+        if msg is not None and msg.error():
+            raise KafkaException(msg.error())
+        return msg
+
     pending: list[batches.Receipt] = []
     since = time.monotonic()
-    log.info("Notary anchors %s in %s as %s", RECEIPTS, settings.near_contract_id, settings.near_account_id)
+    log.info("Notary writes %s and %s to %s as %s", RECEIPTS, REQUESTS, settings.near_contract_id,
+             settings.near_account_id)
     try:
         while True:
-            msg = consumer.poll(1.0)
+            msg = polled(receipts, 0.5)
             if msg is not None:
-                if msg.error():
-                    raise KafkaException(msg.error())
                 pending.append(receipt(codec.decode(RECEIPTS, msg.value())))
             due = time.monotonic() - since >= settings.notary_interval_seconds
             if pending and (len(pending) >= settings.notary_batch_size or due):
-                n = batches.anchor(pending, lambda m, a: rpc.call(signer, settings.near_contract_id, m, a), publish,
-                                   lambda: datetime.now(UTC), settings.notary_batch_size)
-                consumer.commit(asynchronous=False)
+                n = batches.anchor(pending, call, publish_anchor, lambda: datetime.now(UTC),
+                                   settings.notary_batch_size)
+                receipts.commit(asynchronous=False)
                 log.info("Anchored %d receipts in %d batches", len(pending), n)
                 pending = []
                 since = time.monotonic()
             elif due:
                 since = time.monotonic()
+
+            msg = polled(requests, 0.5)
+            if msg is not None:
+                notarize.handle(codec.decode(REQUESTS, msg.value()), call, publish_confirmation,
+                                lambda: datetime.now(UTC))
+                requests.commit(message=msg, asynchronous=False)
     finally:
-        consumer.close()
+        receipts.close()
+        requests.close()
 
 
 def main() -> None:

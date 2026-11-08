@@ -27,6 +27,7 @@ public final class Operation {
     private boolean reserved;
     private boolean needsApproval;
     private String approvalReason;
+    private String taskGoal;
     private java.util.function.Supplier<java.util.Optional<BigDecimal>> estimate;
 
     public Operation(UUID operationId, String secret, String taskId, OperationKind kind, String vendor, String model,
@@ -57,6 +58,10 @@ public final class Operation {
     public boolean reserved() { return reserved; }
     public boolean needsApproval() { return needsApproval; }
     public String approvalReason() { return approvalReason; }
+
+    /** The goal of the task as the agent states it ({@link TaskGoal}); null when it sent none. */
+    public String taskGoal() { return taskGoal; }
+    public void taskGoal(String goal) { this.taskGoal = goal; }
 
     /**
      * Sets the agent and, for a proxied call, prices the call in that agent's catalog. A call with no price gets

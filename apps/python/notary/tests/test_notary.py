@@ -12,7 +12,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from costguard_common import schemas
-from costguard_notary import batches, merkle, near
+from costguard_notary import batches, merkle, near, notarize
 
 TENANT = uuid.UUID("11111111-1111-1111-1111-111111111111")
 
@@ -175,3 +175,101 @@ def test_anchor_message_fits_the_schema():
     fastavro.schemaless_writer(out, schema, value)
     back = fastavro.schemaless_reader(io.BytesIO(out.getvalue()), schema)
     assert str(back["tenant_id"]) == str(TENANT) and back["receipt_count"] == 3
+
+
+def test_a_panic_of_the_contract_is_a_refusal_and_running_out_of_gas_is_not():
+    def rpc_with(failure):
+        def handle(request):
+            if json.loads(request.content)["method"] == "query":
+                return httpx.Response(200, json={"result": {"nonce": 1, "block_hash": near.b58encode(bytes(32))}})
+            return httpx.Response(200, json={"result": {"status": {"Failure": failure}}})
+        return near.Rpc(httpx.Client(base_url="http://rpc", transport=httpx.MockTransport(handle)))
+
+    panic = {"ActionError": {"kind": {"FunctionCallError": {"ExecutionError": "Smart contract panicked: x"}}}}
+    with pytest.raises(near.ContractRefused):
+        rpc_with(panic).call(signer(), "c", "register_mandate", {})
+    gas = {"ActionError": {"kind": {"FunctionCallError": {"ExecutionError": "Exceeded the prepaid gas."}}}}
+    with pytest.raises(RuntimeError) as caught:
+        rpc_with(gas).call(signer(), "c", "register_mandate", {})
+    assert not isinstance(caught.value, near.ContractRefused)
+
+
+# mandates and confirmations
+
+MANDATE_ID = uuid.UUID("0b9d2c7e-4a51-4c1e-8f0a-3d2b1c4e5f60")
+OPERATION_ID = uuid.UUID("5e0c7a1b-2d3f-4a5b-8c9d-0e1f2a3b4c5d")
+
+
+def mandate_request(**changes):
+    request = {"request_id": uuid.uuid5(uuid.NAMESPACE_URL, "m"), "tenant_id": TENANT, "kind": "MANDATE",
+               "subject_id": MANDATE_ID, "mandate_version": 2, "subject_hash": leaves(1)[0], "approver_hash": None,
+               "requested_at": T0}
+    return {**request, **changes}
+
+
+def operation_request(**changes):
+    request = {"request_id": uuid.uuid5(uuid.NAMESPACE_URL, "o"), "tenant_id": TENANT, "kind": "OPERATION",
+               "subject_id": OPERATION_ID, "mandate_version": None, "subject_hash": leaves(2)[0],
+               "approver_hash": leaves(2)[1], "requested_at": T0}
+    return {**request, **changes}
+
+
+def test_a_mandate_request_registers_the_version_hash():
+    calls, published = [], []
+    assert notarize.handle(mandate_request(), lambda m, a: calls.append((m, a)) or "TX1", published.append,
+                           lambda: T0)
+    assert calls == [("register_mandate", {"mandate_id": str(MANDATE_ID), "version": 2,
+                                           "mandate_hash": leaves(1)[0]})]
+    [c] = published
+    assert c["near_tx_hash"] == "TX1" and c["kind"] == "MANDATE" and c["mandate_version"] == 2
+    assert c["subject_id"] == str(MANDATE_ID) and c["tenant_id"] == str(TENANT)
+
+
+def test_an_operation_request_confirms_by_hash_and_keeps_the_tenant_off_the_chain():
+    calls, published = [], []
+    assert notarize.handle(operation_request(), lambda m, a: calls.append((m, a)) or "TX2", published.append,
+                           lambda: T0)
+    assert calls == [("confirm_operation", {"operation_hash": leaves(2)[0], "approver_hash": leaves(2)[1]})]
+    sent = json.dumps(calls)
+    assert str(TENANT) not in sent and str(OPERATION_ID) not in sent
+    assert published[0]["subject_hash"] == leaves(2)[0] and published[0]["near_tx_hash"] == "TX2"
+
+
+@pytest.mark.parametrize("request_", [
+    mandate_request(mandate_version=None), mandate_request(mandate_version=0),
+    mandate_request(subject_hash="ABC"), operation_request(approver_hash=None),
+    operation_request(approver_hash="someone@example.com"), operation_request(kind="OTHER"),
+])
+def test_a_malformed_request_is_skipped_without_a_transaction(request_):
+    calls, published = [], []
+    assert not notarize.handle(request_, lambda m, a: calls.append(m) or "TX", published.append, lambda: T0)
+    assert calls == [] and published == []
+
+
+def test_a_refused_request_is_skipped_and_a_network_failure_is_retried():
+    published = []
+
+    def refused(method, args):
+        raise near.ContractRefused("Smart contract panicked: registered with another hash")
+
+    assert not notarize.handle(mandate_request(), refused, published.append, lambda: T0)
+
+    def down(method, args):
+        raise RuntimeError("NEAR query: timeout")
+
+    with pytest.raises(RuntimeError):
+        notarize.handle(mandate_request(), down, published.append, lambda: T0)
+    assert published == []
+
+
+@pytest.mark.parametrize("topic,value", [
+    ("notary.requests.v1", mandate_request()), ("notary.requests.v1", operation_request()),
+    ("notary.confirmations.v1", notarize.confirmation(mandate_request(), "TX", T0)),
+    ("notary.confirmations.v1", notarize.confirmation(operation_request(), "TX", T0)),
+])
+def test_requests_and_confirmations_fit_their_schemas(topic, value):
+    schema = schemas.parsed(topic)
+    out = io.BytesIO()
+    fastavro.schemaless_writer(out, schema, value)
+    back = fastavro.schemaless_reader(io.BytesIO(out.getvalue()), schema)
+    assert back["kind"] == value["kind"] and back["subject_hash"] == value["subject_hash"]

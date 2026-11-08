@@ -14,12 +14,23 @@ Board frames: 2 (operation path), 3 (gateway check ladder), 13 (inside the servi
 | 3 | `LoopFilter` | Repeat or loop within a task | Cached response, or 409 `duplicate_operation` |
 | 4 | `RiskFilter` | Agent risk score | 429 `rate_limited`, approval, or 423 `agent_suspended` |
 | 5 | `BudgetFilter` | Reserve at every budget level | 402 `budget_exceeded`|
-| 6 | `TaskFitFilter` | AI assessor, above the mandate threshold | Goes to approval |
+| 6 | `TaskFitFilter` | AI assessor, above the mandate threshold: does the operation fit the task goal? | Goes to approval |
 | 7 | `ApprovalFilter` | Human approval | Refusal, reserve is returned |
 
 An operation sent to approval gets 403 `approval_required` with an `approvalId`. Once `approvals.decisions.v1`
 says approved, the agent retries with the same `Idempotency-Key`, and the operation goes through every step again,
 including the reserve, for at most the approved amount.
+
+## AI assessor (step 6)
+
+The agent states the goal of its task in `X-CostGuard-Task-Goal`, percent-encoded UTF-8 (the SDKs do it: `task_goal`
+in Python, `taskGoal` in JS). Above the approval threshold of the mandate, `LlmTaskFitAssessor` asks a model of one
+of the providers whether the operation clearly fits the goal: only a plain "ДА"/"yes" lets it pass; "no", "unsure",
+anything else, an error, a refusal and a timeout (`ASSESSOR_TIMEOUT`, 3 s) send it to a person. Without a goal the
+model is not asked. The assessor is on only when `ASSESSOR_PROVIDER` (a key of `costguard.gateway.providers`) and
+`ASSESSOR_MODEL` are set; otherwise `HumanOnlyAssessor` sends every such operation to a person. The assessor's own
+call uses the gateway's key and is a cost of CostGuard: it is not reserved in the company's budgets and not recorded
+in `agent.operations.v1`. See ADR 0011.
 
 ## What the gateway holds
 
@@ -42,22 +53,30 @@ older version. A reserve that is never settled is released by `ReservationSweepe
   budget only fits less), reserves, swaps the virtual key for the provider key, and settles from the `usage` of
   the response, streamed or not. A provider error releases the reserve. A model with no price is refused with
   403 `price_unknown`.
-- `/v1/egress/{name}/...`: a paid API priced per request from the catalog, configured under
-  `costguard.gateway.egress`.
+- `/v1/egress/{name}/...`: a paid API (data, cloud), configured under `costguard.gateway.egress.<name>` (package
+  `egress`). It goes through the same ladder as a model call: the price of the endpoint is reserved before the call,
+  charged after a successful answer and given back on an error or a refusal. The price is the tenant's catalog
+  `REQUEST` price of the vendor and product (`catalog.prices.v1`), else the `price` of the configuration; an endpoint
+  with neither is refused with 403 `price_unknown`. `operations` give an endpoint, matched by method and Ant path,
+  its own product and price. The gateway takes the agent's key off and puts the API's key (`header`, `value`) on.
+  See ADR 0010.
+
+A provider or a paid API that answers with an error, or does not answer, gets its reserve back and is recorded in
+`agent.operations.v1` as `DENIED` with `upstream_error` and an actual cost of zero: the core charges nothing and
+issues no receipt for it.
 
 Every decision goes to `agent.operations.v1`. If Kafka or the Schema Registry is away, it goes to a file
 (`costguard.gateway.buffer-file`) and is sent later.
 
 ## Not done
 
-- The AI assessor of step 6: agents send no task goal yet, so every operation above the threshold goes to a human
-  (`HumanOnlyAssessor`).
 - Loop detection by content and SimHash belongs to the detector; the gateway only refuses repeated operation ids.
 - Time and weekday for mandates use one time zone for all tenants, `COMPANY_TIME_ZONE`.
 - Provider keys are read from properties; Vault fills them only when `VAULT_ENABLED=true`.
 
 ## Tests
 
-`./gradlew :gateway:test` needs Docker: Redis and Kafka run in Testcontainers, the Schema Registry and the
-provider are stand-ins inside the test. On Windows the Kafka container is `KafkaNode`, because the Testcontainers
+Tests that extend `support/InMemoryGatewayTest` (paid APIs, the assessor) run the whole gateway without Docker, on an
+in-memory reserve and a recording operation log. The others need Docker: Redis and Kafka run in Testcontainers, the
+Schema Registry and the provider are stand-ins inside the test. On Windows the Kafka container is `KafkaNode`, because the Testcontainers
 Kafka module advertises 0.0.0.0 under Docker Desktop.

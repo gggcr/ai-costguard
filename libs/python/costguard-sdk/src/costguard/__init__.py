@@ -3,7 +3,8 @@
     from costguard import CostGuard
 
     cg = CostGuard("cg_live_...", base_url="https://gateway.example.ru")
-    with cg.spend("Ozon", 1290, product="Картридж", task_id="ticket-42") as op:
+    with cg.spend("Ozon", 1290, product="Картридж", task_id="ticket-42",
+                  task_goal="Картриджи для принтеров бухгалтерии") as op:
         order = buy()                 # runs only if the gateway allowed the amount
         op.settle(order.total)        # charge what was really spent; without it the reserve is charged in full
 
@@ -11,13 +12,18 @@ An exception inside the block releases the reserve. A refusal raises Refused; an
 raises ApprovalRequired, and `cg.wait_for_approval(e.approval_id)` waits for the decision; after "approved",
 calling spend again with the same operation_id goes through.
 
+task_goal is the goal of the agent's task. Above the approval threshold of the mandate the gateway's AI assessor
+checks the operation against it and lets it pass without a person when it clearly fits; without a goal a person
+always decides.
+
 For LLM calls, point the provider's own client at `cg.provider_url("openai")` with the agent key: the gateway
-meters tokens itself.
+meters tokens itself. Pass `cg.headers(task_id=..., task_goal=...)` as the client's default headers.
 """
 
 from __future__ import annotations
 
 import time
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from decimal import Decimal
@@ -27,6 +33,8 @@ import httpx
 __all__ = ["CostGuard", "Operation", "CostGuardError", "Refused", "ApprovalRequired"]
 
 PROVIDERS = ("openai", "anthropic", "gigachat", "yandex")
+TASK_HEADER = "X-CostGuard-Task"
+GOAL_HEADER = "X-CostGuard-Task-Goal"
 
 
 class CostGuardError(Exception):
@@ -73,14 +81,26 @@ class CostGuard:
             raise ApprovalRequired(response.status_code, error.get("message", ""), error.get("approvalId", ""))
         raise Refused(response.status_code, kind, error.get("message", ""))
 
+    @staticmethod
+    def headers(task_id: str | None = None, task_goal: str | None = None) -> dict:
+        """Headers that tell the gateway the task and its goal, for a provider's own client or a paid API call.
+        A header carries only ASCII, so the goal is percent-encoded UTF-8; the gateway decodes it."""
+        out = {}
+        if task_id:
+            out[TASK_HEADER] = task_id
+        if task_goal and task_goal.strip():
+            out[GOAL_HEADER] = urllib.parse.quote(task_goal.strip(), safe="")
+        return out
+
     def authorize(self, vendor: str, amount, product: str | None = None, task_id: str | None = None,
-                  kind: str = "paid_api", operation_id: str | None = None) -> Operation:
+                  kind: str = "paid_api", operation_id: str | None = None,
+                  task_goal: str | None = None) -> Operation:
         """Runs the check ladder and reserves the amount. Repeat with the same operation_id after an approval."""
         operation_id = operation_id or str(uuid.uuid4())
         body = self._post("/v1/spend/authorize",
                           {"vendor": vendor, "amount": _amount(amount), "product": product, "taskId": task_id,
                            "kind": kind},
-                          {"Idempotency-Key": operation_id})
+                          {"Idempotency-Key": operation_id, **self.headers(task_goal=task_goal)})
         return Operation(self, body.get("authorizationId", operation_id), Decimal(str(body.get("reserved", amount))))
 
     def spend(self, vendor: str, amount, **kw) -> Operation:

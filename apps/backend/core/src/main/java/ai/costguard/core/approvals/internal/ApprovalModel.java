@@ -9,9 +9,13 @@ enum ApprovalStatus { pending, approved, rejected, expired }
 
 enum Verdict { approve, reject }
 
+/**
+ * {@code notaryHash} is set for an approved operation large enough to be confirmed in NEAR (ADR 0009), and
+ * {@code nearTxHash} once the notary has confirmed it.
+ */
 record Approval(UUID id, UUID operationId, UUID agentId, String description, BigDecimal amount, String reason,
         Instant createdAt, Instant deadline, ApprovalStatus status, boolean escalated, String decidedBy,
-        String comment) {
+        String comment, String notaryHash, String nearTxHash) {
 }
 
 record Decision(@NotNull Verdict verdict, String comment) {

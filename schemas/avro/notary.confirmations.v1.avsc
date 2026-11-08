@@ -1,0 +1,64 @@
+{
+  "type": "record",
+  "name": "NotaryConfirmation",
+  "namespace": "ai.costguard.events",
+  "doc": "A hash of notary.requests.v1 is written to the NEAR contract. Key: request_id.",
+  "fields": [
+    {
+      "name": "request_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "kind",
+      "type": {
+        "type": "enum",
+        "name": "NotarizedKind",
+        "symbols": [
+          "MANDATE",
+          "OPERATION"
+        ]
+      }
+    },
+    {
+      "name": "subject_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "mandate_version",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    },
+    {
+      "name": "subject_hash",
+      "type": "string",
+      "doc": "The hash that was written; the core accepts the confirmation only if it matches its own."
+    },
+    {
+      "name": "near_tx_hash",
+      "type": "string"
+    },
+    {
+      "name": "confirmed_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

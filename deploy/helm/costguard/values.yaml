@@ -30,6 +30,8 @@ services:
     env:
       CORE_PORT: "8080"
       TRACE_SAMPLING: "0.1"
+      # Approved operations of at least this many roubles are confirmed in NEAR (ADR 0009).
+      COSTGUARD_NOTARY_CONFIRM_ABOVE: "100000"
   gateway:
     enabled: true
     image: gateway
@@ -42,6 +44,8 @@ services:
     env:
       GATEWAY_PORT: "8081"
       COMPANY_TIME_ZONE: Europe/Moscow
+      # The AI assessor of step 6 (ADR 0011) is off until ASSESSOR_PROVIDER and ASSESSOR_MODEL are set, here or in
+      # the secret. Do not set them empty here: env wins over the secret.
   ingest:
     enabled: true
     image: python

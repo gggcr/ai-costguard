@@ -22,7 +22,7 @@ def agent_state() -> dict:
 
 
 def test_every_schema_parses():
-    assert len(schemas.topics()) == 16
+    assert len(schemas.topics()) == 18
     for topic in schemas.topics():
         schemas.parsed(topic)
 

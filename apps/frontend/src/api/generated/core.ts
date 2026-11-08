@@ -47,6 +47,8 @@ export type Approval = {
   escalated?: boolean;
   decidedBy?: string;
   comment?: string;
+  notaryHash?: string;
+  nearTxHash?: string;
 };
 
 export type Budget = {
@@ -249,6 +251,8 @@ export type Mandate = {
   status?: "draft" | "published";
   version?: number;
   updatedAt?: string;  // date-time
+  mandateHash?: string;
+  nearTxHash?: string;
 };
 
 export type MandateDetails = {

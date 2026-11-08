@@ -19,6 +19,8 @@ public final class FakeProvider implements AutoCloseable {
     public final List<Received> received = new CopyOnWriteArrayList<>();
     public volatile int status = 200;
     public volatile String contentType = "application/json";
+    /** How long to wait before answering, for timeouts. */
+    public volatile long delayMillis = 0;
     public volatile String response = """
             {"id":"x","choices":[{"message":{"role":"assistant","content":"ok"}}],
              "usage":{"prompt_tokens":100,"completion_tokens":50}}""";
@@ -28,6 +30,13 @@ public final class FakeProvider implements AutoCloseable {
         server.createContext("/", exchange -> {
             received.add(new Received(exchange.getRequestURI().getPath(), Map.copyOf(exchange.getRequestHeaders()),
                     new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+            if (delayMillis > 0) {
+                try {
+                    Thread.sleep(delayMillis);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             byte[] body = response.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", contentType);
             exchange.sendResponseHeaders(status, body.length);

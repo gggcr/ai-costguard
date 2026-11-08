@@ -39,6 +39,9 @@ costguard:
   journal:
     private-key: ${JOURNAL_PRIVATE_KEY:}
     public-key: ${JOURNAL_PUBLIC_KEY:}
+  notary:
+    # An approved operation of at least this amount (RUB) is confirmed in NEAR (ADR 0009).
+    confirm-above: ${COSTGUARD_NOTARY_CONFIRM_ABOVE:100000}
 
 springdoc:
   default-produces-media-type: application/json

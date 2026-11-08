@@ -33,7 +33,7 @@ spec:
       rules:
         # Every consumer commits only after its work is done, so lag that grows means it is stuck on a message.
         - alert: ConsumerLagGrowing
-          expr: sum by (consumergroup) (kafka_consumergroup_lag{consumergroup=~"core-.*|ingest-pipeline|notary|clickhouse-.*"}) > {{ .Values.monitoring.consumerLagMessages }}
+          expr: sum by (consumergroup) (kafka_consumergroup_lag{consumergroup=~"core-.*|ingest-pipeline|notary|notary-requests|clickhouse-.*"}) > {{ .Values.monitoring.consumerLagMessages }}
           for: 15m
           labels: { severity: warning }
           annotations:

@@ -81,6 +81,14 @@ paths:
         required: true
         schema:
           type: string
+      - name: X-CostGuard-Task-Goal
+        in: header
+        description: "The goal of the agent's task, percent-encoded UTF-8. Above the\
+          \ approval threshold the AI assessor checks the operation against it; without\
+          \ it a person decides."
+        required: false
+        schema:
+          type: string
       requestBody:
         content:
           application/json:

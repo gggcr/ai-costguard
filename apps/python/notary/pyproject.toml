@@ -1,7 +1,7 @@
 [project]
 name = "costguard-notary"
 version = "0.1.0"
-description = "NEAR notary: anchors Merkle roots of journal receipts in a NEAR contract and reports to journal.anchors.v1"
+description = "NEAR notary: anchors Merkle roots of journal receipts, registers mandate hashes and confirms large operations in a NEAR contract"
 requires-python = ">=3.12"
 dependencies = ["costguard-common", "confluent-kafka>=2.6", "httpx>=0.27", "cryptography>=43"]
 

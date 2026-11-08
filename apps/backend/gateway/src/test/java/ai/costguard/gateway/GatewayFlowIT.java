@@ -99,6 +99,11 @@ class GatewayFlowIT {
         registry.add("costguard.gateway.schema-registry-url", () -> REGISTRY.url().toString());
         registry.add("costguard.gateway.providers.openai.url", () -> OPENAI.url().toString());
         registry.add("costguard.gateway.providers.openai.api-key", () -> "sk-provider-secret");
+        registry.add("costguard.gateway.egress.spark.url", () -> OPENAI.url().toString());
+        registry.add("costguard.gateway.egress.spark.vendor", () -> "SPARK");
+        registry.add("costguard.gateway.egress.spark.header", () -> "Authorization");
+        registry.add("costguard.gateway.egress.spark.value", () -> "Bearer spark-secret");
+        registry.add("costguard.gateway.egress.spark.price", () -> "15");
         registry.add("costguard.gateway.buffer-file", () -> System.getProperty("java.io.tmpdir")
                 + "/costguard-gateway-it/" + UUID.randomUUID() + ".buf");
     }
@@ -388,5 +393,50 @@ class GatewayFlowIT {
         chat(UUID.randomUUID(), "{\"model\":\"unpriced\",\"messages\":[]}").expectStatus().isEqualTo(403)
                 .expectBody().jsonPath("$.error.type").isEqualTo("price_unknown");
         assertThat(OPENAI.received).isEmpty();
+    }
+
+    private WebTestClient.ResponseSpec paidApi(UUID op) {
+        return web.get().uri("/v1/egress/spark/v1/companies/7707083893").header("Authorization", "Bearer " + secret)
+                .header("Idempotency-Key", op.toString()).exchange();
+    }
+
+    @Test
+    void aPaidApiCallIsReservedProxiedAndCharged() throws Exception {
+        agentState(false, ALLOW_ALL, "100000");
+        budgets("1000");
+        eventually(() -> paidApi(UUID.randomUUID()).returnResult(String.class).getStatus().value() == 200);
+        List<BigDecimal> before = reserve.counters(tenant, agentBudget).block();
+        OPENAI.received.clear();
+        UUID op = UUID.randomUUID();
+
+        paidApi(op).expectStatus().isOk();
+
+        FakeProvider.Received sent = OPENAI.received.getFirst();
+        assertThat(sent.path()).isEqualTo("/v1/companies/7707083893");
+        assertThat(sent.headers().get("Authorization")).containsExactly("Bearer spark-secret");
+        assertThat(sent.headers().toString()).doesNotContain(secret);
+        List<BigDecimal> after = reserve.counters(tenant, agentBudget).block();
+        assertThat(after.get(1).subtract(before.get(1))).isEqualByComparingTo("15");
+        assertThat(after.get(2)).isEqualByComparingTo("0");
+        eventually(() -> operations().stream().anyMatch(o -> o.getOperationId().equals(op)
+                && o.getDecision() == OperationDecision.ALLOWED && o.getActualCost().compareTo(money("15")) == 0));
+    }
+
+    @Test
+    void aPaidApiErrorGivesTheReserveBackAndIsRecorded() throws Exception {
+        agentState(false, ALLOW_ALL, "100000");
+        budgets("1000");
+        eventually(() -> paidApi(UUID.randomUUID()).returnResult(String.class).getStatus().value() == 200);
+        List<BigDecimal> before = reserve.counters(tenant, agentBudget).block();
+        OPENAI.status = 502;
+        UUID op = UUID.randomUUID();
+
+        paidApi(op).expectStatus().isEqualTo(502);
+
+        List<BigDecimal> after = reserve.counters(tenant, agentBudget).block();
+        assertThat(after.get(1)).isEqualByComparingTo(before.get(1));
+        assertThat(after.get(2)).isEqualByComparingTo("0");
+        eventually(() -> operations().stream().anyMatch(o -> o.getOperationId().equals(op)
+                && o.getDecision() == OperationDecision.DENIED && "upstream_error".equals(o.getDenialCode())));
     }
 }
