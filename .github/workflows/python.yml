@@ -31,7 +31,13 @@ jobs:
       - name: Seed SQL loads on the migrations
         run: |
           docker run -d --name pg -e POSTGRES_PASSWORD=p -e POSTGRES_DB=costguard -p 5432:5432 postgres:17
-          until docker exec pg pg_isready -U postgres -d costguard; do sleep 1; done
+          # The image first runs a temporary server on the Unix socket only, creates the database, then restarts;
+          # pg_isready on the socket answers before costguard exists. Only the final server listens on TCP.
+          for i in $(seq 1 60); do
+            docker exec pg pg_isready -h 127.0.0.1 -U postgres -d costguard && break
+            sleep 1
+          done
+          docker exec pg psql -q -U postgres -d costguard -c 'select 1' > /dev/null
           for f in $(ls apps/backend/core/src/main/resources/db/migration/*.sql | sort -V); do
             docker exec -i pg psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard < "$f"
           done
