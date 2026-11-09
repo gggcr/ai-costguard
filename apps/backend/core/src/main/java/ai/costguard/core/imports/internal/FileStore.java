@@ -6,6 +6,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -40,5 +42,49 @@ class FileStore {
 
     boolean exists(String key) {
         return Files.exists(root.resolve(key));
+    }
+
+    private Path inside(String key) {
+        Path target = root.resolve(key).normalize();
+        if (!target.startsWith(root.normalize()) || target.equals(root.normalize())) {
+            throw new IllegalArgumentException("Key leaves the storage root");
+        }
+        return target;
+    }
+
+    /** Deleting a file that is gone already is fine: retention and erasure may run again. */
+    boolean delete(String key) {
+        try {
+            return Files.deleteIfExists(inside(key));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Every file under the tenant's prefix: the uploads, and what the ingest pipeline keeps next to them when it
+     * shares this storage (its extraction results and the examples people corrected). Returns how many went.
+     */
+    int deleteTenant(UUID tenantId) {
+        Path dir = inside(tenantId.toString());
+        if (!Files.isDirectory(dir)) {
+            return 0;
+        }
+        int[] count = {0};
+        try (var paths = Files.walk(dir)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    if (Files.isRegularFile(p)) {
+                        count[0]++;
+                    }
+                    Files.delete(p);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return count[0];
     }
 }

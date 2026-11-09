@@ -15,7 +15,8 @@ record ReceiptView(UUID id, UUID operationId, String payload, String hash, Strin
         String keyId, ReceiptStatus status, UUID batchId, String merkleRoot, String txHash, List<String> merklePath) {
 }
 
-record ChainVerification(boolean valid, long receipts, Long brokenAtSeq, String problem) {
+/** {@code unverifiedSignatures}: receipts signed with a key this instance does not know, so not checked. */
+record ChainVerification(boolean valid, long receipts, Long brokenAtSeq, String problem, long unverifiedSignatures) {
 }
 
 record SigningKey(String keyId, String algorithm, String publicKey) {

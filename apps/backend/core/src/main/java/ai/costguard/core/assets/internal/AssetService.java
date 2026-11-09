@@ -4,6 +4,7 @@ import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.core.assets.AssetLinks;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.org.EmployeeDirectory.EmployeeCard;
+import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -134,6 +135,11 @@ class AssetService {
         assets.insertAssignment(tenantId, issued);
         assets.setStatus(asset.id(), AssetStatus.ASSIGNED);
         String number = acts.make(tenantId, asset, issued, employee, issuedBy);
+        String system = issuedBy != null && issuedBy.startsWith(CONNECTOR) ? "connector" : null;
+        events.publishEvent(new ActionTaken(tenantId, "asset.issued", "asset", asset.id(), ActionTaken.details(
+                "employeeId", request.employeeId(), "assignmentId", issued.id(), "inventoryNumber",
+                asset.inventoryNumber(), "act", number, "returnDue", request.returnDue() == null ? null
+                        : request.returnDue().toString()), system));
         return new Assignment(issued.id(), issued.assetId(), issued.employeeId(), issued.issuedAt(),
                 issued.returnDue(), null, number);
     }
@@ -157,6 +163,8 @@ class AssetService {
             assets.closeAssignment(open.id(), LocalDate.now(clock));
             returned.returned(tenantId, asset, open);
             assets.setStatus(assetId, AssetStatus.IN_STOCK);
+            events.publishEvent(ActionTaken.of(tenantId, "asset.returned", "asset", assetId,
+                    ActionTaken.details("employeeId", open.employeeId(), "assignmentId", open.id())));
             announce(tenantId, assetId);
         }
     }
@@ -169,6 +177,7 @@ class AssetService {
         }
         if (locked(assetId).status() != AssetStatus.RETIRED) {
             assets.setStatus(assetId, AssetStatus.RETIRED);
+            events.publishEvent(ActionTaken.of(tenantId, "asset.retired", "asset", assetId, java.util.Map.of()));
             announce(tenantId, assetId);
         }
         return found(assetId);
@@ -238,6 +247,8 @@ class AssetService {
                 if (open != null) {
                     assets.closeAssignment(open.id(), LocalDate.now(clock));
                     returned.returned(tenantId, asset, open);
+                    events.publishEvent(ActionTaken.bySystem("connector", tenantId, "asset.returned", "asset", id,
+                            ActionTaken.details("employeeId", open.employeeId(), "assignmentId", open.id())));
                 }
                 issue(tenantId, asset, new NewAssignment(holder, null), employee.get(), CONNECTOR + report.source());
                 changed = true;

@@ -24,6 +24,11 @@ class AvroPublisher {
         sender.send(topic, key, AvroWire.encode(registry.idOf(topic, record.getSchema()), record));
     }
 
+    /** A null value: compaction then drops every record of the key (ADR 0021). */
+    void tombstone(String topic, String key) {
+        sender.send(topic, key, null);
+    }
+
     static byte[] encode(int schemaId, SpecificRecord record) {
         return AvroWire.encode(schemaId, record);
     }

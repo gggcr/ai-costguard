@@ -4,16 +4,28 @@ image:
   tag: "0.1.0"
   pullPolicy: IfNotPresent
 
+# The region every store lives in (ADR 0024): the same as `region` of deploy/terraform/yandex, which places the
+# managed services there. The S3 endpoint and the signing region of S3 clients follow from it; an unknown region
+# fails the render. Personal data must not leave it: see docs/privacy/data-inventory.md.
+region: ru-central1
+regions:
+  ru-central1:
+    s3Endpoint: https://storage.yandexcloud.net
+
 # Managed services outside the cluster (deploy/terraform creates them). Secrets are not here: every service reads
 # the Kubernetes secret named in `secretName` (create it from Lockbox or Vault, see docs/runbooks/secrets.md).
+# Keycloak is not created by deploy/terraform: it must run in `region` as well (docs/runbooks/privacy.md).
 external:
   kafkaBootstrapServers: kafka:9092
   schemaRegistryUrl: http://schema-registry:8081
   postgresUrl: jdbc:postgresql://postgres:6432/costguard
   redisHost: redis
   clickhouseUrl: http://clickhouse:8123
-  s3Endpoint: https://storage.yandexcloud.net
+  # Empty: the endpoint of `region`. Set it only for an S3 in the same region under another name.
+  s3Endpoint: ""
   keycloakIssuerUri: https://id.costguard.example/realms/costguard
+  # The admin API the core deletes accounts through when it erases a person or a company (ADR 0021).
+  keycloakAdminUrl: https://id.costguard.example
 
 secretName: costguard-secrets
 
@@ -111,6 +123,50 @@ monitoring:
   serviceMonitor: true
   rules: true
   dashboard: true
+  # Every alert links its runbook here (ADR 0026); docs/runbooks/<file> is appended.
+  runbookBaseUrl: https://github.com/gggcr/ai-costguard/blob/main/docs/runbooks
   # Alert thresholds
   gatewayP99Seconds: 0.25
   consumerLagMessages: 10000
+  outboxOldestSeconds: 900
+  diskFreeRatio: 0.15
+  connectorFailureRatio: 0.5
+
+# Delivery of alerts (ADR 0026): an AlertmanagerConfig for the Alertmanager of kube-prometheus-stack. Warnings go
+# to Telegram, critical alerts to Telegram and e-mail. The secret `secretName` holds TELEGRAM_BOT_TOKEN and
+# SMTP_PASSWORD; create it before switching this on (docs/runbooks/alerting.md).
+alerting:
+  enabled: false
+  secretName: costguard-alerting
+  # Labels the Alertmanager's alertmanagerConfigSelector matches.
+  selectorLabels: { alertmanagerConfig: costguard }
+  telegram:
+    chatId: 0
+  email:
+    to: ""
+    from: ""
+    smarthost: ""          # host:port of the SMTP server
+    username: ""
+  repeatInterval: 4h
+
+# Nightly backups (ADR 0025): CronJobs of the image deploy/backup. Copies are encrypted to `ageRecipient`, an age
+# public key whose private half is kept outside the cluster. Needs BACKUP_DB_USER and BACKUP_DB_PASSWORD in the
+# secret (terraform output). Off until the age key exists (docs/runbooks/backups.md).
+backups:
+  enabled: false
+  image: backup
+  bucket: ""               # terraform output backups_bucket
+  filesBucket: ""          # terraform output imports_bucket
+  ageRecipient: ""         # age1...
+  schedules:
+    postgres: "0 1 * * *"
+    clickhouse: "30 1 * * *"
+    files: "0 2 * * *"
+  deadlineSeconds: 14400
+  resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { memory: 1Gi } }
+  # Room for one dump on its way to the bucket.
+  scratchSize: 20Gi
+
+# Restarts the services when costguard-secrets changes, so a rotated secret takes effect without a manual rollout
+# (ADR 0028). Needs Stakater Reloader in the cluster; without it the annotation does nothing.
+reloadOnSecretChange: true

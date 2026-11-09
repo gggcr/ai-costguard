@@ -4,6 +4,7 @@ import ai.costguard.core.policies.PolicySnapshotPublished;
 import ai.costguard.platform.rules.OperationFacts;
 import ai.costguard.platform.rules.OperationRules;
 import ai.costguard.platform.tenant.TenantSession;
+import ai.costguard.core.shared.activity.ActionTaken;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ class PolicyService {
         } catch (DuplicateKeyException e) {
             throw PolicyProblem.RULE_NAME_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "policy.created", "policy_rule", id, terms(details)));
         return policies.rule(id).orElseThrow();
     }
 
@@ -68,7 +70,13 @@ class PolicyService {
         } catch (DuplicateKeyException e) {
             throw PolicyProblem.RULE_NAME_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "policy.updated", "policy_rule", id, terms(details)));
         return policies.rule(id).orElseThrow();
+    }
+
+    private static java.util.Map<String, Object> terms(RuleDetails d) {
+        return ActionTaken.details("expression", d.expression(), "effect", d.effect().name(), "enabled",
+                d.enabled());
     }
 
     @Transactional
@@ -77,6 +85,7 @@ class PolicyService {
         if (!policies.delete(id)) {
             throw PolicyProblem.RULE_NOT_FOUND.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "policy.deleted", "policy_rule", id, java.util.Map.of()));
     }
 
     @Transactional(readOnly = true)
@@ -95,6 +104,8 @@ class PolicyService {
                 .map(r -> new PolicySnapshotPublished.Rule(r.id(), r.name(), r.expression(), r.effect().name()))
                 .toList();
         events.publishEvent(new PolicySnapshotPublished(tenantId, version, rules, now));
+        events.publishEvent(ActionTaken.of(tenantId, "policy.published", "company", tenantId,
+                java.util.Map.of("version", version, "rules", rules.size())));
         return new Publication(version, now);
     }
 

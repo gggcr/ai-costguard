@@ -1,0 +1,5 @@
+# Critical vulnerabilities accepted for a time (ADR 0027). Each line is a CVE id with a comment: why it does not
+# reach us, who decided, and until when. An expired line is a bug: remove it or renew it with a reason.
+#
+# Format:
+#   CVE-YYYY-NNNNN  # <component>: <why it is not reachable>; <who>, until YYYY-MM-DD

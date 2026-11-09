@@ -7,6 +7,7 @@ import ai.costguard.core.approvals.ApprovalRequests;
 import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.platform.tenant.TenantSession;
+import ai.costguard.core.shared.activity.ActionTaken;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
@@ -98,6 +99,9 @@ class ApprovalService implements ApprovalRequests {
     private Approval close(UUID tenantId, Approval approval, ApprovalStatus status, String by, String comment) {
         approvals.close(approval.id(), status, by, comment);
         approvals.removeTimer(approval.id());
+        events.publishEvent(new ActionTaken(tenantId, "approval." + status.name(), "approval", approval.id(),
+                ActionTaken.details("operationId", approval.operationId(), "agentId", approval.agentId(), "amount",
+                        approval.amount().toPlainString()), by == null ? "approvals-timer" : null));
         events.publishEvent(new ApprovalDecided(tenantId, approval.id(), approval.operationId(), approval.agentId(),
                 status.name(), approval.amount(), clock.instant()));
         if (status == ApprovalStatus.approved && approval.amount().compareTo(confirmAbove) >= 0) {

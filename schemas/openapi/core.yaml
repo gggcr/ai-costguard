@@ -11,6 +11,9 @@ tags:
   description: Operations waiting for a human decision
 - name: Analytics
   description: Spending and savings for the dashboard
+- name: Activity log
+  description: "Who changed what: budgets, mandates, roles, connections, equipment,\
+    \ erasures"
 - name: Assets
   description: "Employee equipment: who holds what and when it is due back"
 - name: Connections
@@ -25,6 +28,9 @@ tags:
   description: "Company, departments, employees, users and dismissals"
 - name: Catalog
   description: "Prices of models and paid APIs, Bank of Russia exchange rates"
+- name: Privacy
+  description: "Erasing an employee's personal data, erasing the company, and the\
+    \ records of both"
 - name: Findings
   description: Findings of the audit engine and their life cycle
 - name: Software
@@ -1145,6 +1151,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Employee"
+  /api/v1/employees/{id}/erasure:
+    post:
+      tags:
+      - Privacy
+      summary: Erase a dismissed employee's personal data
+      description: Deletes or anonymizes what every store holds about the person and
+        returns the record of it. Handover acts and uploaded files stay until their
+        accounting term. Asking again returns the first record.
+      operationId: eraseEmployee
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erasure"
   /api/v1/departments:
     get:
       tags:
@@ -1277,6 +1306,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Connection"
+  /api/v1/company/erasure:
+    get:
+      tags:
+      - Privacy
+      summary: "Whether the company is to be erased, and when"
+      operationId: getCompanyErasure
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyErasure"
+    post:
+      tags:
+      - Privacy
+      summary: Erase the company when it leaves
+      description: "Everything of the company is erased after the grace period (30\
+        \ days by default); until then the owner can cancel. The company name, exactly\
+        \ as saved, confirms the request."
+      operationId: requestCompanyErasure
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyErasureRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyErasure"
+    delete:
+      tags:
+      - Privacy
+      summary: Cancel erasing the company
+      description: Only while the grace period lasts.
+      operationId: cancelCompanyErasure
+      responses:
+        "204":
+          description: No Content
   /api/v1/catalog/prices:
     get:
       tags:
@@ -1573,6 +1645,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChainVerification"
+  /api/v1/journal/signing-keys:
+    get:
+      tags:
+      - Journal
+      summary: "Every public key that verifies receipts: the current one first, then\
+        \ those it replaced"
+      operationId: keys_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SigningKey"
   /api/v1/journal/signing-key:
     get:
       tags:
@@ -1660,6 +1748,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FindingTotals"
+  /api/v1/erasures:
+    get:
+      tags:
+      - Privacy
+      summary: The latest 200 erasures of employees
+      operationId: listErasures
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Erasure"
+  /api/v1/erasures/{id}:
+    get:
+      tags:
+      - Privacy
+      summary: "What one erasure deleted, anonymized and kept"
+      operationId: getErasure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erasure"
   /api/v1/employees/{id}/dismissal-checklist:
     get:
       tags:
@@ -2098,6 +2221,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Summary"
+  /api/v1/activity:
+    get:
+      tags:
+      - Activity log
+      summary: "The activity log, newest first"
+      description: Every filter is optional. For the next page pass the time of the
+        last entry as before.
+      operationId: listActivity
+      parameters:
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: targetId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: actorId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: before
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEntry"
   /api/v1/licenses/{id}:
     delete:
       tags:
@@ -2550,6 +2721,8 @@ components:
         dismissedAt:
           type: string
           format: date
+        erased:
+          type: boolean
     ContractDetails:
       type: object
       properties:
@@ -3001,6 +3174,47 @@ components:
           type: string
         text:
           type: string
+    Erasure:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum:
+          - request
+          - retention
+        erasedAt:
+          type: string
+          format: date-time
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/Step"
+    Step:
+      type: object
+      properties:
+        store:
+          type: string
+        action:
+          type: string
+          enum:
+          - deleted
+          - anonymized
+          - retained
+          - manual
+        rows:
+          type: integer
+          format: int64
+        note:
+          type: string
+        until:
+          type: string
+          format: date
     NewDepartment:
       type: object
       properties:
@@ -3081,6 +3295,44 @@ components:
         createdAt:
           type: string
           format: date-time
+    CompanyErasureRequest:
+      type: object
+      properties:
+        confirmName:
+          type: string
+          minLength: 1
+      required:
+      - confirmName
+    CompanyErasure:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - scheduled
+          - cancelled
+          - completed
+        requestedAt:
+          type: string
+          format: date-time
+        scheduledFor:
+          type: string
+          format: date-time
+        cancelledAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        attempts:
+          type: integer
+          format: int32
+        lastError:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/Step"
     NewPrice:
       type: object
       properties:
@@ -3307,6 +3559,9 @@ components:
           format: int64
         problem:
           type: string
+        unverifiedSignatures:
+          type: integer
+          format: int64
     SigningKey:
       type: object
       properties:
@@ -3479,6 +3734,41 @@ components:
           type: number
         confirmedSavings:
           type: number
+    ActivityActor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        erased:
+          type: boolean
+    ActivityEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        actor:
+          $ref: "#/components/schemas/ActivityActor"
+        system:
+          type: string
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+        details:
+          type: object
+          additionalProperties: {}
   securitySchemes:
     bearer:
       type: http

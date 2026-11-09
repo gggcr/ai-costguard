@@ -65,7 +65,7 @@ from pathlib import Path
 
 import httpx
 
-from costguard_common import payments
+from costguard_common import logs, payments
 from costguard_connectors import (
     banks,
     bitrix24,
@@ -179,7 +179,8 @@ class Reporter:
     def __call__(self, kind: str, started: datetime, records: int, error: str | None) -> None:
         self.started[kind] = started
         if error is not None:
-            error = control.redact(error, self._env)
+            # Shown on the connections page: no secret of the environment, no e-mail or name of the source system.
+            error = logs.mask(control.redact(error, self._env))
         try:
             self._publish([control.run_message(self._tenant, kind, self.ids.get(kind), started, _now(), records,
                                                error)])
@@ -287,7 +288,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("config", type=Path)
     parser.add_argument("--once", action="store_true", help="one round, then exit (for cron or Airflow)")
     args = parser.parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    logs.configure()
 
     config = tomllib.loads(args.config.read_text("utf-8"))
     env = dict(os.environ)

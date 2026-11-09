@@ -1,0 +1,117 @@
+name: security
+# Vulnerabilities in dependencies and images, and secrets in the code (ADR 0027). A critical vulnerability with a fix
+# fails the build; HIGH and the rest go to the Security tab as SARIF. Every Monday the same checks run on main, so a
+# new CVE in a dependency nobody touched still turns up. Accepted exceptions: .trivyignore, with a reason and a date.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.57.1
+  GITLEAKS_IMAGE: zricethezav/gitleaks:v8.21.2
+  # Fail on these; report the rest.
+  FAIL_ON: CRITICAL
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Secrets in the code and its history
+        run: |
+          # A pull request is checked commit by commit; main and the weekly run check the whole history.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="--log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          fi
+          docker run --rm -v "$PWD:/repo" -w /repo "$GITLEAKS_IMAGE" detect --source /repo \
+            --config /repo/.gitleaks.toml --redact --no-banner --exit-code 1 ${range:-}
+
+  dependencies:
+    # Python (uv.lock), JavaScript (package-lock.json) and Rust (Cargo.lock) from their lock files.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report every finding to the Security tab
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo "$TRIVY_IMAGE" fs --scanners vuln --format sarif \
+            --output /repo/deps.sarif --skip-dirs apps/frontend/node_modules --skip-dirs .venv /repo
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('deps.sarif') != ''
+        with: { sarif_file: deps.sarif, category: dependencies }
+      - name: Fail on critical
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo "$TRIVY_IMAGE" fs --scanners vuln --severity "$FAIL_ON" \
+            --ignore-unfixed --ignorefile /repo/.trivyignore --exit-code 1 \
+            --skip-dirs apps/frontend/node_modules --skip-dirs .venv /repo
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: npm audit of the frontend
+        working-directory: apps/frontend
+        run: npm audit --omit=dev --audit-level=critical
+
+  java:
+    # Gradle has no lock file Trivy reads, so the jars are scanned as built, with everything they bundle.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '25' }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :core:bootJar :gateway:bootJar
+      - name: Report every finding to the Security tab
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo "$TRIVY_IMAGE" rootfs --scanners vuln --format sarif \
+            --output /repo/java.sarif /repo/apps/backend/core/build/libs /repo/apps/backend/gateway/build/libs || true
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('java.sarif') != ''
+        with: { sarif_file: java.sarif, category: java }
+      - name: Fail on critical
+        run: |
+          for jar in apps/backend/core/build/libs apps/backend/gateway/build/libs; do
+            docker run --rm -v "$PWD:/repo" -w /repo "$TRIVY_IMAGE" rootfs --scanners vuln --severity "$FAIL_ON" \
+              --ignore-unfixed --ignorefile /repo/.trivyignore --exit-code 1 "/repo/$jar"
+          done
+
+  images:
+    # What runs in the cluster: the jars above plus the operating system of each image.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: core, context: apps/backend/core, dockerfile: apps/backend/core/Dockerfile, jar: core }
+          - { name: gateway, context: apps/backend/gateway, dockerfile: apps/backend/gateway/Dockerfile, jar: gateway }
+          - { name: python, context: ., dockerfile: apps/python/Dockerfile }
+          - { name: backup, context: ., dockerfile: deploy/backup/Dockerfile }
+          - { name: mlflow, context: deploy/mlflow, dockerfile: deploy/mlflow/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: matrix.image.jar
+        with: { distribution: temurin, java-version: '25' }
+      - uses: gradle/actions/setup-gradle@v4
+        if: matrix.image.jar
+      - if: matrix.image.jar
+        run: ./gradlew :${{ matrix.image.jar }}:bootJar
+      - run: docker build -f ${{ matrix.image.dockerfile }} -t costguard-${{ matrix.image.name }}:scan ${{ matrix.image.context }}
+      - name: Report every finding to the Security tab
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" "$TRIVY_IMAGE" image \
+            --scanners vuln --format sarif --output /repo/image.sarif costguard-${{ matrix.image.name }}:scan
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('image.sarif') != ''
+        with: { sarif_file: image.sarif, category: 'image-${{ matrix.image.name }}' }
+      - name: Fail on critical
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" "$TRIVY_IMAGE" image \
+            --scanners vuln --severity "$FAIL_ON" --ignore-unfixed --ignorefile /repo/.trivyignore --exit-code 1 \
+            costguard-${{ matrix.image.name }}:scan

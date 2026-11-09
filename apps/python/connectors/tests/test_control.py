@@ -103,6 +103,15 @@ def test_every_pull_is_reported_with_its_records_or_its_error(tmp_path):
     assert set(report.started) == {"okta", "onec"}
 
 
+def test_a_reported_error_carries_no_e_mail_or_name_of_the_source_system(tmp_path):
+    reports = []
+    report = agent.Reporter(TENANT, reports.extend)
+    bad = Fake("okta", error=RuntimeError("user anna.k@romashka.ru (Кузнецова Анна Сергеевна) is locked"))
+    agent.once([bad], TENANT, agent.State(tmp_path / "s.json"), lambda _: None, report)
+    [run] = reports
+    assert run.value["error"] == "RuntimeError: user ***@romashka.ru (***) is locked"
+
+
 def test_a_report_that_cannot_be_sent_does_not_fail_the_pull(tmp_path):
     def down(_):
         raise RuntimeError("kafka is down")

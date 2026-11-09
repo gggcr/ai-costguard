@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from costguard_common import llm
+from costguard_common import llm, logs
 from costguard_common import payments as paying
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
@@ -154,7 +154,8 @@ def run(settings: IngestSettings) -> None:
 
     files: storage.Files = (storage.LocalFiles(settings.ingest_storage_dir) if settings.ingest_storage_dir
                             else storage.S3Files(settings.s3_endpoint, settings.s3_access_key,
-                                                 settings.s3_secret_key, settings.ingest_s3_bucket))
+                                                 settings.s3_secret_key, settings.ingest_s3_bucket,
+                                                 settings.s3_region))
     handler = Handler(files, reader(settings, files), settings.intermediaries(), settings.services())
     if not settings.extraction_on:
         log.info("Invoice extraction from text is off: INGEST_LLM_API_KEY and INGEST_LLM_MODEL are not set")
@@ -187,7 +188,7 @@ def run(settings: IngestSettings) -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    logs.configure()
     run(IngestSettings())
 
 

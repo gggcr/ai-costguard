@@ -1,0 +1,58 @@
+{{- define "costguard.telegram" -}}
+botToken: { name: {{ .a.secretName }}, key: TELEGRAM_BOT_TOKEN }
+chatID: {{ int64 .chat }}
+parseMode: HTML
+sendResolved: true
+message: |-
+  {{`{{ range .Alerts }}<b>{{ if eq .Status "firing" }}FIRING{{ else }}RESOLVED{{ end }} {{ .Labels.alertname }}</b> ({{ .Labels.severity }})
+  {{ .Annotations.summary }}
+  Runbook: {{ .Annotations.runbook_url }}
+  {{ end }}`}}
+{{- end -}}
+{{- if .Values.alerting.enabled }}
+{{- $a := .Values.alerting }}
+{{- $chat := $a.telegram.chatId }}
+{{- if not $chat }}{{ fail "alerting.telegram.chatId is required (docs/runbooks/alerting.md)" }}{{ end }}
+---
+# Where the alerts of monitoring.yaml go (ADR 0026). The Alertmanager of kube-prometheus-stack picks this up when
+# its alertmanagerConfigSelector matches `selectorLabels`; it adds a matcher on this namespace by itself.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: costguard
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+    {{- toYaml $a.selectorLabels | nindent 4 }}
+spec:
+  route:
+    receiver: telegram
+    groupBy: [alertname]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: {{ $a.repeatInterval }}
+    routes:
+      - receiver: telegram-and-email
+        matchers:
+          - { name: severity, value: critical, matchType: "=" }
+  receivers:
+    - name: telegram
+      telegramConfigs:
+        - {{- include "costguard.telegram" (dict "a" $a "chat" $chat) | nindent 10 }}
+    - name: telegram-and-email
+      telegramConfigs:
+        - {{- include "costguard.telegram" (dict "a" $a "chat" $chat) | nindent 10 }}
+      emailConfigs:
+        - to: {{ required "alerting.email.to is required" $a.email.to | quote }}
+          from: {{ required "alerting.email.from is required" $a.email.from | quote }}
+          smarthost: {{ required "alerting.email.smarthost is required" $a.email.smarthost | quote }}
+          authUsername: {{ $a.email.username | quote }}
+          authPassword: { name: {{ $a.secretName }}, key: SMTP_PASSWORD }
+          requireTLS: true
+          sendResolved: true
+          headers:
+            - { key: Subject, value: {{ `"[CostGuard {{ .Status | toUpper }}] {{ .CommonLabels.alertname }}"` }} }
+          text: |-
+            {{`{{ range .Alerts }}{{ .Labels.alertname }} ({{ .Labels.severity }}): {{ .Annotations.summary }}
+            Runbook: {{ .Annotations.runbook_url }}
+            {{ end }}`}}
+{{- end }}

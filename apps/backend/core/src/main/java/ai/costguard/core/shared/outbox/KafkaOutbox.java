@@ -13,6 +13,7 @@ import ai.costguard.core.journal.ReceiptIssued;
 import ai.costguard.core.ledger.BudgetLimitChanged;
 import ai.costguard.core.ledger.OperationCharged;
 import ai.costguard.core.policies.PolicySnapshotPublished;
+import ai.costguard.core.privacy.CompactedRecordsErased;
 import org.springframework.modulith.events.ApplicationModuleListener;
 
 /**
@@ -96,5 +97,11 @@ class KafkaOutbox {
     @ApplicationModuleListener
     void on(AssetChanged e) {
         send(EventMapping.of(e));
+    }
+
+    /** After a company is erased. Sending a tombstone twice is harmless: the key is gone either way. */
+    @ApplicationModuleListener
+    void on(CompactedRecordsErased e) {
+        e.keys().forEach(k -> publisher.tombstone(k.topic(), k.key()));
     }
 }

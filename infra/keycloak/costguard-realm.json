@@ -75,6 +75,32 @@
       ],
       "name": "E2E tests and scripts (local stack only)",
       "directAccessGrantsEnabled": true
+    },
+    {
+      "clientId": "costguard-privacy",
+      "name": "Core: deletes accounts when a person or a company is erased (ADR 0021)",
+      "description": "Local stack only. Staging and prod create this client in their own Keycloak with a secret from Vault (docs/runbooks/privacy.md).",
+      "publicClient": false,
+      "secret": "costguard-privacy-local",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-costguard-privacy",
+      "enabled": true,
+      "serviceAccountClientId": "costguard-privacy",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users"
+        ]
+      }
     }
   ],
   "components": {

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 class OrgRepository {
 
-    private static final String EMPLOYEE_COLUMNS = "id, name, email, department_id, position, dismissed_at";
+    private static final String EMPLOYEE_COLUMNS = "id, name, email, department_id, position, dismissed_at, erased_at";
     private static final String USER_COLUMNS = "id, name, email, role, employee_id";
 
     private static final RowMapper<Company> COMPANY = (rs, n) -> new Company(rs.getObject("id", UUID.class),
@@ -25,7 +25,8 @@ class OrgRepository {
     private static final RowMapper<Employee> EMPLOYEE = (rs, n) -> {
         LocalDate dismissedAt = rs.getObject("dismissed_at", LocalDate.class);
         return new Employee(rs.getObject("id", UUID.class), rs.getString("name"), rs.getString("email"),
-                rs.getObject("department_id", UUID.class), rs.getString("position"), dismissedAt == null, dismissedAt);
+                rs.getObject("department_id", UUID.class), rs.getString("position"), dismissedAt == null, dismissedAt,
+                rs.getTimestamp("erased_at") != null);
     };
 
     private static final RowMapper<UserAccount> USER = (rs, n) -> new UserAccount(rs.getObject("id", UUID.class),

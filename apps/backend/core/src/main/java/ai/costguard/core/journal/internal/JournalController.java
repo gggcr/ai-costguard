@@ -39,4 +39,10 @@ class JournalController {
     SigningKey key() {
         return service.key();
     }
+
+    @GetMapping("/journal/signing-keys")
+    @Operation(summary = "Every public key that verifies receipts: the current one first, then those it replaced")
+    java.util.List<SigningKey> keys() {
+        return service.keys();
+    }
 }

@@ -21,7 +21,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Every instance reads every state topic from the start, with a group of its own, so each one holds the full
- * state in memory. The topics are compacted, so that read stays short. A tombstone (null value) is skipped.
+ * state in memory. The topics are compacted, so that read stays short. A tombstone (null value) is skipped, except
+ * on agents.state.v1: there it is a company that was erased (ADR 0021), and its agents must stop at once.
  */
 @Component
 public class StateListeners {
@@ -57,6 +58,12 @@ public class StateListeners {
     void agents(ConsumerRecord<String, byte[]> r) {
         if (r.value() != null) {
             agents.apply(read(r, AgentState.class));
+        } else if (r.key() != null) {
+            try {
+                agents.remove(java.util.UUID.fromString(r.key()));
+            } catch (IllegalArgumentException notAnAgent) {
+                // a key that is not an agent id names nothing here
+            }
         }
     }
 

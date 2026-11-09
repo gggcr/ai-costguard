@@ -16,6 +16,6 @@ class ServiceStaff implements Staff {
 
     @Override
     public void dismissedInHrSystem(UUID tenantId, UUID employeeId) {
-        service.dismiss(tenantId, employeeId);
+        service.dismiss(tenantId, employeeId, "hr-system");
     }
 }

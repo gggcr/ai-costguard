@@ -11,6 +11,24 @@ export type Activity = {
   lastActive: string;  // date
 };
 
+export type ActivityActor = {
+  id?: string;  // uuid
+  name?: string;
+  email?: string;
+  erased?: boolean;
+};
+
+export type ActivityEntry = {
+  id?: string;  // uuid
+  at?: string;  // date-time
+  actor?: ActivityActor;
+  system?: string;
+  action?: string;
+  targetType?: string;
+  targetId?: string;  // uuid
+  details?: Record<string, unknown>;
+};
+
 export type Agent = {
   id?: string;  // uuid
   name?: string;
@@ -68,6 +86,7 @@ export type ChainVerification = {
   receipts?: number;
   brokenAtSeq?: number;
   problem?: string;
+  unverifiedSignatures?: number;
 };
 
 export type ChecklistSection = {
@@ -81,6 +100,21 @@ export type Company = {
   name?: string;
   currency?: string;
   plan?: string;
+};
+
+export type CompanyErasure = {
+  status?: "scheduled" | "cancelled" | "completed";
+  requestedAt?: string;  // date-time
+  scheduledFor?: string;  // date-time
+  cancelledAt?: string;  // date-time
+  completedAt?: string;  // date-time
+  attempts?: number;
+  lastError?: string;
+  steps?: Array<Step>;
+};
+
+export type CompanyErasureRequest = {
+  confirmName: string;
 };
 
 export type CompanySettings = {
@@ -172,6 +206,7 @@ export type Employee = {
   position?: string;
   active?: boolean;
   dismissedAt?: string;  // date
+  erased?: boolean;
 };
 
 export type EmployeeDetails = {
@@ -179,6 +214,14 @@ export type EmployeeDetails = {
   email: string;
   departmentId: string;  // uuid
   position: string;
+};
+
+export type Erasure = {
+  id?: string;  // uuid
+  employeeId?: string;  // uuid
+  reason?: "request" | "retention";
+  erasedAt?: string;  // date-time
+  steps?: Array<Step>;
 };
 
 export type Finding = {
@@ -484,6 +527,14 @@ export type SseEmitter = {
   timeout?: number;
 };
 
+export type Step = {
+  store?: string;
+  action?: "deleted" | "anonymized" | "retained" | "manual";
+  rows?: number;
+  note?: string;
+  until?: string;  // date
+};
+
 export type Subscription = {
   id?: string;  // uuid
   vendorId?: string;  // uuid
@@ -558,6 +609,7 @@ export type VirtualKey = {
 };
 
 export const operations = {
+  activitylogListActivity: { method: "GET", path: "/api/v1/activity" },
   agentsAgents: { method: "GET", path: "/api/v1/agents" },
   agentsCreate_3: { method: "POST", path: "/api/v1/agents" },
   agentsDelete_1: { method: "DELETE", path: "/api/v1/agents/{id}" },
@@ -592,6 +644,9 @@ export const operations = {
   catalogHistory: { method: "GET", path: "/api/v1/catalog/prices/{skuId}/history" },
   organisationCompany: { method: "GET", path: "/api/v1/company" },
   organisationSaveCompany: { method: "PUT", path: "/api/v1/company" },
+  privacyCancelCompanyErasure: { method: "DELETE", path: "/api/v1/company/erasure" },
+  privacyGetCompanyErasure: { method: "GET", path: "/api/v1/company/erasure" },
+  privacyRequestCompanyErasure: { method: "POST", path: "/api/v1/company/erasure" },
   connectionsListConnections: { method: "GET", path: "/api/v1/connections" },
   connectionsConnectSystem: { method: "POST", path: "/api/v1/connections" },
   connectionsListConnectionTypes: { method: "GET", path: "/api/v1/connections/types" },
@@ -611,6 +666,9 @@ export const operations = {
   organisationUpdateEmployee: { method: "PUT", path: "/api/v1/employees/{id}" },
   organisationDismiss: { method: "PUT", path: "/api/v1/employees/{id}/dismissal" },
   organisationChecklist: { method: "GET", path: "/api/v1/employees/{id}/dismissal-checklist" },
+  privacyEraseEmployee: { method: "POST", path: "/api/v1/employees/{id}/erasure" },
+  privacyListErasures: { method: "GET", path: "/api/v1/erasures" },
+  privacyGetErasure: { method: "GET", path: "/api/v1/erasures/{id}" },
   findingsList_2: { method: "GET", path: "/api/v1/findings" },
   findingsTotals: { method: "GET", path: "/api/v1/findings/totals" },
   findingsGet_1: { method: "GET", path: "/api/v1/findings/{id}" },
@@ -621,6 +679,7 @@ export const operations = {
   importsMapping: { method: "PUT", path: "/api/v1/imports/{id}/mapping" },
   importsResolve: { method: "PUT", path: "/api/v1/imports/{id}/review-tasks/{taskId}" },
   journalKey: { method: "GET", path: "/api/v1/journal/signing-key" },
+  journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
   softwareRevoke: { method: "DELETE", path: "/api/v1/licenses/{id}" },
   softwareActivity: { method: "PUT", path: "/api/v1/licenses/{id}/activity" },

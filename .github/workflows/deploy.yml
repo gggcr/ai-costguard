@@ -1,11 +1,22 @@
 name: deploy-manifests
 on:
   push:
-    paths: ['deploy/**', 'tools/tests/test_helm.py']
+    paths: ['deploy/**', 'tools/tests/test_helm.py', 'tools/tests/test_alerts.py', 'tools/tests/test_residency.py',
+            'tests/smoke/**', 'docs/runbooks/**']
   pull_request:
-    paths: ['deploy/**', 'tools/tests/test_helm.py']
+    paths: ['deploy/**', 'tools/tests/test_helm.py', 'tools/tests/test_alerts.py', 'tools/tests/test_residency.py',
+            'tests/smoke/**', 'docs/runbooks/**']
+  # Staging follows main through Argo CD (deploy/argocd/staging.yaml): once a build of main succeeds, Argo CD rolls it
+  # out, and the smoke job checks it there (ADR 0029).
+  workflow_run:
+    workflows: [java, python, frontend]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
 jobs:
   helm:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,15 +27,17 @@ jobs:
             helm lint deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml
             helm template cg deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml > /tmp/$env.yaml
           done
-      - name: KEDA and MLflow render only where the values switch them on
+      - name: KEDA, MLflow, alerts, their delivery, backups and the region render as the values say
         run: |
           pip install --quiet pyyaml pytest
-          python -m pytest tools/tests/test_helm.py -p no:cacheprovider
+          python -m pytest tools/tests/test_helm.py tools/tests/test_alerts.py tools/tests/test_residency.py \
+            -p no:cacheprovider
       - run: |
           docker run --rm -v /tmp:/w ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -ignore-missing-schemas \
             -kubernetes-version 1.30.0 /w/staging.yaml /w/prod.yaml
           docker run --rm -v "$PWD/deploy/argocd:/w" ghcr.io/yannh/kubeconform:v0.6.7 -summary -ignore-missing-schemas /w
   terraform:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: deploy/terraform/yandex } }
     steps:
@@ -34,3 +47,60 @@ jobs:
       - run: terraform fmt -check -diff
       - run: terraform init -backend=false -input=false
       - run: terraform validate
+
+  smoke-staging:
+    # After a successful build of main, or by hand. Needs the settings of docs/runbooks/smoke.md; without them the
+    # job fails and says which are missing, it never passes without having tested anything.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency: { group: smoke-staging, cancel-in-progress: false }
+    env:
+      ARGOCD_VERSION: v2.13.1
+      ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+      ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+      SMOKE_CORE_URL: ${{ vars.SMOKE_CORE_URL }}
+      SMOKE_GATEWAY_URL: ${{ vars.SMOKE_GATEWAY_URL }}
+      SMOKE_KEYCLOAK_URL: ${{ vars.SMOKE_KEYCLOAK_URL }}
+      SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+      SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+      REVISION: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Settings are there
+        run: |
+          missing=""
+          for v in ARGOCD_SERVER ARGOCD_AUTH_TOKEN SMOKE_CORE_URL SMOKE_GATEWAY_URL SMOKE_KEYCLOAK_URL SMOKE_USERNAME \
+                   SMOKE_PASSWORD; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Smoke test of staging is not configured, missing:$missing (docs/runbooks/smoke.md)"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.REVISION }}' }
+      - name: Argo CD has rolled out this commit
+        run: |
+          base="https://github.com/argoproj/argo-cd/releases/download/$ARGOCD_VERSION"
+          curl -sSfL -o argocd-linux-amd64 "$base/argocd-linux-amd64"
+          curl -sSfL -o cli_checksums.txt "$base/cli_checksums.txt"
+          sha256sum --check --ignore-missing cli_checksums.txt
+          sudo install -m 0755 argocd-linux-amd64 /usr/local/bin/argocd
+          for i in $(seq 1 40); do
+            argocd app wait costguard-staging --grpc-web --sync --health --timeout 600
+            deployed=$(argocd app get costguard-staging --grpc-web -o json | jq -r '.status.sync.revision')
+            [ "$deployed" = "$REVISION" ] && exit 0
+            sleep 30
+          done
+          echo "::error::staging runs $deployed, not $REVISION"
+          exit 1
+      - uses: astral-sh/setup-uv@v5
+        with: { version: '0.5.11' }
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-packages
+      - name: Smoke test
+        run: uv run pytest tests/smoke -v -p no:cacheprovider
+        env:
+          SMOKE_RUN_ID: ${{ github.run_id }}

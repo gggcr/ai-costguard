@@ -85,3 +85,18 @@ def test_the_photo_is_uploaded_to_the_core():
     client = httpx.Client(base_url="http://core", transport=httpx.MockTransport(core))
     assert mail.MailInvoices(box, client).collect() == 1
     assert box.done == ["1"] and b"IMG_0412.jpg" in seen[0].content
+
+
+def test_a_refused_attachment_is_logged_without_its_name(caplog):
+    class Box:
+        def unseen(self):
+            return [("7", letter(("Счёт_Петров_Иван.jpg", picture(1200, 1600, "JPEG"), "jpeg")))]
+
+        def mark_seen(self, uid):
+            raise AssertionError("a letter with a refused file stays unseen")
+
+    client = httpx.Client(base_url="http://core", transport=httpx.MockTransport(lambda r: httpx.Response(413)))
+    with caplog.at_level("INFO"):
+        assert mail.MailInvoices(Box(), client).collect() == 0
+    assert "Letter 7: attachment 1 of 1 was not accepted: 413" in caplog.text
+    assert "Петров" not in caplog.text

@@ -20,6 +20,7 @@ from costguard_anomaly import models as modelling
 from costguard_anomaly.detector import Anomaly, Detector
 from costguard_anomaly.risk import Rules, Score
 from costguard_anomaly.scorer import Scorer, signal
+from costguard_common import logs
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
@@ -124,7 +125,7 @@ def run(settings: AnomalySettings) -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    logs.configure()
     run(AnomalySettings())
 
 

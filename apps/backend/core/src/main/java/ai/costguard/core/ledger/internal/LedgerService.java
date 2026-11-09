@@ -4,6 +4,7 @@ import ai.costguard.core.ledger.BudgetLimitChanged;
 import ai.costguard.core.ledger.OperationCharged;
 import ai.costguard.core.ledger.OperationPosting;
 import ai.costguard.platform.tenant.TenantSession;
+import ai.costguard.core.shared.activity.ActionTaken;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -55,6 +56,9 @@ class LedgerService implements OperationPosting {
         }
         Budget created = found(id);
         announce(tenantId, created);
+        events.publishEvent(ActionTaken.of(tenantId, "budget.created", "budget", id, ActionTaken.details(
+                "level", created.level().name(), "refId", created.refId(), "parentId", created.parentId(),
+                "limit", created.limit().toPlainString(), "currency", created.currency())));
         return created;
     }
 
@@ -79,11 +83,15 @@ class LedgerService implements OperationPosting {
     @Transactional
     Budget setLimit(UUID tenantId, UUID id, BigDecimal limit) {
         session.bind(tenantId);
+        BigDecimal before = found(id).limit();
         if (!ledger.setLimit(id, limit)) {
             throw LedgerProblem.BUDGET_NOT_FOUND.failure();
         }
         Budget changed = found(id);
         announce(tenantId, changed);
+        events.publishEvent(ActionTaken.of(tenantId, "budget.limit_changed", "budget", id, ActionTaken.details(
+                "from", before.toPlainString(), "to", changed.limit().toPlainString(), "currency",
+                changed.currency())));
         return changed;
     }
 

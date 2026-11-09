@@ -26,7 +26,9 @@ class NormalizedInbox {
             entities.received(e.getTenantId(), e.getFileId(), e.getEntityKey(), e.getEntityType().name(),
                     e.getPayload(), e.getConfidence(), e.getNormalizedAt());
         } catch (IllegalArgumentException | ApiException ex) {
-            log.warn("Entity {} of tenant {} skipped: {}", e.getEntityKey(), e.getTenantId(), ex.getMessage());
+            // Not the key: a person's key is their e-mail or full name (ADR 0023).
+            log.warn("{} entity of file {} of tenant {} skipped: {}", e.getEntityType(), e.getFileId(),
+                    e.getTenantId(), ex.getMessage());
         }
     }
 }

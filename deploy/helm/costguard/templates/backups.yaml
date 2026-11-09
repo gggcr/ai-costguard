@@ -1,0 +1,68 @@
+{{- if .Values.backups.enabled }}
+{{- $b := .Values.backups }}
+{{- $bucket := required "backups.bucket is required (terraform output backups_bucket)" $b.bucket }}
+{{- $recipient := required "backups.ageRecipient is required: the age public key (docs/runbooks/backups.md)" $b.ageRecipient }}
+{{- range $kind, $schedule := $b.schedules }}
+---
+# Nightly backup of {{ $kind }} (ADR 0025). The alerts BackupFailed and BackupMissing watch these jobs.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: costguard-backup-{{ $kind }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: backup-{{ $kind }}
+spec:
+  schedule: {{ $schedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: {{ $b.deadlineSeconds }}
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+          containers:
+            - name: backup
+              image: {{ include "costguard.image" (dict "root" $ "image" $b.image) }}
+              args: [{{ $kind | quote }}]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+              envFrom:
+                - secretRef:
+                    name: {{ $.Values.secretName }}
+              env:
+                {{- include "costguard.env" $ | nindent 16 }}
+                - name: BACKUP_TARGET
+                  value: {{ printf "s3://%s" $bucket | quote }}
+                - name: AGE_RECIPIENT
+                  value: {{ $recipient | quote }}
+                {{- if eq $kind "postgres" }}
+                # As costguard_backup, the read-only role of V21__backup_role.sql.
+                - name: BACKUP_DB_URL
+                  value: {{ $.Values.external.postgresUrl | quote }}
+                - name: PGUSER
+                  valueFrom: { secretKeyRef: { name: {{ $.Values.secretName }}, key: BACKUP_DB_USER } }
+                - name: PGPASSWORD
+                  valueFrom: { secretKeyRef: { name: {{ $.Values.secretName }}, key: BACKUP_DB_PASSWORD } }
+                {{- end }}
+                {{- if eq $kind "files" }}
+                - name: BACKUP_FILES_SOURCE
+                  value: {{ printf "s3://%s" (required "backups.filesBucket is required" $b.filesBucket) | quote }}
+                {{- end }}
+                - { name: TMPDIR, value: /scratch }
+              resources:
+                {{- toYaml $b.resources | nindent 16 }}
+              volumeMounts:
+                - { name: scratch, mountPath: /scratch }
+          volumes:
+            - name: scratch
+              emptyDir: { sizeLimit: {{ $b.scratchSize }} }
+{{- end }}
+{{- end }}

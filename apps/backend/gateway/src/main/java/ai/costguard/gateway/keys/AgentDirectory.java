@@ -28,6 +28,14 @@ public class AgentDirectory {
         Set.copyOf(state.getVirtualKeyHashes()).forEach(h -> keys.put(h, state.getAgentId()));
     }
 
+    /** The agent's record was deleted (a tombstone on agents.state.v1): its keys stop working at once. */
+    public void remove(UUID agentId) {
+        AgentState previous = agents.remove(agentId);
+        if (previous != null) {
+            previous.getVirtualKeyHashes().forEach(h -> keys.remove(h, agentId));
+        }
+    }
+
     public Optional<AgentState> byKey(String secret) {
         return Optional.ofNullable(keys.get(hash(secret))).map(agents::get);
     }

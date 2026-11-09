@@ -1,0 +1,26 @@
+{
+  "doc": "What the log maskers of every service must turn each line into: costguard_common.logs (Python) and ai.costguard.platform.logging.LogMasking (Java) both run these cases, so the rules cannot drift apart. See docs/adr/0023-log-masking.md.",
+  "cases": [
+    {"in": "Employee ivan.petrov@romashka.ru not found", "out": "Employee ***@romashka.ru not found"},
+    {"in": "Key (tenant_id, email)=(7f0c, Anna_K+cg@mail.example.org) already exists", "out": "Key (tenant_id, email)=(7f0c, ***@mail.example.org) already exists"},
+    {"in": "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl", "out": "Authorization: Bearer ***"},
+    {"in": "token eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl in the query", "out": "token *** in the query"},
+    {"in": "Basic dXNlcjpwYXNzd29yZA== was refused", "out": "Basic *** was refused"},
+    {"in": "agent key cg_live_Q2xhdWRlIHdhcyBoZXJl used", "out": "agent key cg_*** used"},
+    {"in": "provider said sk-ant-api03-AbCdEfGhIjKlMnOp is invalid", "out": "provider said sk-*** is invalid"},
+    {"in": "password=Sup3r-secret; user=admin", "out": "password=***; user=admin"},
+    {"in": "client_secret: \"abc123def\" api_key=XYZ987", "out": "client_secret: \"***\" api_key=***"},
+    {"in": "input_tokens=512 output_tokens=128", "out": "input_tokens=512 output_tokens=128"},
+    {"in": "GET https://svc:hunter22@bitrix.example/rest failed", "out": "GET https://***:***@bitrix.example/rest failed"},
+    {"in": "Акт выдан: Петров Иван Сергеевич, ноутбук", "out": "Акт выдан: ***, ноутбук"},
+    {"in": "Согласовала Анна Сергеевна Кузнецова на 15000 ₽", "out": "Согласовала *** на 15000 ₽"},
+    {"in": "Оплата 15 000 ₽ от Петров И. С. принята", "out": "Оплата 15 000 ₽ от *** принята"},
+    {"in": "Списано у И.С. Петрова 990 ₽", "out": "Списано у *** 990 ₽"},
+    {"in": "call +7 (912) 345-67-89 or 8 912 345 67 89", "out": "call *** or ***"},
+    {"in": "card 4276 1234 5678 9012 charged", "out": "card *** charged"},
+    {"in": "СНИЛС 123-456-789 01", "out": "СНИЛС ***"},
+    {"in": "Audit of 3 tenants reported 12 findings", "out": "Audit of 3 tenants reported 12 findings"},
+    {"in": "Operation 0f8e2a4c-3b1d-4e5f-9a7b-6c5d4e3f2a1b at 1731150000000 cost 0.004200", "out": "Operation 0f8e2a4c-3b1d-4e5f-9a7b-6c5d4e3f2a1b at 1731150000000 cost 0.004200"},
+    {"in": "Отдел Маркетинга Москва превысил бюджет", "out": "Отдел Маркетинга Москва превысил бюджет"}
+  ]
+}

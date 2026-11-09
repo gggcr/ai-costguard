@@ -2,7 +2,10 @@ package ai.costguard.core.connections.internal;
 
 import ai.costguard.core.connections.ConnectionChanged;
 import ai.costguard.core.connections.ConnectorRuns;
+import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -25,13 +28,22 @@ class ConnectionService implements ConnectorRuns {
     private final TenantSession session;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final MeterRegistry registry;
 
     ConnectionService(ConnectionRepository connections, TenantSession session, Clock clock,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, MeterRegistry registry) {
         this.connections = connections;
         this.session = session;
         this.clock = clock;
         this.events = events;
+        this.registry = registry;
+    }
+
+    /** Pulls by system type and outcome, for the alert on failing connectors (ADR 0026). No tenant: one label. */
+    private void count(String type, boolean succeeded) {
+        Counter.builder("costguard.connector.runs").description("Pulls the connector agent reported")
+                .tag("type", SystemTypes.of(type).isPresent() ? type : "other")
+                .tag("status", succeeded ? "SUCCEEDED" : "FAILED").register(registry).increment();
     }
 
     @Transactional(readOnly = true)
@@ -95,6 +107,9 @@ class ConnectionService implements ConnectorRuns {
             connections.insert(tenantId, id, details.type(), details.name().strip(), true, settings, now);
         }
         publish(tenantId, id, now);
+        // The names of the settings, not their values: a value can be an administrator's e-mail.
+        events.publishEvent(ActionTaken.of(tenantId, "connection.connected", "connection", id, Map.of(
+                "type", details.type(), "settings", String.join(",", settings.keySet()))));
         return new Connected(found(id), existing.isEmpty());
     }
 
@@ -112,6 +127,8 @@ class ConnectionService implements ConnectorRuns {
         Instant now = clock.instant();
         connections.disable(id, now);
         publish(tenantId, id, now);
+        events.publishEvent(ActionTaken.of(tenantId, "connection.disconnected", "connection", id,
+                Map.of("type", found(id).type())));
     }
 
     /** Asks the agent to pull the system now. An agent on a schedule pulls it on its next round. */
@@ -125,6 +142,8 @@ class ConnectionService implements ConnectorRuns {
         Instant now = clock.instant();
         connections.requestSync(id, now);
         publish(tenantId, id, now);
+        events.publishEvent(ActionTaken.of(tenantId, "connection.sync_requested", "connection", id,
+                Map.of("type", found(id).type())));
         return found(id);
     }
 
@@ -154,8 +173,10 @@ class ConnectionService implements ConnectorRuns {
         }
         String error = run.error() == null ? null
                 : run.error().length() > MAX_ERROR ? run.error().substring(0, MAX_ERROR) : run.error();
-        connections.insertRun(run.tenantId(), id, run.runId(), run.startedAt(), run.finishedAt(), run.succeeded(),
-                Math.max(0, run.records()), error);
+        if (connections.insertRun(run.tenantId(), id, run.runId(), run.startedAt(), run.finishedAt(),
+                run.succeeded(), Math.max(0, run.records()), error)) {
+            count(run.type(), run.succeeded());
+        }
     }
 
     List<SystemTypes.SystemType> types() {

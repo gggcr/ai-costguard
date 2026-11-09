@@ -1,0 +1,37 @@
+# Secret scanning of .github/workflows/security.yml (ADR 0027). The default rules of gitleaks, plus the keys only
+# CostGuard has, minus what is a deliberate fake or a secret of the local stack only.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "costguard-virtual-key"
+description = "A CostGuard virtual key of an agent"
+regex = '''cg_(live|test)_[A-Za-z0-9_-]{20,}'''
+keywords = ["cg_live_", "cg_test_"]
+
+[[rules]]
+id = "near-private-key"
+description = "A NEAR account key"
+regex = '''ed25519:[1-9A-HJ-NP-Za-km-z]{60,}'''
+keywords = ["ed25519:"]
+
+[[rules]]
+id = "journal-signing-key"
+description = "The Ed25519 private key that signs receipts (base64 PKCS#8 starts with MC4CAQAw)"
+regex = '''MC4CAQAwBQYDK2VwBCIEI[A-Za-z0-9+/]{20,}={0,2}'''
+keywords = ["MC4CAQAw"]
+
+[allowlist]
+description = "Fakes and the local stack"
+paths = [
+  # Log masking cases: fake tokens that must be masked (ADR 0023).
+  '''^schemas/logging/masking-cases\.json$''',
+  # The local compose stack and its Keycloak import: passwords that only exist on a laptop (README).
+  '''^infra/local/''',
+  '''^infra/keycloak/''',
+  '''^\.env\.example$''',
+  # Tests generate their keys or use fixed fakes.
+  '''(^|/)src/test/''',
+  '''(^|/)tests/''',
+  '''^apps/frontend/package-lock\.json$''',
+]

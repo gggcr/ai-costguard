@@ -2,11 +2,13 @@ package ai.costguard.core.org.internal;
 
 import ai.costguard.core.org.DismissalChecklistSection;
 import ai.costguard.core.org.EmployeeDismissed;
+import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
@@ -42,6 +44,8 @@ class OrgService {
     Company saveCompany(UUID tenantId, CompanySettings settings) {
         session.bind(tenantId);
         org.saveCompany(tenantId, settings);
+        events.publishEvent(ActionTaken.of(tenantId, "company.saved", "company", tenantId,
+                Map.of("currency", settings.currency())));
         return org.company().orElseThrow(OrgProblem.COMPANY_NOT_FOUND::failure);
     }
 
@@ -60,6 +64,7 @@ class OrgService {
         } catch (DuplicateKeyException e) {
             throw OrgProblem.DEPARTMENT_NAME_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "department.created", "department", id, Map.of()));
         return new Department(id, request.name());
     }
 
@@ -89,19 +94,25 @@ class OrgService {
         } catch (DuplicateKeyException e) {
             throw OrgProblem.EMAIL_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "employee.created", "employee", id,
+                Map.of("departmentId", details.departmentId())));
         return found(id);
     }
 
     @Transactional
     Employee updateEmployee(UUID tenantId, UUID id, EmployeeDetails details) {
         session.bind(tenantId);
-        found(id);
+        if (found(id).erased()) {
+            throw OrgProblem.EMPLOYEE_ERASED.failure();
+        }
         requireDepartment(details.departmentId());
         try {
             org.updateEmployee(id, details);
         } catch (DuplicateKeyException e) {
             throw OrgProblem.EMAIL_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "employee.updated", "employee", id,
+                Map.of("departmentId", details.departmentId())));
         return found(id);
     }
 
@@ -114,12 +125,20 @@ class OrgService {
     /** Repeating the call changes nothing and publishes nothing. */
     @Transactional
     Employee dismiss(UUID tenantId, UUID id) {
+        return dismiss(tenantId, id, null);
+    }
+
+    /** {@code system} names who dismissed when no person did: the HR system a connector reads. */
+    @Transactional
+    Employee dismiss(UUID tenantId, UUID id, String system) {
         session.bind(tenantId);
         Employee employee = org.employeeForUpdate(id).orElseThrow(OrgProblem.EMPLOYEE_NOT_FOUND::failure);
         if (employee.active()) {
             LocalDate today = LocalDate.now(clock);
             org.dismiss(id, today);
             events.publishEvent(new EmployeeDismissed(tenantId, id, today));
+            events.publishEvent(new ActionTaken(tenantId, "employee.dismissed", "employee", id,
+                    Map.of("dismissedAt", today.toString()), system));
         }
         return found(id);
     }
@@ -155,6 +174,8 @@ class OrgService {
         } catch (DuplicateKeyException e) {
             throw OrgProblem.EMAIL_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "user.created", "user", id,
+                ActionTaken.details("role", request.role().name(), "employeeId", request.employeeId())));
         return org.user(id).orElseThrow(OrgProblem.USER_NOT_FOUND::failure);
     }
 
@@ -167,6 +188,10 @@ class OrgService {
             throw OrgProblem.LAST_OWNER.failure();
         }
         org.setRole(id, role);
+        if (user.role() != role) {
+            events.publishEvent(ActionTaken.of(tenantId, "user.role_changed", "user", id,
+                    Map.of("from", user.role().name(), "to", role.name())));
+        }
         return org.user(id).orElseThrow(OrgProblem.USER_NOT_FOUND::failure);
     }
 }

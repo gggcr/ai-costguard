@@ -4,8 +4,10 @@ import ai.costguard.core.agents.AgentStateChanged;
 import ai.costguard.core.agents.MandatePublished;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.platform.tenant.TenantSession;
+import ai.costguard.core.shared.activity.ActionTaken;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
@@ -74,6 +76,8 @@ class AgentService {
         agents.insertAgent(actor.tenantId(), id, details, clock.instant());
         Agent created = found(id);
         publish(actor.tenantId(), created);
+        events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.created", "agent", id,
+                Map.of("mandateId", details.mandateId(), "ownerId", details.ownerId())));
         return created;
     }
 
@@ -85,6 +89,8 @@ class AgentService {
         agents.updateAgent(id, details);
         Agent updated = found(id);
         publish(actor.tenantId(), updated);
+        events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.updated", "agent", id,
+                Map.of("mandateId", details.mandateId(), "ownerId", details.ownerId())));
         return updated;
     }
 
@@ -98,6 +104,8 @@ class AgentService {
         agents.setStatus(id, status);
         Agent changed = found(id);
         publish(actor.tenantId(), changed);
+        events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.status_changed", "agent", id,
+                Map.of("from", agent.status().name(), "to", status.name())));
         return changed;
     }
 
@@ -106,6 +114,7 @@ class AgentService {
     void delete(Actor actor, UUID id) {
         Agent agent = changing(actor, id);
         agents.deleteAgent(id);
+        events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.deleted", "agent", id, Map.of()));
         events.publishEvent(new AgentStateChanged(actor.tenantId(), agent.id(), List.of(), true, null, null, null,
                 clock.instant()));
     }
@@ -125,6 +134,8 @@ class AgentService {
                 KeyStatus.active);
         agents.insertKey(actor.tenantId(), key, VirtualKeySecrets.hash(secret));
         publish(actor.tenantId(), agent);
+        events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.key_issued", "agent", agentId,
+                Map.of("keyId", key.id(), "prefix", key.prefix())));
         return new IssuedKey(key, secret);
     }
 
@@ -135,6 +146,8 @@ class AgentService {
         if (key.status() == KeyStatus.active) {
             agents.revokeKey(keyId);
             publish(actor.tenantId(), agent);
+            events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.key_revoked", "agent", agentId,
+                    Map.of("keyId", keyId)));
         }
     }
 
@@ -166,6 +179,7 @@ class AgentService {
         } catch (DuplicateKeyException e) {
             throw AgentProblem.MANDATE_NAME_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "mandate.created", "mandate", id, terms(details)));
         return mandate(id);
     }
 
@@ -179,6 +193,7 @@ class AgentService {
         } catch (DuplicateKeyException e) {
             throw AgentProblem.MANDATE_NAME_TAKEN.failure();
         }
+        events.publishEvent(ActionTaken.of(tenantId, "mandate.updated", "mandate", id, terms(details)));
         return mandate(id);
     }
 
@@ -200,6 +215,8 @@ class AgentService {
         String hash = MandateHash.of(tenantId, id, version, current.approvalThreshold(), expression);
         agents.insertNotarization(tenantId, id, version, hash, clock.instant());
         events.publishEvent(new MandatePublished(tenantId, id, version, hash, clock.instant()));
+        events.publishEvent(ActionTaken.of(tenantId, "mandate.published", "mandate", id,
+                Map.of("version", version, "hash", hash)));
         return mandate(id);
     }
 
@@ -211,6 +228,14 @@ class AgentService {
             throw AgentProblem.MANDATE_IN_USE.failure();
         }
         agents.deleteMandate(id);
+        events.publishEvent(ActionTaken.of(tenantId, "mandate.deleted", "mandate", id, Map.of()));
+    }
+
+    /** The money terms of a mandate, for the activity log. */
+    private static Map<String, Object> terms(MandateDetails d) {
+        return ActionTaken.details("maxPerOperation", d.maxPerOperation().toPlainString(), "approvalThreshold",
+                d.approvalThreshold().toPlainString(), "models", String.join(",", d.models()), "vendors",
+                String.join(",", d.vendors()), "hours", d.hours());
     }
 
     /** A mandate never published has no terms, so the gateway gets no expression and denies the agent. */

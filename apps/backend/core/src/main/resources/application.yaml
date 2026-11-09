@@ -21,6 +21,8 @@ spring:
   modulith:
     events:
       republish-outstanding-events-on-restart: true
+      # A published event is a copy of the change, personal data included (ADR 0021): delete it once delivered.
+      completion-mode: delete
       jdbc:
         schema-initialization:
           enabled: true
@@ -39,9 +41,40 @@ costguard:
   journal:
     private-key: ${JOURNAL_PRIVATE_KEY:}
     public-key: ${JOURNAL_PUBLIC_KEY:}
+    # Public keys of rotated signing keys, base64 X.509, comma-separated: old receipts still verify (ADR 0028).
+    previous-public-keys: ${JOURNAL_PREVIOUS_PUBLIC_KEYS:}
   notary:
     # An approved operation of at least this amount (RUB) is confirmed in NEAR (ADR 0009).
     confirm-above: ${COSTGUARD_NOTARY_CONFIRM_ABOVE:100000}
+  # Retention and erasure of personal data (ADR 0021, docs/privacy/data-inventory.md). The terms are the defaults
+  # agreed for the lawyer to confirm; ISO-8601 periods.
+  privacy:
+    retention:
+      enabled: ${PRIVACY_RETENTION_ENABLED:true}
+      cron: ${PRIVACY_RETENTION_CRON:0 30 3 * * *}
+      dismissed-employees: ${PRIVACY_RETAIN_DISMISSED_EMPLOYEES:P1Y}
+      activity: ${PRIVACY_RETAIN_ACTIVITY:P1Y}
+      notifications: ${PRIVACY_RETAIN_NOTIFICATIONS:P1Y}
+      handover-acts: ${PRIVACY_RETAIN_HANDOVER_ACTS:P5Y}
+      import-files: ${PRIVACY_RETAIN_IMPORT_FILES:P5Y}
+      action-log: ${PRIVACY_RETAIN_ACTION_LOG:P3Y}
+    company-grace: ${PRIVACY_COMPANY_GRACE:P30D}
+    kafka-retention: P7D
+    log-retention: P30D
+    keycloak:
+      url: ${KEYCLOAK_ADMIN_URL:http://localhost:8180}
+      realm: ${KEYCLOAK_REALM:costguard}
+      client-id: costguard-privacy
+      # Off while empty: an erasure then lists the Keycloak account as a step for a person.
+      client-secret: ${KEYCLOAK_PRIVACY_CLIENT_SECRET:}
+    clickhouse-tables: cost_records,agent_operations
+  # The analytics store: budget reconciliation reads it (ADR 0026), erasing a company deletes from it (ADR 0021).
+  # Off while empty: reconciliation then does not run, and an erasure lists ClickHouse as a step for a person.
+  clickhouse:
+    url: ${CLICKHOUSE_URL:}
+    database: ${CLICKHOUSE_DATABASE:costguard}
+    user: ${CLICKHOUSE_USER:costguard}
+    password: ${CLICKHOUSE_PASSWORD:}
 
 springdoc:
   default-produces-media-type: application/json

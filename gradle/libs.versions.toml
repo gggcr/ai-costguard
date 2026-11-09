@@ -36,6 +36,7 @@ spring-boot-starter-opentelemetry = { module = "org.springframework.boot:spring-
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+logback-classic = { module = "ch.qos.logback:logback-classic" }
 
 # Spring Cloud
 spring-cloud-starter-gateway = { module = "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux" }

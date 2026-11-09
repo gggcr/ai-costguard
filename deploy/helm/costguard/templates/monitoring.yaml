@@ -1,5 +1,9 @@
 {{- if .Values.monitoring.rules }}
+{{- $m := .Values.monitoring }}
 ---
+# Every alert has a severity (critical goes to Telegram and e-mail, warning to Telegram, ADR 0026) and a runbook:
+# `runbook` is the path in the repository, `runbook_url` the link the message carries. tools/tests/test_alerts.py
+# checks that every runbook exists.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -10,16 +14,25 @@ spec:
   groups:
     - name: costguard.gateway
       rules:
-        # The gateway sits in the path of every paid operation: slow means agents wait, errors mean they stop.
+        # The gateway sits in the path of every paid operation: down means agents stop, slow means they wait.
+        - alert: GatewayDown
+          expr: sum(up{service="costguard-gateway"}) == 0 or absent(up{service="costguard-gateway"})
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: "No gateway instance answers"
+            runbook: docs/runbooks/gateway.md
+            runbook_url: {{ $m.runbookBaseUrl }}/gateway.md
         - alert: GatewaySlow
           expr: |
             histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{service="costguard-gateway", uri=~"/v1/.*"}[5m])))
-              > {{ .Values.monitoring.gatewayP99Seconds }}
+              > {{ $m.gatewayP99Seconds }}
           for: 10m
           labels: { severity: warning }
           annotations:
-            summary: "Gateway p99 above {{ .Values.monitoring.gatewayP99Seconds }}s"
+            summary: "Gateway p99 above {{ $m.gatewayP99Seconds }}s"
             runbook: docs/runbooks/gateway.md
+            runbook_url: {{ $m.runbookBaseUrl }}/gateway.md
         - alert: GatewayErrors
           expr: |
             sum(rate(http_server_requests_seconds_count{service="costguard-gateway", status=~"5.."}[5m]))
@@ -29,16 +42,35 @@ spec:
           annotations:
             summary: "More than 2% of gateway requests fail"
             runbook: docs/runbooks/gateway.md
+            runbook_url: {{ $m.runbookBaseUrl }}/gateway.md
     - name: costguard.pipelines
       rules:
         # Every consumer commits only after its work is done, so lag that grows means it is stuck on a message.
         - alert: ConsumerLagGrowing
-          expr: sum by (consumergroup) (kafka_consumergroup_lag{consumergroup=~"core-.*|ingest-pipeline|notary|notary-requests|clickhouse-.*"}) > {{ .Values.monitoring.consumerLagMessages }}
+          expr: sum by (consumergroup) (kafka_consumergroup_lag{consumergroup=~"core-.*|ingest-pipeline|notary|notary-requests|clickhouse-.*"}) > {{ $m.consumerLagMessages }}
           for: 15m
           labels: { severity: warning }
           annotations:
             summary: "Kafka consumer group {{`{{ $labels.consumergroup }}`}} is behind"
             runbook: docs/runbooks/kafka-lag.md
+            runbook_url: {{ $m.runbookBaseUrl }}/kafka-lag.md
+        # An event stored with a change and not delivered: the gateway, the notary or ClickHouse do not know it.
+        - alert: OutboxStuck
+          expr: max(costguard_outbox_oldest_pending_seconds) > {{ $m.outboxOldestSeconds }}
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "An outbox event has waited {{`{{ $value | humanizeDuration }}`}} for delivery"
+            runbook: docs/runbooks/outbox.md
+            runbook_url: {{ $m.runbookBaseUrl }}/outbox.md
+        - alert: OutboxRetryFailing
+          expr: sum(increase(costguard_outbox_retry_failures_total[15m])) > 0
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "The outbox retry keeps failing (Kafka or the Schema Registry)"
+            runbook: docs/runbooks/outbox.md
+            runbook_url: {{ $m.runbookBaseUrl }}/outbox.md
         - alert: NotaryNotAnchoring
           # The notary anchors every 10 minutes, so its lag reaches zero many times an hour when it works.
           expr: min_over_time(sum(kafka_consumergroup_lag{consumergroup="notary"})[2h:5m]) > 0
@@ -47,15 +79,57 @@ spec:
           annotations:
             summary: "Receipts are not being anchored in NEAR"
             runbook: docs/runbooks/notary.md
+            runbook_url: {{ $m.runbookBaseUrl }}/notary.md
+        # Receipts keep coming and no anchor came back for two hours: the notary or NEAR is down.
+        - alert: NotaryAnchorsMissing
+          expr: |
+            sum(increase(costguard_journal_receipts_issued_total[2h])) > 0
+              and on() (time() - max(costguard_journal_last_anchor_timestamp_seconds)) > 7200
+          for: 30m
+          labels: { severity: critical }
+          annotations:
+            summary: "No anchor from the NEAR notary for over two hours while receipts are issued"
+            runbook: docs/runbooks/notary.md
+            runbook_url: {{ $m.runbookBaseUrl }}/notary.md
+        - alert: ConnectorFailing
+          expr: |
+            sum by (type) (increase(costguard_connector_runs_total{status="FAILED"}[3h]))
+              / sum by (type) (increase(costguard_connector_runs_total[3h])) > {{ $m.connectorFailureRatio }}
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "Most pulls of {{`{{ $labels.type }}`}} fail"
+            runbook: docs/runbooks/connectors.md
+            runbook_url: {{ $m.runbookBaseUrl }}/connectors.md
+    - name: costguard.money
+      rules:
+        # The gateway charged what the ledger does not hold, or the other way round (ADR 0026).
+        - alert: BudgetReconciliationMismatch
+          expr: max(costguard_budget_reconciliation_mismatches) > 0
+          for: 1h
+          labels: { severity: critical }
+          annotations:
+            summary: "Gateway and ledger disagree for {{`{{ $value }}`}} pairs of company and currency"
+            runbook: docs/runbooks/budgets.md
+            runbook_url: {{ $m.runbookBaseUrl }}/budgets.md
+        - alert: BudgetReconciliationNotRunning
+          expr: time() - max(costguard_budget_reconciliation_last_success_timestamp_seconds) > 10800
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Budget reconciliation has not finished for three hours"
+            runbook: docs/runbooks/budgets.md
+            runbook_url: {{ $m.runbookBaseUrl }}/budgets.md
     - name: costguard.core
       rules:
         - alert: CoreDown
-          expr: sum(up{service="costguard-core"}) == 0
+          expr: sum(up{service="costguard-core"}) == 0 or absent(up{service="costguard-core"})
           for: 2m
           labels: { severity: critical }
           annotations:
             summary: "No core instance is up"
             runbook: docs/runbooks/core.md
+            runbook_url: {{ $m.runbookBaseUrl }}/core.md
         - alert: DatabasePoolExhausted
           expr: max by (pod) (hikaricp_connections_pending{service="costguard-core"}) > 5
           for: 5m
@@ -63,6 +137,48 @@ spec:
           annotations:
             summary: "Core waits for database connections"
             runbook: docs/runbooks/core.md
+            runbook_url: {{ $m.runbookBaseUrl }}/core.md
+    - name: costguard.storage
+      rules:
+        # Nodes and volumes of the cluster. The disks of Managed PostgreSQL, Kafka and ClickHouse are watched by
+        # Yandex Monitoring (docs/runbooks/disks.md): Prometheus does not see them.
+        - alert: NodeDiskFilling
+          expr: |
+            min by (instance, mountpoint) (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+              / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}) < {{ $m.diskFreeRatio }}
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{`{{ $labels.instance }} {{ $labels.mountpoint }}`}} is almost full"
+            runbook: docs/runbooks/disks.md
+            runbook_url: {{ $m.runbookBaseUrl }}/disks.md
+        - alert: VolumeFilling
+          expr: |
+            min by (namespace, persistentvolumeclaim) (kubelet_volume_stats_available_bytes{namespace="{{ .Release.Namespace }}"}
+              / kubelet_volume_stats_capacity_bytes{namespace="{{ .Release.Namespace }}"}) < {{ $m.diskFreeRatio }}
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Volume {{`{{ $labels.persistentvolumeclaim }}`}} is almost full"
+            runbook: docs/runbooks/disks.md
+            runbook_url: {{ $m.runbookBaseUrl }}/disks.md
+        - alert: BackupFailed
+          expr: max by (job_name) (kube_job_status_failed{namespace="{{ .Release.Namespace }}", job_name=~"costguard-backup-.*"}) > 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "Backup job {{`{{ $labels.job_name }}`}} failed"
+            runbook: docs/runbooks/backups.md
+            runbook_url: {{ $m.runbookBaseUrl }}/backups.md
+        - alert: BackupMissing
+          # Last night's copy did not happen: the newest successful one is older than 26 hours.
+          expr: time() - max by (cronjob) (kube_cronjob_status_last_successful_time{namespace="{{ .Release.Namespace }}", cronjob=~"costguard-backup-.*"}) > 93600
+          for: 15m
+          labels: { severity: critical }
+          annotations:
+            summary: "No successful {{`{{ $labels.cronjob }}`}} for over 26 hours"
+            runbook: docs/runbooks/backups.md
+            runbook_url: {{ $m.runbookBaseUrl }}/backups.md
 {{- end }}
 {{- if .Values.monitoring.dashboard }}
 ---

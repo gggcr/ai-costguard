@@ -1,5 +1,7 @@
 package ai.costguard.core.shared.outbox;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,11 +25,14 @@ class OutboxRetry {
 
     private final IncompleteEventPublications incomplete;
     private final Duration olderThan;
+    private final Counter failures;
 
     OutboxRetry(IncompleteEventPublications incomplete,
-            @Value("${costguard.outbox.retry-after:PT1M}") Duration olderThan) {
+            @Value("${costguard.outbox.retry-after:PT1M}") Duration olderThan, MeterRegistry registry) {
         this.incomplete = incomplete;
         this.olderThan = olderThan;
+        this.failures = Counter.builder("costguard.outbox.retry.failures")
+                .description("Rounds of the outbox retry that failed (ADR 0026)").register(registry);
     }
 
     @Scheduled(fixedDelayString = "${costguard.outbox.retry-after:PT1M}",
@@ -36,6 +41,7 @@ class OutboxRetry {
         try {
             incomplete.resubmitIncompletePublicationsOlderThan(olderThan);
         } catch (RuntimeException e) {
+            failures.increment();
             log.warn("Outbox retry failed, next round tries again: {}", e.getMessage());
         }
     }

@@ -6,3 +6,8 @@ keda:
 mlflow:
   enabled: true
   artifactsBucket: costguard-prod-mlflow
+# Switch on with the age public key and the backup user in the secret (docs/runbooks/backups.md).
+backups:
+  enabled: false
+  bucket: costguard-prod-backups
+  filesBucket: costguard-prod-imports

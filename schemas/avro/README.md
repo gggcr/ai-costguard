@@ -53,6 +53,10 @@ errors and unsure values back to people, and people releasing the rows, but no t
 `connectors.config.v1` and `connectors.runs.v1` are not on the board: the page of connected systems needs
 the core to tell the agent what to pull and the agent to tell the core how it went (ADR 0019).
 
+Erasing a company (ADR 0021) sends a tombstone (null value) for each of its keys on the compacted topics the core
+produces, so compaction drops them. The gateway skips tombstones on its state topics, except on `agents.state.v1`,
+where it drops the agent and its keys at once.
+
 Every producer and consumer is checked against these files (ADR 0018): `TopicContractTest` of the core and the
 gateway, `EventMappingTest` for what the core publishes, and `tests/contracts` for the Python services, which also
 feed every consumer random messages the schema allows. A listener added without its contract fails those tests.

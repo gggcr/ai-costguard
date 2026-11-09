@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 
 import httpx
 
+from costguard_common import logs
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
@@ -120,7 +121,7 @@ def run(settings: NotarySettings) -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    logs.configure()
     run(NotarySettings())
 
 

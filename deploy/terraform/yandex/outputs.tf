@@ -1,5 +1,14 @@
 # What the Helm values (external.*) and the costguard-secrets secret need.
 
+# Helm values `region` and `external.s3Endpoint` must say the same (ADR 0024).
+output "region" {
+  value = var.region
+}
+
+output "s3_endpoint" {
+  value = "https://${local.storage_endpoint}"
+}
+
 output "kubernetes_cluster_id" {
   value = yandex_kubernetes_cluster.main.id
 }
@@ -28,6 +37,10 @@ output "imports_bucket" {
   value = yandex_storage_bucket.imports.bucket
 }
 
+output "backups_bucket" {
+  value = yandex_storage_bucket.backups.bucket
+}
+
 output "mlflow_bucket" {
   value = yandex_storage_bucket.mlflow.bucket
 }
@@ -41,6 +54,8 @@ output "secrets" {
     CLICKHOUSE_USER          = "costguard"
     CLICKHOUSE_PASSWORD      = random_password.clickhouse.result
     REDIS_PASSWORD           = random_password.redis.result
+    BACKUP_DB_USER           = yandex_mdb_postgresql_user.backup.name
+    BACKUP_DB_PASSWORD       = random_password.backup.result
     S3_ACCESS_KEY            = yandex_iam_service_account_static_access_key.storage.access_key
     S3_SECRET_KEY            = yandex_iam_service_account_static_access_key.storage.secret_key
     MLFLOW_BACKEND_STORE_URI = "postgresql://${yandex_mdb_postgresql_user.app.name}:${random_password.postgres.result}@c-${yandex_mdb_postgresql_cluster.main.id}.rw.mdb.yandexcloud.net:6432/mlflow?sslmode=require"

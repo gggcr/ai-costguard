@@ -3,6 +3,9 @@ package ai.costguard.core.journal.internal;
 import ai.costguard.core.journal.ReceiptIssued;
 import ai.costguard.core.journal.Receipts;
 import ai.costguard.platform.tenant.TenantSession;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -10,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,13 +27,22 @@ class JournalService implements Receipts {
     private final Clock clock;
     private final ApplicationEventPublisher events;
 
+    /** Receipts issued and the last anchor from the notary, for the alert on anchoring (ADR 0026). */
+    private final Counter issued;
+    private final AtomicLong lastAnchor = new AtomicLong();
+
     JournalService(JournalRepository journal, ReceiptSigner signer, TenantSession session, Clock clock,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, MeterRegistry registry) {
         this.journal = journal;
         this.signer = signer;
         this.session = session;
         this.clock = clock;
         this.events = events;
+        this.issued = Counter.builder("costguard.journal.receipts.issued")
+                .description("Receipts issued by this instance").register(registry);
+        Gauge.builder("costguard.journal.last.anchor.timestamp.seconds", lastAnchor, AtomicLong::get)
+                .description("When this instance last recorded an anchor from the NEAR notary; 0 since start")
+                .baseUnit("seconds").register(registry);
     }
 
     /** Fixed field order, one per line, so anyone can rebuild the payload and its hash. */
@@ -58,6 +71,7 @@ class JournalService implements Receipts {
         journal.moveHead(tenantId, receipt.seq(), hash);
         events.publishEvent(new ReceiptIssued(receipt.id(), tenantId, operationId, hash, head.hash(),
                 receipt.signature(), receipt.keyId(), receipt.issuedAt()));
+        issued.increment();
         return receipt.id();
     }
 
@@ -77,6 +91,7 @@ class JournalService implements Receipts {
         }
         journal.insertBatch(tenantId, batchId, merkleRoot, nearTxHash, anchoredAt);
         journal.assignBatch(receiptIds, batchId);
+        lastAnchor.set(clock.instant().getEpochSecond());
     }
 
     @Transactional(readOnly = true)
@@ -101,28 +116,35 @@ class JournalService implements Receipts {
         String previous = Hashes.GENESIS;
         long seq = 0;
         long count = 0;
+        long unverified = 0;
         List<StoredReceipt> page;
         do {
             page = journal.inOrder(seq, 1000);
             for (StoredReceipt r : page) {
                 if (r.seq() != seq + 1 || !r.previousHash().equals(previous)) {
-                    return new ChainVerification(false, count, r.seq(), "link");
+                    return new ChainVerification(false, count, r.seq(), "link", unverified);
                 }
                 if (!Hashes.link(previous, r.payload()).equals(r.hash())) {
-                    return new ChainVerification(false, count, r.seq(), "hash");
+                    return new ChainVerification(false, count, r.seq(), "hash", unverified);
                 }
-                if (r.keyId().equals(signer.keyId()) && !signer.verify(r.hash(), r.signature())) {
-                    return new ChainVerification(false, count, r.seq(), "signature");
+                if (!signer.knows(r.keyId())) {
+                    unverified++;
+                } else if (!signer.verify(r.keyId(), r.hash(), r.signature())) {
+                    return new ChainVerification(false, count, r.seq(), "signature", unverified);
                 }
                 previous = r.hash();
                 seq = r.seq();
                 count++;
             }
         } while (!page.isEmpty());
-        return new ChainVerification(true, count, null, null);
+        return new ChainVerification(true, count, null, null, unverified);
     }
 
     SigningKey key() {
         return new SigningKey(signer.keyId(), "Ed25519", signer.publicKeyBase64());
+    }
+
+    java.util.List<SigningKey> keys() {
+        return signer.keys();
     }
 }

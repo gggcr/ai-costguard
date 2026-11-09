@@ -38,11 +38,12 @@ class LocalFiles:
 
 
 class S3Files:
-    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str) -> None:
+    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str,
+                 region: str = "ru-central1") -> None:
         import boto3
 
         self._bucket = bucket
-        self._s3 = boto3.client("s3", endpoint_url=endpoint, aws_access_key_id=access_key,
+        self._s3 = boto3.client("s3", endpoint_url=endpoint, region_name=region, aws_access_key_id=access_key,
                                 aws_secret_access_key=secret_key)
 
     def get(self, key: str) -> bytes:

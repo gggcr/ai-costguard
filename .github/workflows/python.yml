@@ -22,8 +22,8 @@ jobs:
         with: { version: '0.5.11' }
       - run: uv python install 3.12
       - run: uv sync --frozen --all-packages
-      - name: Tesseract for the OCR test of costguard-ingest
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+      - name: Tesseract for the OCR test of costguard-ingest, age for the ClickHouse backup drill
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng age
       - run: uv run ruff check .
       - name: Kafka contracts of the Python services (schemas/avro)
         run: uv run pytest tests/contracts
@@ -43,6 +43,32 @@ jobs:
           done
           python tools/seed/seed.py | docker exec -i pg psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
           python tools/seed/seed.py | docker exec -i pg psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
+  backup-restore:
+    # The PostgreSQL drill of tools/tests/test_backup.py (ADR 0025): migrations and the seed, a dump as the read-only
+    # backup role, encrypted with age, restored into an empty database and compared table by table.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: p }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 30
+    env:
+      BACKUP_TEST_PG_ADMIN: postgresql://postgres:p@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: pg_dump 17 (the version of Managed PostgreSQL) and age
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-common age
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+      - uses: astral-sh/setup-uv@v5
+        with: { version: '0.5.11' }
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-packages
+      - run: uv run pytest tools/tests/test_backup.py -v -p no:cacheprovider
   image:
     runs-on: ubuntu-latest
     needs: test

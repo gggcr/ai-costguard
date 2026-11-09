@@ -36,9 +36,12 @@ class OutboxRetryTest {
 
     @Test
     void resubmitsOnEveryRoundAndSurvivesAFailedOne() {
-        OutboxRetry retry = new OutboxRetry(incomplete, Duration.ofMinutes(1));
+        var registry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        OutboxRetry retry = new OutboxRetry(incomplete, Duration.ofMinutes(1), registry);
         retry.retry();
         retry.retry();
         assertThat(calls).containsExactly(Duration.ofMinutes(1), Duration.ofMinutes(1));
+        // The failed round is what the OutboxRetryFailing alert counts.
+        assertThat(registry.get("costguard.outbox.retry.failures").counter().count()).isEqualTo(1);
     }
 }

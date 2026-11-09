@@ -108,7 +108,7 @@ def attachments(raw: bytes, min_image_kb: int = MIN_IMAGE_KB, min_image_side: in
             if is_document_image(content, min_image_kb, min_image_side):
                 found.append(Attachment(name, content, part.get_content_type()))
             else:
-                log.info("Image %s left out: too small for a document, likely a logo", name)
+                log.info("An image left out: too small for a document, likely a logo")
     return found
 
 
@@ -128,15 +128,16 @@ class MailInvoices:
         for uid, raw in self._mailbox.unseen():
             files = attachments(raw, self._min_kb, self._min_side)
             ok = True
-            for a in files:
+            for n, a in enumerate(files, 1):
                 response = self._core.post("/api/v1/imports", files={"file": (a.file_name, a.content,
                                                                                a.content_type)})
                 if response.status_code in (200, 201):
                     uploaded += response.status_code == 201
                 else:
                     ok = False
-                    log.warning("Letter %s: %s was not accepted: %s %s", uid, a.file_name, response.status_code,
-                                response.text[:200])
+                    # Not the file name: people name invoices after whoever they are for.
+                    log.warning("Letter %s: attachment %d of %d was not accepted: %s %s", uid, n, len(files),
+                                response.status_code, response.text[:200])
             if ok:
                 self._mailbox.mark_seen(uid)
         return uploaded

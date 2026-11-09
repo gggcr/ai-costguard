@@ -84,6 +84,18 @@ class AvroPublisherTest {
         assertThat(decoded.getMandateVersion()).isEqualTo(3);
     }
 
+    /** A tombstone needs no schema: the registry is not asked, the value is null. */
+    @Test
+    void aTombstoneIsANullValueForTheKey() {
+        java.util.List<Object[]> sent = new java.util.ArrayList<>();
+        AvroPublisher publisher = new AvroPublisher(new ai.costguard.events.wire.SchemaRegistryClient(
+                java.net.URI.create("http://127.0.0.1:1")), (t, k, v) -> sent.add(new Object[] {t, k, v}));
+        publisher.tombstone("connectors.config.v1", "tenant:okta");
+        org.assertj.core.api.Assertions.assertThat(sent).singleElement()
+                .satisfies(m -> org.assertj.core.api.Assertions.assertThat(m)
+                        .containsExactly("connectors.config.v1", "tenant:okta", null));
+    }
+
     @Test
     void anIncompatibleSchemaStopsThePublication() {
         answer = 409;

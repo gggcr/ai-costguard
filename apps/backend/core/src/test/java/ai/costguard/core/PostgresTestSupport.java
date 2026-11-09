@@ -39,6 +39,16 @@ public abstract class PostgresTestSupport {
         return POSTGRES.getPostgresDatabase();
     }
 
+    /** The application's database as the superuser: sees past RLS, for tests that check what is left. */
+    protected static DataSource superuserAppDataSource() {
+        return POSTGRES.getDatabase("postgres", APP_ROLE);
+    }
+
+    /** The application's database, for a connection as another role. */
+    protected static String jdbcUrl() {
+        return "jdbc:postgresql://localhost:" + POSTGRES.getPort() + "/" + APP_ROLE;
+    }
+
     protected static DataSource appDataSource() {
         return POSTGRES.getDatabase(APP_ROLE, APP_ROLE);
     }

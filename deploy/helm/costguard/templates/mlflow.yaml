@@ -39,7 +39,9 @@ spec:
             - name: MLFLOW_BACKEND_STORE_URI
               valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: MLFLOW_BACKEND_STORE_URI } }
             - name: MLFLOW_S3_ENDPOINT_URL
-              value: {{ .Values.external.s3Endpoint | quote }}
+              value: {{ include "costguard.s3Endpoint" . | quote }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.region | quote }}
             - name: AWS_ACCESS_KEY_ID
               valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: S3_ACCESS_KEY } }
             - name: AWS_SECRET_ACCESS_KEY

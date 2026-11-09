@@ -24,8 +24,9 @@ record Department(UUID id, String name) {
 record NewDepartment(@NotBlank String name) {
 }
 
+/** {@code erased}: the person's data was erased (ADR 0021); the row stays so history pointing at it stays whole. */
 record Employee(UUID id, String name, String email, UUID departmentId, String position, boolean active,
-        LocalDate dismissedAt) {
+        LocalDate dismissedAt, boolean erased) {
 }
 
 record EmployeeDetails(

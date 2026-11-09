@@ -8,3 +8,5 @@ What every Python service shares:
 - `registry`: a small Schema Registry client with caching.
 - `focus`: the FOCUS cost record that `cost.records.v1` carries.
 - `settings`: environment settings with the names of `.env.example`.
+- `logs`: `configure()` instead of `logging.basicConfig`; masks e-mails, full names, phones, cards and tokens in
+  every log line (ADR 0023), the same rules as `LogMasking` of the Java services.

@@ -136,6 +136,12 @@ services:
       KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/costguard
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/costguard/protocol/openid-connect/certs
       CBR_RATES_ENABLED: "false"
+      # Erasures delete Keycloak accounts through the admin API (ADR 0021); the client is in costguard-realm.json.
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_PRIVACY_CLIENT_SECRET: ${KEYCLOAK_PRIVACY_CLIENT_SECRET:-costguard-privacy-local}
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-costguard}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-costguard}
       # Findings appear a minute after the seed instead of an hour.
       COSTGUARD_AUDIT_DELAY: PT1M
     healthcheck:

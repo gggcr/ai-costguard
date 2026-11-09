@@ -36,6 +36,9 @@ The rest of the monorepo, accepted as it is:
 | `apps/frontend` | The web interface (React, Vite) |
 | `schemas/` | Every contract: Avro (`schemas/avro`, primary), OpenAPI exported from the code (`schemas/openapi`), ClickHouse |
 | `docs/adr`, `docs/runbooks` | Architecture decisions and runbooks |
+| `docs/privacy` | Personal data: where each kind is stored and for how long, and the list for the lawyer (ADR 0021–0024) |
+| `docs/security` | The pentest scope: what to test, the test accounts, what not to touch |
+| `tools/backup`, `deploy/backup` | Nightly encrypted backups and restores of PostgreSQL, ClickHouse and the files (ADR 0025) |
 
 - The audit engine is a part of the core (`ai.costguard.core.findings`), not a separate service as on the board:
   the rules need the core's own data. See [ADR 0005](docs/adr/0005-audit-engine-in-core.md).

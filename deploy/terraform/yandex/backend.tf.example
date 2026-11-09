@@ -4,6 +4,7 @@ terraform {
     endpoints                   = { s3 = "https://storage.yandexcloud.net" }
     bucket                      = "costguard-terraform-state"
     key                         = "yandex/terraform.tfstate"
+    # A backend cannot read variables: keep this equal to var.region (ADR 0024).
     region                      = "ru-central1"
     skip_region_validation      = true
     skip_credentials_validation = true

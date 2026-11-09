@@ -8,6 +8,12 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 {{ .root.Values.image.registry }}/{{ .image }}:{{ .root.Values.image.tag }}
 {{- end -}}
 
+{{- define "costguard.s3Endpoint" -}}
+{{- $region := required "region is required (ADR 0024)" .Values.region -}}
+{{- $known := index (.Values.regions | default dict) $region | default dict -}}
+{{- .Values.external.s3Endpoint | default $known.s3Endpoint | required (printf "no S3 endpoint for region %s: add it to regions" $region) -}}
+{{- end -}}
+
 {{- define "costguard.env" -}}
 - name: KAFKA_BOOTSTRAP_SERVERS
   value: {{ .Values.external.kafkaBootstrapServers | quote }}
@@ -20,7 +26,13 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 - name: CLICKHOUSE_URL
   value: {{ .Values.external.clickhouseUrl | quote }}
 - name: S3_ENDPOINT
-  value: {{ .Values.external.s3Endpoint | quote }}
+  value: {{ include "costguard.s3Endpoint" . | quote }}
+- name: S3_REGION
+  value: {{ .Values.region | quote }}
+- name: DATA_REGION
+  value: {{ .Values.region | quote }}
+- name: KEYCLOAK_ADMIN_URL
+  value: {{ .Values.external.keycloakAdminUrl | quote }}
 - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
   value: "true"
 - name: KEYCLOAK_ISSUER_URI
