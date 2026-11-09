@@ -29,6 +29,10 @@ class FindingInboxTest {
         @Override
         public void resolved(UUID tenantId, String fingerprint) {
         }
+
+        @Override
+        public void settled(UUID tenantId, String fingerprint, String what) {
+        }
     };
 
     Finding finding(List<String> entities) {

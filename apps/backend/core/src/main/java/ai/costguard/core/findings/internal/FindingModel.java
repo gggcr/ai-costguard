@@ -40,6 +40,17 @@ final class Transitions {
     /** Statuses a finding may close from by itself when its condition disappears. */
     static final Set<FindingStatus> AUTO_CLOSABLE = EnumSet.of(FindingStatus.new_, FindingStatus.review);
 
+    /** Actions that read the next invoices: frame 8. */
+    static final Set<FindingAction> BY_INVOICE = EnumSet.of(FindingAction.confirm, FindingAction.missInvoice);
+
+    /**
+     * Equipment does not show in invoices, so its findings are settled by the return of the equipment (frame 15,
+     * {@link ai.costguard.core.findings.FindingsIntake#settled}), never by {@link #BY_INVOICE}.
+     */
+    static boolean settledByEvent(String rule) {
+        return rule.startsWith("asset.");
+    }
+
     private Transitions() {
     }
 }

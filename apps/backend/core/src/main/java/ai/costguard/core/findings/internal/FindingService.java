@@ -66,6 +66,23 @@ class FindingService implements FindingsIntake {
                         "Условие исчезло. Закрыта автоматически"));
     }
 
+    @Override
+    @Transactional
+    public void settled(UUID tenantId, String fingerprint, String what) {
+        session.bind(tenantId);
+        findings.lockByFingerprint(fingerprint).ifPresent(f -> {
+            FindingStatus status = FindingStatus.of(f.status());
+            if (status == FindingStatus.accepted || status == FindingStatus.in_progress) {
+                move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, SYSTEM,
+                        what + ". Экономия подтверждена");
+                events.publishEvent(new SavingsConfirmed(tenantId, f.id(), f.title(), f.expectedSavings()));
+            } else if (Transitions.AUTO_CLOSABLE.contains(status)) {
+                move(tenantId, f, FindingStatus.auto_closed, f.ownerId(), null, null, 0, SYSTEM,
+                        what + ". Закрыта автоматически");
+            }
+        });
+    }
+
     private void move(UUID tenantId, Finding f, FindingStatus to, UUID owner, LocalDate until, String reason,
             int missed, String by, String text) {
         findings.update(f.id(), to.db(), owner, until, reason, missed);
@@ -100,7 +117,8 @@ class FindingService implements FindingsIntake {
         session.bind(tenantId);
         Finding f = findings.lock(id).orElseThrow(FindingProblem.FINDING_NOT_FOUND::failure);
         FindingStatus status = FindingStatus.of(f.status());
-        if (!Transitions.ALLOWED.get(status).contains(request.action())) {
+        if (!Transitions.ALLOWED.get(status).contains(request.action())
+                || Transitions.settledByEvent(f.rule()) && Transitions.BY_INVOICE.contains(request.action())) {
             throw FindingProblem.ACTION_NOT_ALLOWED.failure();
         }
         switch (request.action()) {

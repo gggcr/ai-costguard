@@ -61,8 +61,11 @@ import ai.costguard.gateway.support.KafkaNode;
  * leave through agent.operations.v1. Only the Schema Registry and the provider are stand-ins.
  */
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class GatewayFlowIT {
+
+    @org.springframework.beans.factory.annotation.Value("${local.server.port}")
+    int port;
 
     @Container
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
@@ -187,6 +190,8 @@ class GatewayFlowIT {
                 .responseTimeout(Duration.ofSeconds(30)).build();
         OPENAI.received.clear();
         OPENAI.status = 200;
+        OPENAI.chunks = null;
+        OPENAI.chunkPauseMillis = 0;
     }
 
     private WebTestClient.ResponseSpec authorize(UUID op, String amount) {
@@ -383,6 +388,85 @@ class GatewayFlowIT {
         List<BigDecimal> after = reserve.counters(tenant, agentBudget).block();
         assertThat(after.get(1)).isEqualByComparingTo(before.get(1));
         assertThat(after.get(2)).isEqualByComparingTo("0");
+    }
+
+    private String errorType(UUID op, String body) {
+        String response = chat(op, body).returnResult(String.class).getResponseBody().blockFirst();
+        return response == null || !response.contains("\"type\"") ? ""
+                : response.replaceAll("(?s).*\"type\":\"([^\"]+)\".*", "$1");
+    }
+
+    private void decide(UUID op, String amount, Instant decidedAt) {
+        publish("approvals.decisions.v1", op.toString(), ApprovalDecision.newBuilder().setTenantId(tenant)
+                .setApprovalId(UUID.randomUUID()).setOperationId(op).setAgentId(agent)
+                .setStatus(ApprovalOutcome.APPROVED).setAmount(money(amount)).setDecidedAt(decidedAt).build());
+    }
+
+    /** Frame 3: the approval lets one retry through the whole ladder, the reserve included, and only for a while. */
+    @Test
+    void anApprovalIsAOneTimePermissionThatExpires() throws Exception {
+        agentState(false, ALLOW_ALL, "1");
+        budgets("1000");
+        prices("0.01", "0.02");
+        String body = "{\"model\":\"gpt-5\",\"messages\":[]}";
+        UUID op = UUID.randomUUID();
+        eventually(() -> errorType(op, body).equals("approval_required"));
+
+        decide(op, "1000", Instant.now());
+        OPENAI.status = 500; // the retry passes, the provider fails, the reserve goes back
+        eventually(() -> chat(op, body).returnResult(String.class).getStatus().value() == 500);
+        assertThat(OPENAI.received).hasSize(1);
+        assertThat(reserve.counters(tenant, agentBudget).block().get(2)).isEqualByComparingTo("0");
+
+        OPENAI.status = 200;
+        assertThat(errorType(op, body)).isEqualTo("approval_used");
+        assertThat(OPENAI.received).hasSize(1);
+
+        UUID late = UUID.randomUUID();
+        eventually(() -> errorType(late, body).equals("approval_required"));
+        decide(late, "1000", Instant.now().minus(Duration.ofHours(2)));
+        eventually(() -> errorType(late, body).equals("approval_expired"));
+        assertThat(OPENAI.received).hasSize(1);
+    }
+
+    /** Frame 2: an agent that drops the stream pays for what it got, and the rest of the reserve is back at once. */
+    @Test
+    void aDroppedStreamGivesTheRestOfTheReserveBack() throws Exception {
+        agentState(false, ALLOW_ALL, "100000");
+        budgets("1000");
+        prices("0.01", "0.02");
+        eventually(() -> chat(UUID.randomUUID(), "{\"model\":\"gpt-5\",\"messages\":[]}")
+                .returnResult(String.class).getStatus().value() == 200);
+        List<BigDecimal> before = reserve.counters(tenant, agentBudget).block();
+        OPENAI.chunks = List.of(
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\" again\"}}]}\n\n",
+                "data: [DONE]\n\n");
+        OPENAI.chunkPauseMillis = 2000;
+        UUID op = UUID.randomUUID();
+
+        // a real connection, closed after the first chunk: the agent went away
+        java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+        java.net.http.HttpResponse<java.io.InputStream> response = client.send(java.net.http.HttpRequest.newBuilder(
+                        java.net.URI.create("http://127.0.0.1:" + port + "/v1/providers/openai/v1/chat/completions"))
+                .header("Authorization", "Bearer " + secret).header("Idempotency-Key", op.toString())
+                .header("Content-Type", "application/json")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(
+                        "{\"model\":\"gpt-5\",\"stream\":true,\"messages\":[]}"))
+                .build(), java.net.http.HttpResponse.BodyHandlers.ofInputStream());
+        assertThat(response.statusCode()).isEqualTo(200);
+        try (java.io.InputStream in = response.body()) {
+            assertThat(new String(in.readNBytes(20), java.nio.charset.StandardCharsets.UTF_8)).startsWith("data:");
+        }
+        client.close();
+
+        // long before the sweeper (15 minutes): nothing is held, and far less than the 1024-token cap is charged
+        eventually(() -> reserve.counters(tenant, agentBudget).block().get(2).signum() == 0);
+        BigDecimal charged = reserve.counters(tenant, agentBudget).block().get(1).subtract(before.get(1));
+        assertThat(charged).isPositive().isLessThan(new BigDecimal("1"));
+        eventually(() -> operations().stream().anyMatch(o -> o.getOperationId().equals(op)
+                && o.getDecision() == OperationDecision.ALLOWED && o.getActualCost().compareTo(charged) == 0));
     }
 
     @Test

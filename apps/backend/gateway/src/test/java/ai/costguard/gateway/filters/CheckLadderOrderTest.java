@@ -18,7 +18,7 @@ class CheckLadderOrderTest {
                 new RiskFilter(null),
                 new BudgetFilter(null, null, null, 0),
                 new TaskFitFilter(null),
-                new ApprovalFilter(null));
+                new ApprovalFilter(null, null, null, null));
 
         for (int i = 0; i < ladder.size(); i++) {
             assertEquals((i + 1) * 100, ladder.get(i).getOrder(), ladder.get(i).getClass().getSimpleName());
