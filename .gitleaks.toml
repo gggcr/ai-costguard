@@ -22,7 +22,9 @@ regex = '''MC4CAQAwBQYDK2VwBCIEI[A-Za-z0-9+/]{20,}={0,2}'''
 keywords = ["MC4CAQAw"]
 
 [allowlist]
-description = "Fakes and the local stack"
+description = "Fakes, the local stack and type names"
+# `key: Ed25519PrivateKey` in apps/python/notary/.../near.py is a type annotation, not a key (generic-api-key).
+regexes = ['''^Ed25519PrivateKey$''']
 paths = [
   # Log masking cases: fake tokens that must be masked (ADR 0023).
   '''^schemas/logging/masking-cases\.json$''',
