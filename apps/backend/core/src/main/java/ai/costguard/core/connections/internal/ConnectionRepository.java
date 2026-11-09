@@ -23,7 +23,7 @@ class ConnectionRepository {
     /** The connection with its latest pull, its latest failure and the records of every pull. */
     private static final String VIEW = """
             select c.id, c.type, c.name, c.enabled, c.managed, c.settings::text as settings, c.sync_requested_at,
-                   c.created_at,
+                   c.created_at, c.secret_names,
                    last.started_at as last_started, last.finished_at as last_finished, last.status as last_status,
                    last.error as last_error_now,
                    ok.finished_at as ok_finished, ok.records as ok_records,
@@ -71,7 +71,7 @@ class ConnectionRepository {
         return new Connection(rs.getObject("id", UUID.class), rs.getString("type"), rs.getString("name"), status,
                 enabled, rs.getBoolean("managed"), settings(rs.getString("settings")), at(rs, "ok_finished"),
                 recordsLastSync, rs.getLong("total"), rs.getString("bad_error"), at(rs, "bad_finished"), requested,
-                at(rs, "created_at"));
+                at(rs, "created_at"), List.of((String[]) rs.getArray("secret_names").getArray()));
     }
 
     static Map<String, String> settings(String json) {
@@ -129,9 +129,29 @@ class ConnectionRepository {
         return jdbc.sql("select enabled from connection where id = ?").param(id).query(Boolean.class).single();
     }
 
+    /** Secrets kept in the core are erased with the connection: a reconnect brings its own. */
     void disable(UUID id, Instant now) {
-        jdbc.sql("update connection set enabled = false, updated_at = ? where id = ?")
-                .params(Timestamp.from(now), id).update();
+        jdbc.sql("""
+                update connection set enabled = false, secrets = null, secret_names = '{}', updated_at = ?
+                where id = ?
+                """).params(Timestamp.from(now), id).update();
+    }
+
+    /** Replaces the secrets kept in the core; none given erases them. */
+    void setSecrets(UUID id, byte[] sealed, List<String> names) {
+        jdbc.sql("update connection set secrets = ?, secret_names = cast(? as text[]) where id = ?")
+                .params(sealed, "{" + String.join(",", names) + "}", id).update();
+    }
+
+    record Sealed(UUID id, String type, byte[] secrets) {
+    }
+
+    /** The live connections that keep secrets in the core, still sealed. */
+    List<Sealed> sealed() {
+        return jdbc.sql("select id, type, secrets from connection where enabled and secrets is not null order by type")
+                .query((rs, n) -> new Sealed(rs.getObject("id", UUID.class), rs.getString("type"),
+                        rs.getBytes("secrets")))
+                .list();
     }
 
     void requestSync(UUID id, Instant now) {

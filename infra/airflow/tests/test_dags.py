@@ -76,8 +76,18 @@ def test_connectors_run_hourly_one_task_per_tenant(load):
     assert sorted(t.task_id for t in dag.tasks) == ["pull_romashka", "pull_lyutik_2"] or \
         sorted(t.task_id for t in dag.tasks) == sorted(["pull_romashka", "pull_lyutik_2"])
     task = next(t for t in dag.tasks if t.task_id == "pull_romashka")
-    assert task.bash_command.endswith("romashka.toml --once")
+    assert task.bash_command.endswith("romashka.toml --once --skip google_workspace,merge")
     assert task.kw["env"] == {"COSTGUARD_ENV_PREFIX": "ROMASHKA_"} and task.kw["append_env"] is True
+
+
+def test_google_workspace_and_merge_run_daily_for_every_tenant(load):
+    dag = load("connectors_daily")
+    assert dag.dag_id == "costguard_connectors_daily" and dag.kw["schedule"] == "0 5 * * *"
+    assert str(dag.kw["start_date"].tzinfo) == "Europe/Moscow" and dag.kw["max_active_runs"] == 1
+    assert sorted(t.task_id for t in dag.tasks) == sorted(["pull_daily_romashka", "pull_daily_lyutik_2"])
+    task = next(t for t in dag.tasks if t.task_id == "pull_daily_romashka")
+    assert task.bash_command.endswith("romashka.toml --once --only google_workspace,merge")
+    assert task.kw["env"] == {"COSTGUARD_ENV_PREFIX": "ROMASHKA_"}
 
 
 def test_monthly_report_only_for_tenants_that_asked(load):
@@ -112,7 +122,7 @@ def test_a_tenant_with_only_the_new_connectors_gets_its_pull(load, tmp_path):
     (tmp_path / "landysh.toml").write_text(config, "utf-8")
     dag = load("connectors_hourly")
     task = next(t for t in dag.tasks if t.task_id == "pull_landysh")
-    assert task.bash_command.endswith("landysh.toml --once")
+    assert task.bash_command.endswith("landysh.toml --once --skip google_workspace,merge")
     sections = {k for k, v in tomllib.loads(config).items() if isinstance(v, dict)}
     assert sections <= set(connector_agent.SECTIONS)
 

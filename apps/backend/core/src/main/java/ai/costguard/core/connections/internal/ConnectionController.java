@@ -64,7 +64,8 @@ class ConnectionController {
     @PostMapping
     @ManagesConnections
     @Operation(operationId = "connectSystem", summary = "Connect a system",
-            description = "Settings that are not secrets only. Connecting a disconnected system again reuses it.")
+            description = "Settings, and optionally secrets: kept encrypted in the core and never returned, or left out "
+                    + "for the agent's environment (ADR 0030). Connecting a disconnected system again reuses it.")
     ResponseEntity<Connection> connect(Authentication auth, @Valid @RequestBody ConnectionDetails details) {
         ConnectionService.Connected result = service.connect(tenant(auth), details);
         Connection c = result.connection();
@@ -76,7 +77,7 @@ class ConnectionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @ManagesConnections
     @Operation(operationId = "disconnectSystem", summary = "Disconnect a system",
-            description = "The agent stops pulling it; the history stays.")
+            description = "The agent stops pulling it and secrets kept in the core are erased; the history stays.")
     void disconnect(Authentication auth, @PathVariable UUID id) {
         service.disconnect(tenant(auth), id);
     }
@@ -84,8 +85,18 @@ class ConnectionController {
     @PostMapping("/{id}/sync")
     @ManagesConnections
     @Operation(operationId = "syncConnection", summary = "Sync a system now",
-            description = "A running agent pulls it at once, an agent on Airflow on its next hourly round.")
+            description = "A running agent pulls it at once; an agent on Airflow at once if the core knows Airflow, "
+                    + "otherwise on its next hourly round.")
     ResponseEntity<Connection> sync(Authentication auth, @PathVariable UUID id) {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(service.sync(tenant(auth), id));
+    }
+
+    @GetMapping("/agent-secrets")
+    @RunsConnectors
+    @Operation(operationId = "connectorAgentSecrets", summary = "Secrets for the connector agent",
+            description = "The secrets kept in the core, by system type and environment variable. Only for the "
+                    + "connector service account of the company (ADR 0030).")
+    AgentSecrets agentSecrets(Authentication auth) {
+        return service.agentSecrets(tenant(auth));
     }
 }

@@ -146,6 +146,8 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-costguard}
       # Findings appear a minute after the seed instead of an hour.
       COSTGUARD_AUDIT_DELAY: PT1M
+      # A development key only: secrets of connections made locally are encrypted with it (ADR 0030).
+      CONNECTIONS_ENCRYPTION_KEY: ${CONNECTIONS_ENCRYPTION_KEY:-ZGV2LW9ubHktY29ubmVjdGlvbnMta2V5LTMyLWJ5dGU=}
       # «Синхронизировать сейчас» starts costguard_connector_sync when the airflow profile runs
       AIRFLOW_URL: ${AIRFLOW_URL:-}
       AIRFLOW_USERNAME: admin

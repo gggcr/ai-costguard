@@ -8,7 +8,7 @@ enum ImportProblem implements ProblemCode {
     IMPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Import not found"),
     TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "Review task not found"),
     EMPTY_FILE(HttpStatus.BAD_REQUEST, "The file is empty"),
-    UNSUPPORTED_FILE(HttpStatus.BAD_REQUEST, "Supported: xlsx, xls, csv, pdf, jpg, png, heic, txt and 1C or MT940 statements"),
+    UNSUPPORTED_FILE(HttpStatus.BAD_REQUEST, "Supported: xlsx, xls, csv, pdf, scans (jpg, png, heic, tiff, webp, bmp) and bank statements: 1C, MT940, CAMT.053 (xml), OFX"),
     WRONG_STAGE(HttpStatus.CONFLICT, "The import is not at this stage"),
     UNKNOWN_FIELD(HttpStatus.BAD_REQUEST, "The mapping names a field that does not exist");
 

@@ -3,7 +3,8 @@
 - connectors.config.v1 (compacted, from the core): the systems a company connected on the page, with their settings
   that are not secrets, whether they are still connected and whether a person asked to sync now. It is merged over
   the agent's own file: a connected system adds or replaces its section, a disconnected one removes it. Secrets
-  stay in the agent's environment, as before.
+  never travel in Kafka: they are in the agent's environment, or, if the company chose to keep them in the core
+  (ADR 0030), the agent takes them over HTTPS with its service token (core_secrets). The environment wins.
 - connectors.runs.v1 (to the core): one report per pull of a connector, with the number of records it published
   and, for a failure, the error with every secret of the environment blanked out.
 """
@@ -121,3 +122,22 @@ def read_config(bootstrap: str, registry_url: str, tenant: uuid.UUID, timeout: f
         return latest(records, tenant)
     finally:
         consumer.close()
+
+
+def core_secrets(core, tenant: uuid.UUID) -> dict[str, str]:
+    """The secrets the company keeps in the core, by environment variable (GET /api/v1/connections/agent-secrets,
+    a token of the connector role). A token of another company is refused rather than mixed in."""
+    response = core.get("/api/v1/connections/agent-secrets")
+    response.raise_for_status()
+    body = response.json()
+    if str(body.get("tenantId")) != str(tenant):
+        raise RuntimeError(f"The core token is for tenant {body.get('tenantId')}, the agent for {tenant}")
+    out: dict[str, str] = {}
+    for secrets in (body.get("secrets") or {}).values():
+        out.update(secrets)
+    return out
+
+
+def with_secrets(env: dict[str, str], secrets: dict[str, str]) -> dict[str, str]:
+    """The environment with the core's secrets added; a variable the environment already has stays as it is."""
+    return {**secrets, **env}

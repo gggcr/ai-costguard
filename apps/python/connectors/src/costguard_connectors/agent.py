@@ -172,7 +172,7 @@ class Reporter:
                  env: dict[str, str] | None = None, ids: dict[str, uuid.UUID] | None = None) -> None:
         self._tenant = tenant
         self._publish = publish
-        self._env = env or {}
+        self.env = env or {}  # the secrets to blank out of errors, the core's included
         self.ids = ids or {}
         self.started: dict[str, datetime] = {}
 
@@ -180,7 +180,7 @@ class Reporter:
         self.started[kind] = started
         if error is not None:
             # Shown on the connections page: no secret of the environment, no e-mail or name of the source system.
-            error = logs.mask(control.redact(error, self._env))
+            error = logs.mask(control.redact(error, self.env))
         try:
             self._publish([control.run_message(self._tenant, kind, self.ids.get(kind), started, _now(), records,
                                                error)])
@@ -289,8 +289,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--once", action="store_true", help="one round, then exit (for cron or Airflow)")
     parser.add_argument("--only", help="comma-separated system types to pull, such as onec,okta (with --once: the "
                                        "manual sync DAG costguard_connector_sync)")
+    parser.add_argument("--skip", default="", help="comma-separated system types to leave out, such as "
+                                                   "google_workspace,merge (the hourly DAG: those run daily)")
     args = parser.parse_args(argv)
     only = {x for x in args.only.split(",") if x} if args.only else None
+    skip = {x for x in args.skip.split(",") if x}
     logs.configure()
 
     config = tomllib.loads(args.config.read_text("utf-8"))
@@ -306,6 +309,18 @@ def main(argv: list[str] | None = None) -> None:
     report = Reporter(tenant, publish, env)
     from_core = bool(config.get("from_core", True))
 
+    def secrets() -> dict[str, str]:
+        """The environment with the secrets kept in the core (ADR 0030), when the agent has a core token."""
+        if not from_core or not env.get("CORE_URL") or not env.get("CORE_TOKEN"):
+            return env
+        try:
+            with httpx.Client(base_url=env["CORE_URL"], timeout=30,
+                              headers={"Authorization": f"Bearer {env['CORE_TOKEN']}"}) as core:
+                return control.with_secrets(env, control.core_secrets(core, tenant))
+        except Exception:  # the core is out of reach; secrets in the environment still work
+            log.exception("Cannot read the secrets kept in the core; using the environment")
+            return env
+
     def connections() -> dict[str, dict]:
         if not from_core:
             return {}
@@ -320,14 +335,16 @@ def main(argv: list[str] | None = None) -> None:
     while True:
         known = connections()
         merged, report.ids = control.merge(config, known)
+        merged = {k: v for k, v in merged.items() if k not in skip}
+        round_env = report.env = secrets()
         if args.once or time.monotonic() >= next_full:
-            failures = round_(merged, env, tenant, state, publish, report, only=only)
+            failures = round_(merged, round_env, tenant, state, publish, report, only=only)
             if args.once:
                 raise SystemExit(1 if failures else 0)
             next_full = time.monotonic() + interval
         elif due := control.due(known, report.started):
             log.info("Sync asked for %s", ", ".join(sorted(due)))
-            round_(merged, env, tenant, state, publish, report, only=due)
+            round_(merged, round_env, tenant, state, publish, report, only=due)
         time.sleep(60)
 
 if __name__ == "__main__":

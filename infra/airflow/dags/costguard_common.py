@@ -37,5 +37,10 @@ def tenants(directory: Path = TENANTS_DIR) -> dict[str, dict]:
     return out
 
 
+# Systems whose sources change once a day: Google's usage reports lag two days, Merge syncs the linked systems about
+# daily. The hourly DAG skips them and connectors_daily pulls them at 05:00 Moscow time.
+DAILY = ("google_workspace", "merge")
+
+
 def env_prefix(name: str) -> str:
     return name.upper() + "_"

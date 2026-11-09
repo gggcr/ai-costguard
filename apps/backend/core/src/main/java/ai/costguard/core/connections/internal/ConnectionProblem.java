@@ -11,7 +11,11 @@ enum ConnectionProblem implements ProblemCode {
     SETTING_UNKNOWN(HttpStatus.BAD_REQUEST,
             "Unknown setting; secrets are not kept in the core, they go to the agent's environment"),
     ALREADY_CONNECTED(HttpStatus.CONFLICT, "This system is already connected"),
-    NOT_CONNECTED(HttpStatus.CONFLICT, "The system is disconnected; connect it again to sync");
+    NOT_CONNECTED(HttpStatus.CONFLICT, "The system is disconnected; connect it again to sync"),
+    SECRET_UNKNOWN(HttpStatus.BAD_REQUEST, "This system has no secret of that name; see GET /api/v1/connections/types"),
+    ENCRYPTION_KEY_MISSING(HttpStatus.SERVICE_UNAVAILABLE,
+            "Secrets cannot be kept in the core: set CONNECTIONS_ENCRYPTION_KEY, or give them to the agent"),
+    CONNECTOR_ROLE_REQUIRED(HttpStatus.FORBIDDEN, "Secrets are given only to the connector agent's service account");
 
     private final HttpStatus status;
     private final String detail;

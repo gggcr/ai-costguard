@@ -52,6 +52,11 @@ export type AgentDetails = {
   mandateId: string;  // uuid
 };
 
+export type AgentSecrets = {
+  tenantId?: string;  // uuid
+  secrets?: Record<string, Record<string, string>>;
+};
+
 export type Approval = {
   id?: string;  // uuid
   operationId?: string;  // uuid
@@ -137,12 +142,14 @@ export type Connection = {
   lastErrorAt?: string;  // date-time
   syncRequestedAt?: string;  // date-time
   createdAt?: string;  // date-time
+  secretsInCore?: Array<string>;
 };
 
 export type ConnectionDetails = {
   type: string;
   name: string;
   settings: Record<string, string>;
+  secrets?: Record<string, string>;
 };
 
 export type ConnectionRun = {
@@ -649,6 +656,7 @@ export const operations = {
   privacyRequestCompanyErasure: { method: "POST", path: "/api/v1/company/erasure" },
   connectionsListConnections: { method: "GET", path: "/api/v1/connections" },
   connectionsConnectSystem: { method: "POST", path: "/api/v1/connections" },
+  connectionsConnectorAgentSecrets: { method: "GET", path: "/api/v1/connections/agent-secrets" },
   connectionsListConnectionTypes: { method: "GET", path: "/api/v1/connections/types" },
   connectionsDisconnectSystem: { method: "DELETE", path: "/api/v1/connections/{id}" },
   connectionsGetConnection: { method: "GET", path: "/api/v1/connections/{id}" },

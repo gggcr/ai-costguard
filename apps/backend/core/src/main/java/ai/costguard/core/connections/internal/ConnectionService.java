@@ -30,9 +30,11 @@ class ConnectionService implements ConnectorRuns {
     private final ApplicationEventPublisher events;
     private final MeterRegistry registry;
     private final AirflowLauncher airflow;
+    private final SecretBox box;
 
     ConnectionService(ConnectionRepository connections, TenantSession session, Clock clock,
-            ApplicationEventPublisher events, MeterRegistry registry, AirflowLauncher airflow) {
+            ApplicationEventPublisher events, MeterRegistry registry, AirflowLauncher airflow, SecretBox box) {
+        this.box = box;
         this.connections = connections;
         this.session = session;
         this.clock = clock;
@@ -90,10 +92,29 @@ class ConnectionService implements ConnectorRuns {
         return settings;
     }
 
+    /** Only the secrets the type names, blank ones left out (ADR 0030). */
+    private static Map<String, String> secrets(ConnectionDetails details) {
+        Map<String, String> secrets = new TreeMap<>();
+        if (details.secrets() == null) {
+            return secrets;
+        }
+        List<String> known = SystemTypes.of(details.type()).orElseThrow().secrets();
+        details.secrets().forEach((key, value) -> {
+            if (!known.contains(key)) {
+                throw ConnectionProblem.SECRET_UNKNOWN.failure();
+            }
+            if (value != null && !value.isBlank()) {
+                secrets.put(key, value);
+            }
+        });
+        return secrets;
+    }
+
     /** Connects a system, or connects again one that was disconnected. Returns whether it is new. */
     @Transactional
     Connected connect(UUID tenantId, ConnectionDetails details) {
         Map<String, String> settings = checked(details);
+        Map<String, String> secrets = secrets(details);
         session.bind(tenantId);
         Instant now = clock.instant();
         var existing = connections.lockByType(details.type());
@@ -108,10 +129,13 @@ class ConnectionService implements ConnectorRuns {
             id = UUID.randomUUID();
             connections.insert(tenantId, id, details.type(), details.name().strip(), true, settings, now);
         }
+        connections.setSecrets(id, secrets.isEmpty() ? null : box.seal(tenantId, id, secrets),
+                List.copyOf(secrets.keySet()));
         publish(tenantId, id, now);
-        // The names of the settings, not their values: a value can be an administrator's e-mail.
+        // The names of the settings and secrets, not their values: a value can be an e-mail or a password.
         events.publishEvent(ActionTaken.of(tenantId, "connection.connected", "connection", id, Map.of(
-                "type", details.type(), "settings", String.join(",", settings.keySet()))));
+                "type", details.type(), "settings", String.join(",", settings.keySet()),
+                "secrets", String.join(",", secrets.keySet()))));
         return new Connected(found(id), existing.isEmpty());
     }
 
@@ -152,6 +176,17 @@ class ConnectionService implements ConnectorRuns {
                 Map.of("type", type)));
         airflow.launch(tenantId, id, type, now); // the agent in Airflow pulls now, not on its next hourly round
         return found(id);
+    }
+
+    /** The secrets kept in the core, opened, for the connector agent's service account only (ADR 0030). */
+    @Transactional(readOnly = true)
+    AgentSecrets agentSecrets(UUID tenantId) {
+        session.bind(tenantId);
+        Map<String, Map<String, String>> out = new TreeMap<>();
+        for (ConnectionRepository.Sealed s : connections.sealed()) {
+            out.put(s.type(), box.open(tenantId, s.id(), s.secrets()));
+        }
+        return new AgentSecrets(tenantId, out);
     }
 
     private void publish(UUID tenantId, UUID id, Instant now) {

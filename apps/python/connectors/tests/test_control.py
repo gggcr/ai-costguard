@@ -140,3 +140,45 @@ def test_mail_is_reported_with_the_files_it_uploaded(tmp_path):
     agent.round_({"mail": {"host": "h", "user": "u"}}, {}, TENANT, agent.State(tmp_path / "s.json"),
                  lambda _: None, agent.Reporter(TENANT, reports.extend), inbox=lambda c, e: Inbox())
     assert reports[0].value["type"] == "mail" and reports[0].value["records"] == 3
+
+
+# secrets kept in the core (ADR 0030)
+
+
+def _core(body: dict, status: int = 200):
+    import httpx
+
+    def handle(request):
+        assert request.url.path == "/api/v1/connections/agent-secrets"
+        assert request.headers["authorization"] == "Bearer t"
+        return httpx.Response(status, json=body)
+
+    return httpx.Client(base_url="http://core", transport=httpx.MockTransport(handle),
+                        headers={"Authorization": "Bearer t"})
+
+
+def test_secrets_kept_in_the_core_come_by_environment_variable_and_the_environment_wins():
+    body = {"tenantId": str(TENANT), "secrets": {"okta": {"OKTA_TOKEN": "core-okta"},
+                                                  "onec": {"ONEC_PASSWORD": "core-1c"}}}
+    secrets = control.core_secrets(_core(body), TENANT)
+    assert secrets == {"OKTA_TOKEN": "core-okta", "ONEC_PASSWORD": "core-1c"}
+    env = control.with_secrets({"OKTA_TOKEN": "env-okta", "CORE_URL": "http://core"}, secrets)
+    assert env["OKTA_TOKEN"] == "env-okta" and env["ONEC_PASSWORD"] == "core-1c"
+
+
+def test_secrets_for_another_company_or_a_refused_token_are_not_used():
+    import httpx
+    import pytest
+
+    with pytest.raises(RuntimeError):
+        control.core_secrets(_core({"tenantId": str(uuid.uuid4()), "secrets": {}}), TENANT)
+    with pytest.raises(httpx.HTTPStatusError):
+        control.core_secrets(_core({"code": "connector_role_required"}, 403), TENANT)
+
+
+def test_a_secret_from_the_core_is_blanked_out_of_a_reported_error():
+    reports = []
+    report = agent.Reporter(TENANT, reports.extend)
+    report.env = control.with_secrets({}, {"OKTA_TOKEN": "core-secret-okta-token"})
+    report("okta", datetime.now(UTC), 0, "401 for token core-secret-okta-token")
+    assert "core-secret-okta-token" not in reports[0].value["error"]

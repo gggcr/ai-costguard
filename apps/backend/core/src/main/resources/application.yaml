@@ -44,6 +44,9 @@ costguard:
     # Public keys of rotated signing keys, base64 X.509, comma-separated: old receipts still verify (ADR 0028).
     previous-public-keys: ${JOURNAL_PREVIOUS_PUBLIC_KEYS:}
   connections:
+    # base64 of 32 random bytes (openssl rand -base64 32), kept forever: it encrypts the secrets a company chose to
+    # keep in the core (ADR 0030). Empty: such secrets are refused and stay in the agent's environment.
+    encryption-key: ${CONNECTIONS_ENCRYPTION_KEY:}
     # «Синхронизировать сейчас» starts the Airflow DAG costguard_connector_sync; empty: the next hourly round pulls it
     airflow:
       url: ${AIRFLOW_URL:}

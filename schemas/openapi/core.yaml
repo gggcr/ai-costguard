@@ -1268,8 +1268,9 @@ paths:
       tags:
       - Connections
       summary: Connect a system
-      description: Settings that are not secrets only. Connecting a disconnected system
-        again reuses it.
+      description: "Settings, and optionally secrets: kept encrypted in the core and\
+        \ never returned, or left out for the agent's environment (ADR 0030). Connecting\
+        \ a disconnected system again reuses it."
       operationId: connectSystem
       requestBody:
         content:
@@ -1289,8 +1290,8 @@ paths:
       tags:
       - Connections
       summary: Sync a system now
-      description: "A running agent pulls it at once, an agent on Airflow on its next\
-        \ hourly round."
+      description: "A running agent pulls it at once; an agent on Airflow at once\
+        \ if the core knows Airflow, otherwise on its next hourly round."
       operationId: syncConnection
       parameters:
       - name: id
@@ -1855,7 +1856,8 @@ paths:
       tags:
       - Connections
       summary: Disconnect a system
-      description: The agent stops pulling it; the history stays.
+      description: The agent stops pulling it and secrets kept in the core are erased;
+        the history stays.
       operationId: disconnectSystem
       parameters:
       - name: id
@@ -1906,6 +1908,21 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SystemType"
+  /api/v1/connections/agent-secrets:
+    get:
+      tags:
+      - Connections
+      summary: Secrets for the connector agent
+      description: "The secrets kept in the core, by system type and environment variable.\
+        \ Only for the connector service account of the company (ADR 0030)."
+      operationId: connectorAgentSecrets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentSecrets"
   /api/v1/catalog/prices/{skuId}/history:
     get:
       tags:
@@ -3245,6 +3262,10 @@ components:
           type: object
           additionalProperties:
             type: string
+        secrets:
+          type: object
+          additionalProperties:
+            type: string
       required:
       - name
       - settings
@@ -3295,6 +3316,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        secretsInCore:
+          type: array
+          items:
+            type: string
     CompanyErasureRequest:
       type: object
       properties:
@@ -3651,6 +3676,18 @@ components:
           type: array
           items:
             type: string
+    AgentSecrets:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        secrets:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
     FxRate:
       type: object
       properties:

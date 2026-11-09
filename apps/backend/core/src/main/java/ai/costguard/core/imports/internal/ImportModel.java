@@ -19,8 +19,10 @@ enum ImportType { excel, csv, pdf, scan, bank;
             case "xlsx", "xls" -> Optional.of(excel);
             case "csv" -> Optional.of(csv);
             case "pdf" -> Optional.of(pdf);
-            case "jpg", "jpeg", "png", "heic" -> Optional.of(scan);
-            case "txt", "sta", "mt940", "1c" -> Optional.of(bank);
+            // the images the ingest pipeline reads through OCR (costguard_ingest.tables.IMAGES)
+            case "jpg", "jpeg", "png", "heic", "tif", "tiff", "webp", "bmp" -> Optional.of(scan);
+            // 1C exchange and MT940 are text; CAMT.053 is XML; OFX and QFX are OFX statements
+            case "txt", "sta", "mt940", "940", "1c", "xml", "ofx", "qfx" -> Optional.of(bank);
             default -> Optional.empty();
         };
     }

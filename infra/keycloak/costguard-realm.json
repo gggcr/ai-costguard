@@ -22,6 +22,10 @@
       {
         "name": "auditor",
         "description": "Read-only, verifies receipts"
+      },
+      {
+        "name": "connector",
+        "description": "Service account of a company's connector agent: reads the secrets kept in the core (ADR 0030)"
       }
     ]
   },
