@@ -1,7 +1,7 @@
 # 0029. Проверка после выкладки: smoke-тест staging после синхронизации Argo CD
 
 ## Контекст
-Staging следует за `main` через Argo CD (`deploy/argocd/staging.yaml`, автосинхронизация). Workflow, который бы
+Staging следует за `goidochka` через Argo CD (`deploy/argocd/staging.yaml`, автосинхронизация). Workflow, который бы
 выкладывал, нет: выкладывает Argo CD. Нужен smoke-тест после развёртывания — вход, создание агента, операция через
 шлюз с резервом и списанием, загрузка Excel, появление находки — подключённый к workflow deploy.
 
@@ -14,7 +14,7 @@ Staging следует за `main` через Argo CD (`deploy/argocd/staging.ya
   Каждый шаг ждёт до `SMOKE_TIMEOUT_SECONDS` (5 минут): данные идут через Kafka.
 - **Где** — отдельная компания smoke-пользователя в Keycloak staging; имена содержат id запуска, запуски не мешают
   друг другу. После теста ключ отозван, агент приостановлен.
-- **Когда** — job `smoke-staging` в `deploy.yml`: после успешной сборки `main` (`workflow_run` от java, python,
+- **Когда** — job `smoke-staging` в `deploy.yml`: после успешной сборки `goidochka` (`workflow_run` от java, python,
   frontend) и вручную. Он ждёт, пока Argo CD покажет приложение `costguard-staging` синхронным и здоровым **на этом
   коммите**, и только потом запускает тест. Не дождался за 20 минут — падает.
 - **Настройки** — environment `staging` репозитория: переменные `SMOKE_CORE_URL`, `SMOKE_GATEWAY_URL`,

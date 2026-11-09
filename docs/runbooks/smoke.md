@@ -1,7 +1,7 @@
 # Smoke-тест после выкладки
 
 Решение: [ADR 0029](../adr/0029-post-deploy-smoke.md). Тест — `tests/smoke/test_staging.py`, запускает job
-`smoke-staging` workflow `deploy-manifests` после успешной сборки `main`, когда Argo CD выкатил этот коммит.
+`smoke-staging` workflow `deploy-manifests` после успешной сборки `goidochka`, когда Argo CD выкатил этот коммит.
 
 ## Настроить (один раз)
 1. В Keycloak staging: клиент `costguard-smoke` (Client authentication off, Direct access grants on, мэппер

@@ -1,4 +1,4 @@
-# Staging follows main and syncs on its own.
+# Staging follows goidochka and syncs on its own.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,7 +9,7 @@ spec:
   project: costguard
   source:
     repoURL: https://git.costguard.example/costguard/costguard.git
-    targetRevision: main
+    targetRevision: goidochka
     path: deploy/helm/costguard
     helm:
       valueFiles: [values.yaml, values-staging.yaml]

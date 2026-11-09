@@ -6,12 +6,12 @@ on:
   pull_request:
     paths: ['deploy/**', 'tools/tests/test_helm.py', 'tools/tests/test_alerts.py', 'tools/tests/test_residency.py',
             'tests/smoke/**', 'docs/runbooks/**']
-  # Staging follows main through Argo CD (deploy/argocd/staging.yaml): once a build of main succeeds, Argo CD rolls it
+  # Staging follows goidochka through Argo CD (deploy/argocd/staging.yaml): once a build of goidochka succeeds, Argo CD rolls it
   # out, and the smoke job checks it there (ADR 0029).
   workflow_run:
     workflows: [java, python, frontend]
     types: [completed]
-    branches: [main]
+    branches: [goidochka]
   workflow_dispatch:
 
 jobs:
@@ -49,7 +49,7 @@ jobs:
       - run: terraform validate
 
   smoke-staging:
-    # After a successful build of main, or by hand. Needs the settings of docs/runbooks/smoke.md; without them the
+    # After a successful build of goidochka, or by hand. Needs the settings of docs/runbooks/smoke.md; without them the
     # job fails and says which are missing, it never passes without having tested anything.
     if: >-
       github.event_name == 'workflow_dispatch' ||

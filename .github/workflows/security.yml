@@ -1,10 +1,10 @@
 name: security
 # Vulnerabilities in dependencies and images, and secrets in the code (ADR 0027). A critical vulnerability with a fix
-# fails the build; HIGH and the rest go to the Security tab as SARIF. Every Monday the same checks run on main, so a
+# fails the build; HIGH and the rest go to the Security tab as SARIF. Every Monday the same checks run on goidochka, so a
 # new CVE in a dependency nobody touched still turns up. Accepted exceptions: .trivyignore, with a reason and a date.
 on:
   push:
-    branches: [main]
+    branches: [goidochka]
   pull_request:
   schedule:
     - cron: '0 4 * * 1'
@@ -28,7 +28,7 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Secrets in the code and its history
         run: |
-          # A pull request is checked commit by commit; main and the weekly run check the whole history.
+          # A pull request is checked commit by commit; goidochka and the weekly run check the whole history.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             range="--log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
           fi
