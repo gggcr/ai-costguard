@@ -44,7 +44,10 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo "$TRIVY_IMAGE" fs --scanners vuln --format sarif \
             --output /repo/deps.sarif --skip-dirs apps/frontend/node_modules --skip-dirs .venv /repo
-      - uses: github/codeql-action/upload-sarif@v3
+      # The Security tab needs code scanning (GitHub Advanced Security on a private repository); without it the
+      # upload is refused, and that must not stop the check that matters, «Fail on critical», below.
+      - uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
         if: always() && hashFiles('deps.sarif') != ''
         with: { sarif_file: deps.sarif, category: dependencies }
       - name: Fail on critical
@@ -71,7 +74,10 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo "$TRIVY_IMAGE" rootfs --scanners vuln --format sarif \
             --output /repo/java.sarif /repo/apps/backend/core/build/libs /repo/apps/backend/gateway/build/libs || true
-      - uses: github/codeql-action/upload-sarif@v3
+      # The Security tab needs code scanning (GitHub Advanced Security on a private repository); without it the
+      # upload is refused, and that must not stop the check that matters, «Fail on critical», below.
+      - uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
         if: always() && hashFiles('java.sarif') != ''
         with: { sarif_file: java.sarif, category: java }
       - name: Fail on critical
@@ -107,7 +113,10 @@ jobs:
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" "$TRIVY_IMAGE" image \
             --scanners vuln --format sarif --output /repo/image.sarif costguard-${{ matrix.image.name }}:scan
-      - uses: github/codeql-action/upload-sarif@v3
+      # The Security tab needs code scanning (GitHub Advanced Security on a private repository); without it the
+      # upload is refused, and that must not stop the check that matters, «Fail on critical», below.
+      - uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
         if: always() && hashFiles('image.sarif') != ''
         with: { sarif_file: image.sarif, category: 'image-${{ matrix.image.name }}' }
       - name: Fail on critical
