@@ -31,9 +31,11 @@ class AssetService {
     private final TenantSession session;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final ReturnedEquipment returned;
 
     AssetService(AssetRepository assets, HandoverActs acts, EmployeeDirectory people, TenantSession session,
-            Clock clock, ApplicationEventPublisher events) {
+            Clock clock, ApplicationEventPublisher events, ReturnedEquipment returned) {
+        this.returned = returned;
         this.assets = assets;
         this.acts = acts;
         this.people = people;
@@ -149,9 +151,11 @@ class AssetService {
     @Transactional
     void takeBack(UUID tenantId, UUID assetId) {
         session.bind(tenantId);
-        Assignment open = locked(assetId).currentAssignment();
+        Asset asset = locked(assetId);
+        Assignment open = asset.currentAssignment();
         if (open != null) {
             assets.closeAssignment(open.id(), LocalDate.now(clock));
+            returned.returned(tenantId, asset, open);
             assets.setStatus(assetId, AssetStatus.IN_STOCK);
             announce(tenantId, assetId);
         }
@@ -233,6 +237,7 @@ class AssetService {
             if (employee.isPresent()) {
                 if (open != null) {
                     assets.closeAssignment(open.id(), LocalDate.now(clock));
+                    returned.returned(tenantId, asset, open);
                 }
                 issue(tenantId, asset, new NewAssignment(holder, null), employee.get(), CONNECTOR + report.source());
                 changed = true;

@@ -13,6 +13,7 @@ import { Approvals } from './pages/Approvals';
 import { OperationDetail, Operations } from './pages/Operations';
 import { Software, SubscriptionDetail } from './pages/Software';
 import { AssetDetail, Assets } from './pages/Assets';
+import { ConnectionDetail, Connections } from './pages/Connections';
 import { ImportDetail, Imports } from './pages/Imports';
 import { FindingDetail, Findings } from './pages/Findings';
 import { Analytics } from './pages/Analytics';
@@ -42,6 +43,8 @@ function App() {
         <Route path="software/subscriptions/:id" element={<Guard section="software"><SubscriptionDetail /></Guard>} />
         <Route path="assets" element={<Guard section="assets"><Assets /></Guard>} />
         <Route path="assets/:id" element={<Guard section="assets"><AssetDetail /></Guard>} />
+        <Route path="connections" element={<Guard section="connections"><Connections /></Guard>} />
+        <Route path="connections/:id" element={<Guard section="connections"><ConnectionDetail /></Guard>} />
         <Route path="imports" element={<Guard section="imports"><Imports /></Guard>} />
         <Route path="imports/:id" element={<Guard section="imports"><ImportDetail /></Guard>} />
         <Route path="findings" element={<Guard section="findings"><Findings /></Guard>} />

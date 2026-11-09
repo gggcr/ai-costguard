@@ -1,5 +1,8 @@
 # Страница «Подключённые системы»: что нужно от фронтенда
 
+> Сделано: `apps/frontend/src/pages/Connections.tsx` (демо-данные во всех статусах, тесты в `Connections.test.tsx`).
+> Работает на демо-хранилище; подключение к API — заменой действий в `src/api/store.tsx`.
+
 Задание для фронтенд-команды. Код в `apps/frontend` не менялся, кроме сгенерированных типов
 `src/api/generated/core.ts` (`make codegen`): там уже есть `Connection`, `ConnectionDetails`, `ConnectionRun`,
 `SystemType`. API описан в `schemas/openapi/core.yaml`, тег `Connections`; устройство — в ADR 0019.

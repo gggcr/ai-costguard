@@ -21,6 +21,9 @@ public final class FakeProvider implements AutoCloseable {
     public volatile String contentType = "application/json";
     /** How long to wait before answering, for timeouts. */
     public volatile long delayMillis = 0;
+    /** When set, the answer goes out in these chunks, one every {@link #chunkPauseMillis}: a stream. */
+    public volatile List<String> chunks = null;
+    public volatile long chunkPauseMillis = 0;
     public volatile String response = """
             {"id":"x","choices":[{"message":{"role":"assistant","content":"ok"}}],
              "usage":{"prompt_tokens":100,"completion_tokens":50}}""";
@@ -36,6 +39,22 @@ public final class FakeProvider implements AutoCloseable {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
+            }
+            List<String> parts = chunks;
+            if (parts != null) {
+                exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
+                exchange.sendResponseHeaders(status, 0);
+                try {
+                    for (String part : parts) {
+                        exchange.getResponseBody().write(part.getBytes(StandardCharsets.UTF_8));
+                        exchange.getResponseBody().flush();
+                        Thread.sleep(chunkPauseMillis);
+                    }
+                } catch (IOException | InterruptedException e) {
+                    // The gateway went away mid-stream: that is what a test of an aborted stream wants.
+                }
+                exchange.close();
+                return;
             }
             byte[] body = response.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", contentType);

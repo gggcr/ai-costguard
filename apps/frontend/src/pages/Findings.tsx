@@ -112,7 +112,8 @@ export function FindingDetail() {
   const edit = canEdit('findings') && (user?.role !== 'agent_owner' || f.ownerId === user.id);
   const sub = L.subscription(f.subscriptionId);
   const agent = L.agent(f.agentId);
-  const available = FINDING_TRANSITIONS[f.status];
+  // Технику в счетах не видно: её находки закрывает возврат, а не «видна в счёте» (ADR 0020)
+  const available = FINDING_TRANSITIONS[f.status].filter((a) => !(f.rule.startsWith('asset.') && (a === 'confirm' || a === 'missInvoice')));
   const needsInput: FindingAction[] = ['assign', 'postpone', 'reject', 'createTask'];
 
   const run = (a: FindingAction) => {

@@ -12,4 +12,13 @@ public interface FindingsIntake {
 
     /** The condition is gone: an open finding closes by itself. */
     void resolved(UUID tenantId, String fingerprint);
+
+    /**
+     * What the finding asked for happened, and an event says so, not an invoice (board frame 15: the equipment came
+     * back). A finding someone took up, accepted or in progress, is confirmed with its savings; one nobody took up
+     * closes by itself. Other statuses do not change.
+     *
+     * @param what what happened, for the history of the finding
+     */
+    void settled(UUID tenantId, String fingerprint, String what);
 }

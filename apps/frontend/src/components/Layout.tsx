@@ -16,6 +16,7 @@ const NAV: { section: Section; to: string; label: string; group: string }[] = [
   { section: 'software', to: '/software', label: 'Подписки и договоры', group: 'Контур Б: расходы на ПО' },
   { section: 'assets', to: '/assets', label: 'Техника сотрудников', group: 'Контур Б: расходы на ПО' },
   { section: 'imports', to: '/imports', label: 'Импорт данных', group: 'Контур Б: расходы на ПО' },
+  { section: 'connections', to: '/connections', label: 'Подключённые системы', group: 'Контур Б: расходы на ПО' },
   { section: 'findings', to: '/findings', label: 'Находки', group: 'Контур Б: расходы на ПО' },
   { section: 'analytics', to: '/analytics', label: 'Прогнозы и отчёты', group: 'Контур Б: расходы на ПО' },
   { section: 'org', to: '/org', label: 'Оргструктура и доступ', group: 'Настройки' },

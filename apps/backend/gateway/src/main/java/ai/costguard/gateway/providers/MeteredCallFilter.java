@@ -168,7 +168,8 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                     byte[] rewritten = json.toString().getBytes(StandardCharsets.UTF_8);
                     return forward(exchange, chain, op, rewritten,
                             headers -> credentials.apply(provider, p, headers),
-                            response -> settleLlm(op, p.vendor(), dialect, response));
+                            response -> settleLlm(op, p.vendor(), dialect, response),
+                            partial -> abortedLlm(op, p.vendor(), dialect, partial));
                 });
     }
 
@@ -188,7 +189,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                 .flatMap(passed -> !passed ? Mono.empty() : forward(exchange, chain, op, body, headers -> {
                     EgressRoutes.credentials(route, headers);
                     return Mono.empty();
-                }, response -> Mono.just(op.estimatedCost())));
+                }, response -> Mono.just(op.estimatedCost()), partial -> Mono.just(op.estimatedCost())));
     }
 
     /**
@@ -234,6 +235,39 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
         return Mono.just(estimator.llm(op.tenantId(), vendor, op.model(), u[0], u[1], today()).orElse(op.estimatedCost()));
     }
 
+    /**
+     * The agent dropped the stream (board frame 2). The provider still charges what it sent, so the call is charged
+     * for the input and for the output received so far: the usage if the stream got that far, else the tokens of the
+     * text received, never more than the cap. The rest of the reserve goes back at once, not when the sweeper runs.
+     */
+    private Mono<BigDecimal> abortedLlm(Operation op, String vendor, Dialect dialect, byte[] partial) {
+        Optional<long[]> usage = usage(dialect, partial);
+        long output = usage.map(u -> u[1]).orElseGet(() -> Math.min(op.maxOutputTokens(),
+                tokens.count(vendor, op.model(), streamedText(partial))));
+        long input = usage.map(u -> u[0]).orElse(op.inputTokens());
+        op.tokens(input, output);
+        return Mono.just(estimator.llm(op.tenantId(), vendor, op.model(), input, output, today())
+                .orElse(op.estimatedCost()));
+    }
+
+    /** The text of the {@code content} and {@code text} fields of the chunks received, for counting tokens. */
+    static String streamedText(byte[] partial) {
+        StringBuilder text = new StringBuilder();
+        for (String line : new String(partial, StandardCharsets.UTF_8).split("\\R")) {
+            if (!line.startsWith("data:")) {
+                continue;
+            }
+            try {
+                JsonNode chunk = JSON.readTree(line.substring(5).trim());
+                chunk.findValues("content").forEach(v -> text.append(v.asText()));
+                chunk.findValues("text").forEach(v -> text.append(v.asText()));
+            } catch (Exception ignored) {
+                // A cut chunk or [DONE] carries no text.
+            }
+        }
+        return text.toString();
+    }
+
     /** A plain JSON body, or Server-Sent Events whose last chunk with usage counts. */
     static Optional<long[]> usage(Dialect dialect, byte[] response) {
         String text = new String(response, StandardCharsets.UTF_8).trim();
@@ -271,7 +305,8 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
 
     private Mono<Void> forward(ServerWebExchange exchange, GatewayFilterChain chain, Operation op, byte[] body,
             java.util.function.Function<HttpHeaders, Mono<Void>> auth,
-            java.util.function.Function<byte[], Mono<BigDecimal>> actualCost) {
+            java.util.function.Function<byte[], Mono<BigDecimal>> actualCost,
+            java.util.function.Function<byte[], Mono<BigDecimal>> abortedCost) {
         HttpHeaders headers = new HttpHeaders();
         headers.addAll(exchange.getRequest().getHeaders());
         headers.remove("Idempotency-Key");
@@ -290,7 +325,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                     return Flux.just(exchange.getResponse().bufferFactory().wrap(body));
                 }
             };
-            Settlement settlement = new Settlement(exchange.getResponse(), op, actualCost);
+            Settlement settlement = new Settlement(exchange.getResponse(), op, actualCost, abortedCost);
             return chain.filter(exchange.mutate().request(request).response(settlement).build())
                     .onErrorResume(e -> settlement.fail().then(Mono.error(e)));
         }));
@@ -300,34 +335,57 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
 
         private final Operation op;
         private final java.util.function.Function<byte[], Mono<BigDecimal>> actualCost;
+        private final java.util.function.Function<byte[], Mono<BigDecimal>> abortedCost;
         private final ByteArrayOutputStream captured = new ByteArrayOutputStream();
         private final AtomicBoolean done = new AtomicBoolean();
 
         Settlement(ServerHttpResponse delegate, Operation op,
-                java.util.function.Function<byte[], Mono<BigDecimal>> actualCost) {
+                java.util.function.Function<byte[], Mono<BigDecimal>> actualCost,
+                java.util.function.Function<byte[], Mono<BigDecimal>> abortedCost) {
             super(delegate);
             this.op = op;
             this.actualCost = actualCost;
+            this.abortedCost = abortedCost;
         }
 
         private DataBuffer capture(DataBuffer buffer) {
-            if (captured.size() < MAX_CAPTURE) {
-                byte[] copy = new byte[buffer.readableByteCount()];
-                buffer.toByteBuffer().get(copy);
-                captured.write(copy, 0, copy.length);
+            synchronized (captured) {
+                if (captured.size() < MAX_CAPTURE) {
+                    byte[] copy = new byte[buffer.readableByteCount()];
+                    buffer.toByteBuffer().get(copy);
+                    captured.write(copy, 0, copy.length);
+                }
             }
             return buffer;
         }
 
         @Override
         public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
-            return super.writeWith(Flux.from(body).map(this::capture)).then(Mono.defer(this::finish));
+            return super.writeWith(Flux.from(body).map(this::capture).doOnCancel(this::abort))
+                    .then(Mono.defer(this::finish));
         }
 
         @Override
         public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
-            return super.writeAndFlushWith(Flux.from(body).map(inner -> Flux.from(inner).map(this::capture)))
+            return super.writeAndFlushWith(Flux.from(body).map(inner -> Flux.from(inner).map(this::capture))
+                            .doOnCancel(this::abort))
                     .then(Mono.defer(this::finish));
+        }
+
+        /** The agent went away mid-stream: charge what was sent, give the rest of the reserve back now. */
+        private void abort() {
+            if (!done.compareAndSet(false, true)) {
+                return;
+            }
+            byte[] partial;
+            synchronized (captured) {
+                partial = captured.toByteArray();
+            }
+            abortedCost.apply(partial)
+                    .flatMap(actual -> reserve.settle(op.tenantId(), op.operationId().toString(), actual)
+                            .doOnNext(ok -> decisions.allowed(op, actual, op.inputTokens(), op.maxOutputTokens())))
+                    .onErrorResume(e -> Mono.just(false))
+                    .subscribe();
         }
 
         /** The API failed: the reserve goes back, nothing is charged, and the failure is recorded (ADR 0010). */

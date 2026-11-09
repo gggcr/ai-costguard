@@ -109,6 +109,41 @@ class AuditIntegrationTest extends PostgresTestSupport {
         assertThat(findings()).hasSize(before);
     }
 
+    void act(String findingId, String body, int expected) throws Exception {
+        mvc.perform(post("/api/v1/findings/" + findingId + "/actions").contentType(MediaType.APPLICATION_JSON)
+                .content(body).with(owner())).andExpect(status().is(expected));
+    }
+
+    /** Frame 15: equipment does not show in invoices; the return confirms the finding someone worked on. */
+    @Test
+    void aReturnConfirmsTheEquipmentFindingNotAnInvoice() throws Exception {
+        String department = send(post("/api/v1/departments"), "{\"name\":\"Склад\"}");
+        String dan = send(post("/api/v1/employees"), """
+                {"name":"Дэн","email":"dan@corp.ru","departmentId":"%s","position":"Ops"}""".formatted(department));
+        String laptop = send(post("/api/v1/assets"), """
+                {"inventoryNumber":"INV-%s","model":"ThinkPad X1","type":"LAPTOP","cost":90000.00}"""
+                .formatted(UUID.randomUUID()));
+        send(put("/api/v1/assets/" + laptop + "/assignment"), "{\"employeeId\":\"%s\"}".formatted(dan));
+        mvc.perform(put("/api/v1/employees/" + dan + "/dismissal").with(owner())).andExpect(status().isOk());
+        audit.run(tenant);
+        String id = findings().stream().filter(f -> "asset.not-returned".equals(f.get("rule")))
+                .map(f -> (String) f.get("id")).findFirst().orElseThrow();
+
+        act(id, "{\"action\":\"assign\",\"ownerId\":\"%s\"}".formatted(UUID.randomUUID()), 200);
+        act(id, "{\"action\":\"accept\"}", 200);
+        act(id, "{\"action\":\"createTask\"}", 200);
+        act(id, "{\"action\":\"missInvoice\"}", 409); // no invoice will ever show a laptop coming back
+        act(id, "{\"action\":\"confirm\"}", 409);
+        assertThat(statuses("asset.not-returned")).containsExactly("in_progress");
+
+        mvc.perform(delete("/api/v1/assets/" + laptop + "/assignment").with(owner())).andExpect(status().isNoContent());
+
+        assertThat(statuses("asset.not-returned")).containsExactly("confirmed"); // without an audit run
+        String history = mvc.perform(get("/api/v1/findings/" + id).with(owner())).andReturn().getResponse()
+                .getContentAsString();
+        assertThat(history).contains("Техника возвращена: ThinkPad X1");
+    }
+
     @Test
     void anEmployeeWithTwoLaptopsIsAFinding() throws Exception {
         String department = send(post("/api/v1/departments"), "{\"name\":\"Продажи\"}");
