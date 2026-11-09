@@ -6,7 +6,7 @@ import type {
   Agent, AppState, Approval, Asset, AssetAssignment, Budget, Contract, Employee, Finding, FindingStatus, GatewayCode, ImportJob,
   ImportType, Mandate, Notification, Operation, Role, Subscription, User, Vendor,
 } from './types';
-import { createSeed } from './mock-data';
+import { SYSTEM_TYPES, createSeed } from './mock-data';
 import { fakeHash, fmtRub, localDay, newId } from '../lib';
 
 const STORAGE_KEY = 'costguard-demo-state-v1';
@@ -351,7 +351,11 @@ function useActions(
             const held = stillHeld(o.employeeId);
             const gone = f.rule === 'asset.not-returned' ? held.length === 0
               : f.rule === 'asset.duplicate' ? held.filter((x) => x.type === a.type).length < 2 : false;
-            if (gone) {
+            if (gone && (f.status === 'accepted' || f.status === 'in_progress')) {
+              // В работе: возврат подтверждает экономию, как FindingsIntake.settled в ядре
+              f.status = 'confirmed';
+              f.history.push({ at: new Date().toISOString(), by: 'Движок аудита', text: `Техника возвращена: ${a.model}. Экономия подтверждена` });
+            } else if (gone) {
               f.status = 'auto_closed';
               f.history.push({ at: new Date().toISOString(), by: 'Движок аудита', text: 'Техника возвращена. Условие исчезло, находка закрыта автоматически' });
             } else {
@@ -552,6 +556,76 @@ function useActions(
       },
 
       // ——— Имитация потока событий (в продакшене — SSE от ядра) ———
+      // ——— Подключённые системы (ядро: модуль connections, ADR 0019) ———
+      // POST /api/v1/connections: 201 новая, 200 подключена снова (та же id), 409 already_connected
+      connectSystem(type: string, name: string, settings: Record<string, string>): string | null {
+        const s0 = getState();
+        const t = SYSTEM_TYPES.find((x) => x.type === type);
+        if (!t) { pushToast('Этот тип систем агент не поддерживает', 'critical'); return null; }
+        const missing = t.required.filter((k) => !settings[k]?.trim());
+        if (missing.length) { pushToast('Заполните обязательные поля', 'critical'); return null; }
+        const existing = s0.connections.find((c) => c.type === type);
+        if (existing && existing.enabled && existing.managedInCore) { pushToast('Система уже подключена', 'warning'); return null; }
+        const id = existing?.id ?? newId('c');
+        const clean = Object.fromEntries(Object.entries(settings).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+        setState((s) => {
+          const c = s.connections.find((x) => x.id === id);
+          if (c) {
+            Object.assign(c, { name: name.trim(), settings: clean, enabled: true, managedInCore: true, status: c.lastSyncAt ? 'connected' : 'pending' });
+          } else {
+            s.connections.push({ id, type, name: name.trim(), settings: clean, enabled: true, managedInCore: true, status: 'pending', recordsTotal: 0, createdAt: new Date().toISOString() });
+          }
+          notify(s, `Подключена система «${name.trim()}». Агент коннекторов начнёт выгрузку`, 'info', `/connections/${id}`);
+        });
+        pushToast(existing ? 'Система подключена снова' : 'Система подключена. Секреты задайте в окружении агента', 'good');
+        return id;
+      },
+      // DELETE /api/v1/connections/{id}: 204, повторное отключение тоже 204
+      disconnectSystem(id: string) {
+        setState((s) => {
+          const c = s.connections.find((x) => x.id === id);
+          if (!c) return;
+          c.enabled = false;
+          c.status = 'disconnected';
+          c.syncRequestedAt = undefined;
+        });
+        pushToast('Система отключена. История выгрузок сохранена');
+      },
+      // POST /api/v1/connections/{id}/sync: 202 и статус sync_requested, 409 not_connected
+      syncSystem(id: string) {
+        const c0 = getState().connections.find((x) => x.id === id);
+        if (!c0 || c0.status === 'disconnected') { pushToast('Система отключена, подключите её снова', 'warning'); return; }
+        const at = new Date().toISOString();
+        setState((s) => {
+          const c = s.connections.find((x) => x.id === id)!;
+          c.status = 'sync_requested';
+          c.syncRequestedAt = at;
+        });
+        pushToast('Синхронизация запрошена. Агент в сети компании начнёт в течение минуты, агент в Airflow — в следующий час', 'info');
+        // Демо: агент отчитывается о выгрузке (connectors.runs.v1) через несколько секунд
+        setTimeout(() => setState((s) => {
+          const c = s.connections.find((x) => x.id === id);
+          if (!c || c.status !== 'sync_requested') return;
+          const missingSecret = c.lastError?.startsWith('Missing setting or secret') && !c.lastSyncAt;
+          const fails = missingSecret || (c.lastErrorAt && (!c.lastSyncAt || c.lastErrorAt > c.lastSyncAt));
+          const started = new Date(Date.now() - 20000).toISOString();
+          const finished = new Date().toISOString();
+          if (fails) {
+            c.status = c.lastSyncAt ? 'failing' : 'pending';
+            c.lastErrorAt = finished;
+            s.connectionRuns.unshift({ id: newId('run'), connectionId: c.id, startedAt: started, finishedAt: finished, status: 'FAILED', records: 0, error: c.lastError });
+          } else {
+            const records = 5 + Math.floor(Math.random() * 60);
+            c.status = 'connected';
+            c.lastSyncAt = finished;
+            c.recordsLastSync = records;
+            c.recordsTotal += records;
+            s.connectionRuns.unshift({ id: newId('run'), connectionId: c.id, startedAt: started, finishedAt: finished, status: 'SUCCEEDED', records });
+          }
+          c.syncRequestedAt = undefined;
+        }), 4000);
+      },
+
       simulateTick() {
         // Решение принимается по текущему снимку, изменение применяется в setState
         const snap = getState();

@@ -275,6 +275,16 @@ export interface CostPoint {
   agents: number;
 }
 
+// Подключённые системы (ADR 0019). Типы берутся из клиента, сгенерированного по schemas/openapi/core.yaml
+// (tools/codegen → generated/core.ts); здесь только обязательные поля, которые ядро всегда присылает.
+import type { Connection as ApiConnection, ConnectionRun as ApiConnectionRun, SystemType as ApiSystemType } from './generated/core';
+export type ConnectionStatus = NonNullable<ApiConnection['status']>;
+export type Connection = Required<Pick<ApiConnection, 'id' | 'type' | 'name' | 'status' | 'enabled' | 'managedInCore' | 'settings' | 'recordsTotal' | 'createdAt'>>
+  & Pick<ApiConnection, 'lastSyncAt' | 'recordsLastSync' | 'lastError' | 'lastErrorAt' | 'syncRequestedAt'>;
+export type ConnectionRun = Required<Pick<ApiConnectionRun, 'id' | 'startedAt' | 'status' | 'records'>>
+  & Pick<ApiConnectionRun, 'finishedAt' | 'error'> & { connectionId: string };
+export type SystemType = Required<ApiSystemType>;
+
 export interface AppState {
   users: User[];
   departments: Department[];
@@ -296,4 +306,6 @@ export interface AppState {
   notifications: Notification[];
   reports: Report[];
   costHistory: CostPoint[];
+  connections: Connection[];
+  connectionRuns: ConnectionRun[];
 }

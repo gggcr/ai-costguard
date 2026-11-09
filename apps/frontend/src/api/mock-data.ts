@@ -1,8 +1,8 @@
 // Демо-компания «Северный ветер». Все данные синтетические.
 import type {
-  Agent, AppState, Approval, Asset, AssetAssignment, Budget, Contract, CostPoint, Department, Employee, Finding,
+  Agent, AppState, Approval, Asset, AssetAssignment, Budget, Connection, ConnectionRun, Contract, CostPoint, Department, Employee, Finding,
   GatewayCode, ImportJob, LicenseAssignment, Mandate, Notification, Operation, Report,
-  Subscription, User, Vendor, VirtualKey,
+  Subscription, SystemType, User, Vendor, VirtualKey,
 } from './types';
 import { fakeHash, rng } from '../lib';
 
@@ -298,10 +298,56 @@ const costHistory: CostPoint[] = [
   ['2026-08', 676000, 291000], ['2026-09', 681000, 322000], ['2026-10', 664000, 356000],
 ].map(([month, software, agentsCost]) => ({ month: month as string, software: software as number, agents: agentsCost as number }));
 
+// ——— Подключённые системы (ADR 0019) ———
+// GET /api/v1/connections/types: то же, что SystemTypes.java в ядре
+export const SYSTEM_TYPES: SystemType[] = [
+  { type: 'onec', title: '1С (OData)', kind: 'accounting', required: ['url', 'user'], optional: [], secrets: ['ONEC_PASSWORD'] },
+  { type: 'moysklad', title: 'МойСклад', kind: 'accounting', required: [], optional: ['url'], secrets: ['MOYSKLAD_TOKEN'] },
+  { type: 'merge', title: 'Merge (учёт и кадры)', kind: 'accounting', required: [], optional: ['url'], secrets: ['MERGE_API_KEY', 'MERGE_ACCOUNTING_TOKEN', 'MERGE_HRIS_TOKEN'] },
+  { type: 'bitrix24', title: 'Битрикс24', kind: 'hr', required: [], optional: [], secrets: ['BITRIX24_WEBHOOK'] },
+  { type: 'yandex360', title: 'Яндекс 360', kind: 'identity', required: ['org_id'], optional: ['url'], secrets: ['YANDEX360_TOKEN'] },
+  { type: 'google_workspace', title: 'Google Workspace', kind: 'identity', required: ['admin'], optional: ['customer', 'ignore'], secrets: ['GOOGLE_WORKSPACE_KEY'] },
+  { type: 'okta', title: 'Okta', kind: 'identity', required: ['url'], optional: ['ignore'], secrets: ['OKTA_TOKEN'] },
+  { type: 'entra', title: 'Microsoft Entra ID', kind: 'identity', required: ['directory_id', 'client_id'], optional: ['ignore'], secrets: ['ENTRA_CLIENT_SECRET'] },
+  { type: 'jamf', title: 'Jamf Pro', kind: 'devices', required: ['url', 'client_id'], optional: [], secrets: ['JAMF_CLIENT_SECRET'] },
+  { type: 'intune', title: 'Microsoft Intune', kind: 'devices', required: ['directory_id', 'client_id'], optional: [], secrets: ['INTUNE_CLIENT_SECRET'] },
+  { type: 'tbank', title: 'Т-Банк', kind: 'bank', required: [], optional: ['accounts', 'url'], secrets: ['TBANK_TOKEN'] },
+  { type: 'mail', title: 'Почтовый ящик со счетами', kind: 'mail', required: ['host', 'user'], optional: ['folder', 'min_image_kb', 'min_image_side'], secrets: ['MAIL_PASSWORD', 'CORE_TOKEN'] },
+];
+
+const HOUR = 3600000;
+// Все статусы для демо: 1С работает, Okta с ошибкой, Т-Банк ждёт первой выгрузки, Jamf отключён,
+// МойСклад настроен только в файле агента, Битрикс24 ждёт запрошенной синхронизации.
+const connections: Connection[] = [
+  { id: 'c-onec', type: 'onec', name: '1С: Бухгалтерия', status: 'connected', enabled: true, managedInCore: true, settings: { url: 'https://1c.severveter.ru/odata', user: 'costguard' }, lastSyncAt: iso(0.4 * HOUR), recordsLastSync: 120, recordsTotal: 4380, lastError: 'Read timed out', lastErrorAt: iso(9 * DAY), createdAt: iso(60 * DAY) },
+  { id: 'c-okta', type: 'okta', name: 'Okta', status: 'failing', enabled: true, managedInCore: true, settings: { url: 'https://severveter.okta.com' }, lastSyncAt: iso(26 * HOUR), recordsLastSync: 54, recordsTotal: 1210, lastError: '401 Unauthorized\nGET https://severveter.okta.com/api/v1/users\nТокен отозван или истёк', lastErrorAt: iso(0.9 * HOUR), createdAt: iso(40 * DAY) },
+  { id: 'c-tbank', type: 'tbank', name: 'Т-Банк', status: 'pending', enabled: true, managedInCore: true, settings: { accounts: '40702810910000012345' }, recordsTotal: 0, lastError: 'Missing setting or secret TBANK_TOKEN', lastErrorAt: iso(0.2 * HOUR), createdAt: iso(1 * DAY) },
+  { id: 'c-jamf', type: 'jamf', name: 'Jamf Pro', status: 'disconnected', enabled: false, managedInCore: true, settings: { url: 'https://severveter.jamfcloud.com', client_id: 'cg-reader' }, lastSyncAt: iso(20 * DAY), recordsLastSync: 31, recordsTotal: 310, createdAt: iso(90 * DAY) },
+  { id: 'c-moysklad', type: 'moysklad', name: 'МойСклад', status: 'connected', enabled: true, managedInCore: false, settings: {}, lastSyncAt: iso(2 * HOUR), recordsLastSync: 18, recordsTotal: 640, createdAt: iso(15 * DAY) },
+  { id: 'c-bitrix', type: 'bitrix24', name: 'Битрикс24', status: 'sync_requested', enabled: true, managedInCore: true, settings: {}, lastSyncAt: iso(5 * HOUR), recordsLastSync: 16, recordsTotal: 96, syncRequestedAt: iso(0.05 * HOUR), createdAt: iso(10 * DAY) },
+];
+
+function makeRuns(): ConnectionRun[] {
+  const out: ConnectionRun[] = [];
+  connections.filter((c) => c.lastSyncAt).forEach((c) => {
+    for (let i = 0; i < 6; i++) {
+      const started = new Date(new Date(c.lastSyncAt!).getTime() - i * HOUR);
+      const failed = c.status === 'failing' && i === 0;
+      out.push({
+        id: `run-${c.id}-${i}`, connectionId: c.id, startedAt: started.toISOString(),
+        finishedAt: new Date(started.getTime() + (20 + i * 7) * 1000).toISOString(),
+        status: failed ? 'FAILED' : 'SUCCEEDED', records: failed ? 0 : (c.recordsLastSync ?? 0) - i * 2,
+        error: failed ? c.lastError : undefined,
+      });
+    }
+  });
+  return out;
+}
+
 export function createSeed(): AppState {
   return structuredClone({
     users, departments, employees, agents, keys, mandates, budgets, operations, approvals,
     vendors, contracts, subscriptions, assignments: makeAssignments(), assets, assetAssignments, findings, imports,
-    notifications, reports, costHistory,
+    notifications, reports, costHistory, connections, connectionRuns: makeRuns(),
   });
 }
