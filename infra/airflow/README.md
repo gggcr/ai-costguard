@@ -3,6 +3,7 @@
 | DAG | When | What |
 |---|---|---|
 | `costguard_connectors` | every hour | `costguard-connector-agent <tenant>.toml --once` per tenant: every connector of its config, including Google Workspace, Okta, Entra ID, Merge and Т-Банк |
+| `costguard_connector_sync` | not scheduled: started by the core | one pull of one system now, the «Синхронизировать» button: `--once --only <type>` for the tenant of `conf.tenant_id` ([ADR 0019](../../docs/adr/0019-connected-systems.md)) |
 | `costguard_monthly_report` | 1st of the month, 06:00 Moscow | XLSX and PDF report of last month per tenant with a `[report]` section |
 
 A tenant is one file in `$COSTGUARD_TENANTS_DIR` (`infra/local/airflow/tenants` locally), in the format of

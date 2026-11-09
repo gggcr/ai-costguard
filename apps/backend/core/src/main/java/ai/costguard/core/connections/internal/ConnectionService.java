@@ -29,14 +29,16 @@ class ConnectionService implements ConnectorRuns {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final MeterRegistry registry;
+    private final AirflowLauncher airflow;
 
     ConnectionService(ConnectionRepository connections, TenantSession session, Clock clock,
-            ApplicationEventPublisher events, MeterRegistry registry) {
+            ApplicationEventPublisher events, MeterRegistry registry, AirflowLauncher airflow) {
         this.connections = connections;
         this.session = session;
         this.clock = clock;
         this.events = events;
         this.registry = registry;
+        this.airflow = airflow;
     }
 
     /** Pulls by system type and outcome, for the alert on failing connectors (ADR 0026). No tenant: one label. */
@@ -131,7 +133,10 @@ class ConnectionService implements ConnectorRuns {
                 Map.of("type", found(id).type())));
     }
 
-    /** Asks the agent to pull the system now. An agent on a schedule pulls it on its next round. */
+    /**
+     * Asks the agent to pull the system now. An agent that runs all the time sees it in connectors.config.v1; for the
+     * agent in Airflow the core starts the DAG costguard_connector_sync, if Airflow is configured.
+     */
     @Transactional
     Connection sync(UUID tenantId, UUID id) {
         session.bind(tenantId);
@@ -142,8 +147,10 @@ class ConnectionService implements ConnectorRuns {
         Instant now = clock.instant();
         connections.requestSync(id, now);
         publish(tenantId, id, now);
+        String type = found(id).type();
         events.publishEvent(ActionTaken.of(tenantId, "connection.sync_requested", "connection", id,
-                Map.of("type", found(id).type())));
+                Map.of("type", type)));
+        airflow.launch(tenantId, id, type, now); // the agent in Airflow pulls now, not on its next hourly round
         return found(id);
     }
 

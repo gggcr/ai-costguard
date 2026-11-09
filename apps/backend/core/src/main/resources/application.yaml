@@ -43,6 +43,13 @@ costguard:
     public-key: ${JOURNAL_PUBLIC_KEY:}
     # Public keys of rotated signing keys, base64 X.509, comma-separated: old receipts still verify (ADR 0028).
     previous-public-keys: ${JOURNAL_PREVIOUS_PUBLIC_KEYS:}
+  connections:
+    # «Синхронизировать сейчас» starts the Airflow DAG costguard_connector_sync; empty: the next hourly round pulls it
+    airflow:
+      url: ${AIRFLOW_URL:}
+      username: ${AIRFLOW_USERNAME:}
+      password: ${AIRFLOW_PASSWORD:}
+      dag: ${AIRFLOW_CONNECTOR_SYNC_DAG:costguard_connector_sync}
   notary:
     # An approved operation of at least this amount (RUB) is confirmed in NEAR (ADR 0009).
     confirm-above: ${COSTGUARD_NOTARY_CONFIRM_ABOVE:100000}

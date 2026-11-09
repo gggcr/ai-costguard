@@ -287,7 +287,10 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="costguard-connector-agent")
     parser.add_argument("config", type=Path)
     parser.add_argument("--once", action="store_true", help="one round, then exit (for cron or Airflow)")
+    parser.add_argument("--only", help="comma-separated system types to pull, such as onec,okta (with --once: the "
+                                       "manual sync DAG costguard_connector_sync)")
     args = parser.parse_args(argv)
+    only = {x for x in args.only.split(",") if x} if args.only else None
     logs.configure()
 
     config = tomllib.loads(args.config.read_text("utf-8"))
@@ -318,7 +321,7 @@ def main(argv: list[str] | None = None) -> None:
         known = connections()
         merged, report.ids = control.merge(config, known)
         if args.once or time.monotonic() >= next_full:
-            failures = round_(merged, env, tenant, state, publish, report)
+            failures = round_(merged, env, tenant, state, publish, report, only=only)
             if args.once:
                 raise SystemExit(1 if failures else 0)
             next_full = time.monotonic() + interval

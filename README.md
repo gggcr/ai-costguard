@@ -45,6 +45,33 @@ The rest of the monorepo, accepted as it is:
 - S3 is SeaweedFS instead of MinIO: MinIO no longer publishes images. SeaweedFS serves the same S3 API on the same
   port, so nothing but `infra/local/docker-compose.yml` knows the difference.
 
+## Быстрый старт
+
+Рабочая ветка команды — `goidochka`: в ней собрано всё, новые изменения отправляйте туда.
+
+```bash
+git clone -b goidochka https://github.com/gggcr/ai-costguard.git
+cd ai-costguard
+cp .env.example .env
+make demo               # инфраструктура, ядро и шлюз в Docker, демо-компания ООО «Ромашка»
+```
+
+Нужны JDK 25, Docker, Python 3.12+ с [uv](https://docs.astral.sh/uv/) и Node.js 20+. После `make demo`:
+
+| Что | Где |
+|---|---|
+| API ядра (Swagger) | http://localhost:8080/swagger-ui.html |
+| Шлюз агентов | http://localhost:8081 |
+| Keycloak | http://localhost:8180, вход `demo` / `demo` |
+| Фронтенд | `cd apps/frontend && npm install && npm run dev` → http://localhost:3000 |
+
+Фронтенд пока прототип: работает на синтетических данных в браузере и к API ядра ещё не подключён
+(`apps/frontend/README.md`). Без `make` (Windows): команды цели `demo` из `Makefile` по очереди, через
+`docker compose -f infra/local/docker-compose.yml --env-file .env ...`.
+
+Тесты: `./gradlew build` (Java, нужен Docker), `uv sync --all-packages && uv run pytest` (Python),
+`cd apps/frontend && npm test`, `cd contracts/notary && cargo test` (Rust).
+
 ## Build and run
 
 Requires JDK 25 and Docker.

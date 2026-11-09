@@ -115,3 +115,15 @@ def test_a_tenant_with_only_the_new_connectors_gets_its_pull(load, tmp_path):
     assert task.bash_command.endswith("landysh.toml --once")
     sections = {k for k, v in tomllib.loads(config).items() if isinstance(v, dict)}
     assert sections <= set(connector_agent.SECTIONS)
+
+
+def test_manual_sync_pulls_one_system_of_the_tenant_from_the_conf(load):
+    dag = load("connector_sync")
+    assert dag.dag_id == "costguard_connector_sync" and dag.kw["schedule"] is None
+    assert dag.kw["params"]["tenants"]["11111111-1111-1111-1111-111111111111"]["prefix"] == "ROMASHKA_"
+    assert dag.kw["params"]["tenants"]["22222222-2222-2222-2222-222222222222"]["path"].endswith("2.toml")
+    assert dag.kw["user_defined_filters"]["sh"]("a; rm -rf /") == "'a; rm -rf /'"
+    [task] = dag.tasks
+    assert task.bash_command.startswith("costguard-connector-agent {{ params.tenants[dag_run.conf['tenant_id']].path")
+    assert task.bash_command.endswith("--once --only {{ dag_run.conf['connector'] | sh }}")
+    assert task.kw["env"] == {"COSTGUARD_ENV_PREFIX": "{{ params.tenants[dag_run.conf['tenant_id']].prefix }}"}

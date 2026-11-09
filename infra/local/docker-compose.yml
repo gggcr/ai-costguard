@@ -106,6 +106,8 @@ services:
     ports: ["8088:8080"]
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # the core starts costguard_connector_sync with basic auth (password: standalone_admin_password.txt)
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       COSTGUARD_TENANTS_DIR: /opt/costguard/tenants
       COSTGUARD_REPORTS_DIR: /opt/costguard/reports
@@ -144,6 +146,10 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-costguard}
       # Findings appear a minute after the seed instead of an hour.
       COSTGUARD_AUDIT_DELAY: PT1M
+      # «Синхронизировать сейчас» starts costguard_connector_sync when the airflow profile runs
+      AIRFLOW_URL: ${AIRFLOW_URL:-}
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: ${AIRFLOW_PASSWORD:-}
     healthcheck:
       # Tomcat opens the port after Flyway has migrated, so an open port means the tables exist.
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
