@@ -19,7 +19,7 @@ LLM-извлечение (ADR 0013), поэтому от OCR нужен текс
   FAILED с понятной причиной («Tesseract … is not installed here: install tesseract-ocr …»), а не падение.
   Путь к программе — `INGEST_TESSERACT`, языки — `INGEST_OCR_LANGUAGES`. Не больше 20 страниц, 300 dpi, таймаут
   120 с на страницу.
-- Образ `apps/python/Dockerfile` ставит `tesseract-ocr`, `tesseract-ocr-rus`, `tesseract-ocr-eng`; CI ставит
+- Образ `apps/python/ingest/Dockerfile` (с ADR 0047 у каждого сервиса свой) ставит `tesseract-ocr`, `tesseract-ocr-rus`, `tesseract-ocr-eng`; CI ставит
   Tesseract, чтобы тест на настоящей программе не пропускался.
 
 ## Последствия

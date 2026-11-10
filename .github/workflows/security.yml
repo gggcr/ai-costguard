@@ -96,7 +96,11 @@ jobs:
         image:
           - { name: core, context: apps/backend/core, dockerfile: apps/backend/core/Dockerfile, jar: core }
           - { name: gateway, context: apps/backend/gateway, dockerfile: apps/backend/gateway/Dockerfile, jar: gateway }
-          - { name: python, context: ., dockerfile: apps/python/Dockerfile }
+          - { name: ingest, context: ., dockerfile: apps/python/ingest/Dockerfile }
+          - { name: anomaly, context: ., dockerfile: apps/python/anomaly/Dockerfile }
+          - { name: notary, context: ., dockerfile: apps/python/notary/Dockerfile }
+          - { name: connectors, context: ., dockerfile: apps/python/connectors/Dockerfile }
+          - { name: reports, context: ., dockerfile: apps/python/reports/Dockerfile }
           - { name: backup, context: ., dockerfile: deploy/backup/Dockerfile }
           - { name: mlflow, context: deploy/mlflow, dockerfile: deploy/mlflow/Dockerfile }
     steps:

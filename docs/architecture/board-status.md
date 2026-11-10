@@ -79,7 +79,7 @@
 | Риск 0–100 с объяснением → порог → агент остановлен, `423` | `scorer.py` (50/70/90, STOP только по правилу), `gateway/risk/RiskBoard.java`, `RiskFilter` | сделано (ADR 0016) |
 | `agent.risk-signals.v1` (compacted) → шлюз | `gateway/risk/RiskBoard.java` | сделано |
 | `agent.risk-signals.v1` → ядро agents и notifications: уведомление владельцу агента | `shared/inbox/RiskSignalInbox`, `agents/internal/RiskService` (`agent_risk`), `notifications/internal/NotificationTriggers` | сделано (ADR 0031): риск и объяснение в карточке агента, уведомление при смене действия владельцу агента, владельцам и ИТ |
-| `batch/`: платежи за ПО, двойные списания | `detector.py` (`anomaly.spike` → `findings.v1`) | не сделано: есть только правило всплеска трат по провайдеру, двойных списаний нет |
+| `batch/`: платежи за ПО, двойные списания | `detector.py` (`anomaly.spike` → `findings.v1`) | сделано (ADR 0016): всплеск трат по провайдеру и агенту (`anomaly.spike`) и двойное списание одной суммы в один день по счетам и платежам (`anomaly.double-charge`) |
 
 ## 5. Подтверждение операций в NEAR
 
@@ -219,12 +219,12 @@
 | Ядро `analytics/`: прогнозы, сценарии, отчёты | `core/analytics`: `GET/PUT /api/v1/analytics/forecast`, `POST /api/v1/analytics/scenarios`, `summary` | сделано (ADR 0034); отчёты XLSX/PDF по-прежнему строит `costguard-report` |
 | Ядро `notifications/`: Telegram, почта, поток SSE | `core/notifications` | сделано (ADR 0031): лента и SSE; почта (SMTP) и Telegram-бот через очередь доставки в PostgreSQL с повторами; у каждого пользователя свои уровни, Telegram привязывается одноразовой ссылкой |
 | Flyway V1 tenant и RLS; тест границ модулей | `V1__org_tenant.sql`, `ModuleBoundariesTest` | сделано |
-| Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано иначе (ADR 0016): другая раскладка файлов; `batch/` двойных списаний нет |
+| Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано иначе (ADR 0016): другая раскладка файлов; двойные списания в `detector.py`, а не в `batch/` |
 | Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано иначе (ADR 0006, 0009) |
 | Ingest: `bronze`, `parsers/` (excel_template, excel_freeform, pdf_text, ocr, bank_1c, mt940), `extract/`, `validate/`, `normalize/`, `review/`, `sinks/`, `tests/fixtures` | `apps/python/ingest/src/costguard_ingest/*` плоско | сделано иначе (ADR 0012, 0013): плоская раскладка, Tesseract, без FastStream и pandera |
 | Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано иначе (ADR 0005); все 10 правил есть (ADR 0032, см. фрейм 8) |
-| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `publish.py`; сценарии в ядре; `forecast_weekly` в Airflow | сделано иначе (ADR 0034): свои модели вместо statsforecast, без LightGBM и пояснений LLM; переобучение — еженедельный запуск, модели в MLflow не хранятся |
-| У каждого сервиса свой Dockerfile | Java-сервисы — свой; Python — общий `apps/python/Dockerfile` | сделано иначе, ADR нет |
+| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `publish.py`; сценарии в ядре; `forecast_weekly` в Airflow | сделано иначе (ADR 0034, 0044, 0045): свои модели вместо statsforecast; расходы агентов — градиентный бустинг среди кандидатов бэктеста (`agents.py`); пояснения LLM через шлюз (`explain.py`); переобучение — еженедельный запуск, прогоны пишутся в MLflow (`tracking.py`) |
+| У каждого сервиса свой Dockerfile | Java-сервисы и каждый Python-сервис — свой (`apps/python/<сервис>/Dockerfile`) | сделано (ADR 0047) |
 
 ## 14. Интеграции с системами компании
 
@@ -280,16 +280,13 @@
 | События Kafka: сначала схема Avro, классы Java и Python генерируются | `schemas/avro`, `libs/java/events`; Python читает `.avsc` во время работы | сделано иначе (ADR 0003): Python-классы не генерируются |
 | REST: OpenAPI выгружается из кода, CI сравнивает с прошлой версией и останавливает несовместимые изменения | `OpenApiContractTest`, `oasdiff breaking` в `contracts.yml` | сделано |
 | Java: один Gradle-проект, версии в `gradle/libs.versions.toml`; Python: workspace uv с общим `uv.lock`; Rust: cargo в smart-contracts | `settings.gradle.kts`, `gradle/libs.versions.toml`, `pyproject.toml`, `uv.lock`, `contracts/notary/Cargo.toml` | сделано (Rust в `contracts/`, а не `smart-contracts/`) |
-| Один сервис — одна папка: код, тесты, Dockerfile и README; владелец в CODEOWNERS | Java-сервисы — да. Python: общий Dockerfile, README только у `connectors`; в CODEOWNERS нет отдельных строк для сервисов | не сделано (частично) |
+| Один сервис — одна папка: код, тесты, Dockerfile и README; владелец в CODEOWNERS | Java-сервисы — да. Python: у каждого сервиса свои Dockerfile и README, строка в `CODEOWNERS` | сделано (ADR 0047) |
 
 ## Коротко: что расходится с доской
 
 Не сделано:
-- двойные списания за ПО в детекторе (`batch/`);
-- в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
 - Prometheus и Grafana в репозитории (ставятся kube-prometheus-stack), OpenTelemetry Collector, `infra/observability`;
-- ранбуки по Redis и провайдеру;
-- README и Dockerfile у каждого Python-сервиса, владельцы сервисов в CODEOWNERS.
+- ранбуки по Redis и провайдеру.
 
 Сделано иначе, ADR нет:
 - раскладка папок: `apps/python/*` вместо `apps/backend/*`, `infra/airflow`, `contracts/notary`, `deploy/*`,

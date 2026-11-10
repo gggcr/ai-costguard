@@ -2,6 +2,13 @@
 *                   @gggcr
 /apps/backend/      @gggcr
 /schemas/           @gggcr
+# Python services, one line each (board rule «one service — one folder»).
+/apps/python/anomaly/     @gggcr
+/apps/python/connectors/  @gggcr
+/apps/python/ingest/      @gggcr
+/apps/python/notary/      @gggcr
+/apps/python/reports/     @gggcr
+/libs/python/             @gggcr
 # Frontend team. PLACEHOLDER: replace @frontend-owner-placeholder with the real GitHub login or team
 # (for example @org/frontend) before relying on this rule; GitHub ignores owners it cannot resolve.
 /apps/frontend/     @frontend-owner-placeholder

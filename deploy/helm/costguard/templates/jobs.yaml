@@ -19,7 +19,7 @@ spec:
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: migrate
-          image: {{ include "costguard.image" (dict "root" . "image" "python") }}
+          image: {{ include "costguard.image" (dict "root" . "image" "ingest") }}
           command: [python, /app/schemas/clickhouse/apply.py]
           securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
           envFrom:
@@ -54,7 +54,7 @@ spec:
           securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
           containers:
             - name: connectors
-              image: {{ include "costguard.image" (dict "root" . "image" "python") }}
+              image: {{ include "costguard.image" (dict "root" . "image" "connectors") }}
               # Every file of the secret is one tenant; the state file lives next to it on the volume.
               command: [sh, -c, 'for f in /tenants/*.toml; do costguard-connector-agent "$f" --once || rc=1; done; exit ${rc:-0}']
               securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }

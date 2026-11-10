@@ -78,9 +78,19 @@ jobs:
       - run: uv sync --frozen --all-packages
       - run: uv run pytest tools/tests/test_backup.py -v -p no:cacheprovider
   image:
+    # Every Python service has its own image (apps/python/<service>/Dockerfile) with only its own package inside.
     runs-on: ubuntu-latest
     needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - { name: ingest, module: costguard_ingest }
+          - { name: anomaly, module: costguard_anomaly }
+          - { name: notary, module: costguard_notary }
+          - { name: connectors, module: costguard_connectors }
+          - { name: reports, module: costguard_reports }
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f apps/python/Dockerfile -t costguard-python:${{ github.sha }} .
-      - run: docker run --rm costguard-python:${{ github.sha }} python -c "import costguard_ingest, costguard_anomaly, costguard_notary, costguard_connectors, costguard_reports; from costguard_common import schemas; assert schemas.topics()"
+      - run: docker build -f apps/python/${{ matrix.service.name }}/Dockerfile -t costguard-${{ matrix.service.name }}:${{ github.sha }} .
+      - run: docker run --rm costguard-${{ matrix.service.name }}:${{ github.sha }} python -c "import ${{ matrix.service.module }}; from costguard_common import schemas; assert schemas.topics()"

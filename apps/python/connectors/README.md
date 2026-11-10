@@ -50,3 +50,11 @@ it waits for the next round (`control.py`, ADR 0019).
 - Google Workspace, Okta, Entra ID, Merge and Т-Банк were tested on recorded API shapes only; the category names of
   Т-Банк operations need checking in the bank's sandbox.
 - Other banks: implement `banks.Bank`; parsing, intermediaries and the cursor are shared.
+
+## Image
+
+```sh
+docker build -f apps/python/connectors/Dockerfile -t costguard-connectors .   # from the repository root
+```
+
+The Helm CronJob `costguard-connectors` and the agent inside a client's network run `costguard-connector-agent` from it.

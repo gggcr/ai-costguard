@@ -83,7 +83,7 @@ services:
       # the secret. Do not set them empty here: env wins over the secret.
   ingest:
     enabled: true
-    image: python
+    image: ingest           # apps/python/ingest/Dockerfile
     command: [costguard-ingest]
     replicas: 2
     resources: { requests: { cpu: 200m, memory: 512Mi }, limits: { memory: 1Gi } }
@@ -96,7 +96,7 @@ services:
       maxReplicas: 6
   anomaly:
     enabled: true
-    image: python
+    image: anomaly           # apps/python/anomaly/Dockerfile
     command: [costguard-anomaly]
     # It keeps its history in memory and reads the topic from the start: one replica per tenant set. Not scaled by
     # KEDA: two copies would each publish every finding and signal.
@@ -104,7 +104,7 @@ services:
     resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { memory: 2Gi } }
   notary:
     enabled: true
-    image: python
+    image: notary           # apps/python/notary/Dockerfile
     command: [costguard-notary]
     # Not scaled by KEDA: every copy would sign with the same NEAR key, and their nonces would collide.
     replicas: 1
