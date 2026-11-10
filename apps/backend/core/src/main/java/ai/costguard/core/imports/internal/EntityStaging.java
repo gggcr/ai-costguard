@@ -94,6 +94,7 @@ class EntityStaging implements NormalizedEntities {
                     .map(n -> software.vendor(tenantId, n, text(p, "inn").orElse(null))).orElse(null);
             case "SUBSCRIPTION" -> subscription(tenantId, p).orElse(null);
             case "LICENSE_ASSIGNMENT" -> license(tenantId, p).orElse(null);
+            case "ACTIVITY_EVENT" -> activity(tenantId, p).orElse(null);
             default -> null;
         };
     }
@@ -191,6 +192,33 @@ class EntityStaging implements NormalizedEntities {
         }
         LocalDate lastActive = text(p, "last_active").flatMap(EntityStaging::day).orElse(null);
         return software.licenseSeen(tenantId, subscription.get(), employee.get(), lastActive);
+    }
+
+    /**
+     * A sign-in or use of a product (ADR 0042): vendor, product, the person by e-mail or name, and when. Kept for the
+     * person the core knows; returns that person.
+     */
+    private Optional<UUID> activity(UUID tenantId, JsonNode p) {
+        var vendor = text(p, "vendor");
+        var product = text(p, "product");
+        Optional<Instant> at = text(p, "at").flatMap(EntityStaging::moment);
+        String who = text(p, "email").or(() -> text(p, "employee")).orElse("");
+        var employee = person(Optional.of(who).filter(w -> w.contains("@")), Optional.of(who));
+        if (vendor.isEmpty() || product.isEmpty() || at.isEmpty() || employee.isEmpty()) {
+            return Optional.empty();
+        }
+        software.activitySeen(tenantId, software.vendor(tenantId, vendor.get(), null), product.get(), employee.get(),
+                at.get(), text(p, "kind").orElse("sign_in"), text(p, "source").orElse(""));
+        return employee;
+    }
+
+    private static Optional<Instant> moment(String text) {
+        try {
+            return Optional.of(text.length() <= 10 ? LocalDate.parse(text).atStartOfDay(ZoneOffset.UTC).toInstant()
+                    : java.time.OffsetDateTime.parse(text).toInstant());
+        } catch (java.time.format.DateTimeParseException e) {
+            return Optional.empty();
+        }
     }
 
     private Optional<UUID> person(Optional<String> email, Optional<String> name) {

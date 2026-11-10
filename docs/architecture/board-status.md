@@ -147,7 +147,7 @@
 | OPERATION, BUDGET, LEDGER_ENTRY | `core/ledger`, ClickHouse `agent_operations` | сделано |
 | APPROVAL_REQUEST | `core/approvals` | сделано |
 | RECEIPT, ANCHOR_BATCH | `core/journal` | сделано |
-| VENDOR, PRODUCT, CONTRACT, PRICE, SUBSCRIPTION, LICENSE_ASSIGNMENT, ACTIVITY_EVENT | `core/software` | сделано |
+| VENDOR, PRODUCT, CONTRACT, PRICE, SUBSCRIPTION, LICENSE_ASSIGNMENT, ACTIVITY_EVENT | `core/software`: `product` и `activity_event` (V31), `product_plan` — цены тарифов | сделано (ADR 0042): у подписки есть продукт, вход в продукт хранится событием и двигает активность лицензии |
 | INVOICE, INVOICE_LINE, PAYMENT | `core/software` (`invoice`, `invoice_line`, `payment`, V25), `ingest.normalized.v1` | сделано (ADR 0033): счёт привязан к подписке, платёж — к счёту |
 | FX_RATE | `core/catalog` (курсы ЦБ) | сделано |
 | IMPORT_FILE, SOURCE_TEMPLATE | `core/imports` | сделано |
@@ -204,7 +204,7 @@
 | `infra/helm`, `infra/argocd`, `infra/terraform` | `deploy/helm`, `deploy/argocd`, `deploy/terraform` | сделано иначе, ADR нет: папка `deploy/` |
 | `infra/keycloak`: realm и роли owner, finance, it_admin, agent_owner, auditor | `infra/keycloak/costguard-realm.json` | сделано |
 | `infra/observability`: дашборды Grafana, алерты, OpenTelemetry Collector | `deploy/helm/costguard/dashboards`, `monitoring.yaml` | не сделано (частично): нет папки и Collector |
-| `tests/e2e`: лимит агента и ответ 402, Excel и находки | `tests/e2e/test_money_path.py` | не сделано (частично): есть путь денег, 402 и находки аудита по демо-данным; загрузки Excel в сценарии нет |
+| `tests/e2e`: лимит агента и ответ 402, Excel и находки | `tests/e2e/test_money_path.py` | сделано: путь денег, 402, находки аудита и загрузка списка техники из Excel до записи в технике |
 | `tests/load` (k6), `tests/contract` | `tests/load`, `tests/contracts` | сделано |
 | `docs/adr`, `docs/runbooks` (Redis, Kafka, ядро, провайдер), `docs/architecture` | `docs/*` | сделано; ранбука по Redis и провайдеру нет, есть gateway, kafka-lag, core, notary, mlflow, secrets, deploy, terraform |
 | `tools/codegen`, `tools/seed` | там же | сделано |
@@ -232,7 +232,7 @@
 |---|---|---|
 | Не переносить, а синхронизировать; сначала только читать | все коннекторы только читают | сделано |
 | Уровень 1: счета на почту, стандартные выписки банков, Excel | `connectors/mail.py`, `ingest/statements.py`, `mt940.py`, `camt053.py`, `ofx.py`, импорт Excel | сделано |
-| Уровень 1: FOCUS и SCIM | — | не сделано: приёма FOCUS-файлов и SCIM нет |
+| Уровень 1: FOCUS и SCIM | `ingest/mapping.py` (экспорт FOCUS 1.0 сопоставляется сам), `connectors/scim.py` (`[[scim]]`: пользователи любого сервиса со SCIM 2.0 — его лицензии) | сделано (ADR 0042) |
 | Уровень 2: единый API для учёта, кадров и банков | `connectors/merge.py` | сделано (ADR 0014) |
 | Уровень 3: 1С, МойСклад, Bitrix24, Яндекс 360 | `onec.py`, `moysklad.py`, `bitrix24.py`, `yandex360.py` | сделано |
 | SSO и учётные записи: Google Workspace, Okta, Entra ID | `google_workspace.py`, `okta.py`, `entra.py` | сделано |
@@ -288,8 +288,7 @@
 - двойные списания за ПО в детекторе (`batch/`);
 - в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
 - Prometheus и Grafana в репозитории (ставятся kube-prometheus-stack), OpenTelemetry Collector, `infra/observability`;
-- FOCUS и SCIM на уровне 1 интеграций;
-- загрузка Excel в e2e-сценарии; ранбуки по Redis и провайдеру;
+- ранбуки по Redis и провайдеру;
 - README и Dockerfile у каждого Python-сервиса, владельцы сервисов в CODEOWNERS.
 
 Сделано иначе, ADR нет:

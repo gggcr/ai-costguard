@@ -36,6 +36,13 @@ public interface SoftwareLinks {
     UUID paymentSeen(UUID tenantId, ReportedPayment payment);
 
     /**
+     * A sign-in or use of a product a source reported (ACTIVITY_EVENT, ADR 0042): kept once, and the last activity of
+     * the person's license in that product moves forward. A product nobody subscribes to yet is still kept.
+     */
+    void activitySeen(UUID tenantId, UUID vendorId, String product, UUID employeeId, Instant at, String kind,
+            String source);
+
+    /**
      * @param issuedOn the date of the invoice; with {@code dated} false, the day it arrived
      * @param source where it came from: "mail", "1c", a file name
      */

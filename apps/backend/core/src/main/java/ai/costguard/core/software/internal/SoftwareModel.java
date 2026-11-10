@@ -34,7 +34,8 @@ record ContractDetails(
 
 /** {@code pricePerSeat} is per month, whatever the billing period. */
 record Subscription(UUID id, UUID vendorId, String product, UUID contractId, UUID departmentId, int seats,
-        BigDecimal pricePerSeat, BillingPeriod billingPeriod, LocalDate renewalDate, int assigned, String plan) {
+        BigDecimal pricePerSeat, BillingPeriod billingPeriod, LocalDate renewalDate, int assigned, String plan,
+        UUID productId) {
 }
 
 record SubscriptionDetails(
@@ -74,4 +75,18 @@ record NewLicense(@NotNull UUID employeeId) {
 }
 
 record Activity(@NotNull LocalDate lastActive) {
+}
+
+/**
+ * What a vendor sells (PRODUCT, ADR 0042). {@code category} is what it is for, set by a person; null when nobody did,
+ * and the overlap rule then reads the name.
+ */
+record Product(UUID id, UUID vendorId, String name, String category, int subscriptions, java.time.Instant lastActivity) {
+}
+
+record ProductCategory(@Size(max = 40) String category) {
+}
+
+/** A sign-in or use of a product (ACTIVITY_EVENT, ADR 0042). */
+record ActivityEvent(UUID employeeId, java.time.Instant occurredAt, String kind, String source) {
 }

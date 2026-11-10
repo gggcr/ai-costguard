@@ -434,3 +434,23 @@ def test_a_list_of_equipment_becomes_devices_not_spending():
     key = next(m.value["entity_key"] for m in messages if m.value.get("entity_type") == "ASSET"
                and "C02XK1" in m.value["payload"])
     assert key == f"{TENANT}:asset:c02xk1"
+
+
+FOCUS = (b"BilledCost,BillingAccountId,BillingCurrency,BillingPeriodStart,ChargeCategory,ChargePeriodEnd,"
+         b"ChargePeriodStart,EffectiveCost,InvoiceIssuerName,ListCost,ProviderName,PublisherName,ServiceCategory,"
+         b"ServiceName,SubAccountName\n"
+         b"123.45,acc-1,USD,2026-10-01T00:00:00Z,Usage,2026-10-02T00:00:00Z,2026-10-01T00:00:00Z,120.00,"
+         b"Amazon Web Services EMEA SARL,130.00,AWS,AWS,Compute,Amazon EC2,prod\n")
+
+
+def test_a_focus_export_of_a_cloud_maps_by_itself():
+    """FOCUS 1.0, level 1 of the integrations on the board: any cloud's cost export reads without a template."""
+    mapping_ = pipeline.parse("focus.csv", FOCUS).suggested_mapping
+    picked = {f: c for c, f in mapping_.items() if f != "skip"}
+    assert picked == {"amount": "BilledCost", "currency": "BillingCurrency", "period_start": "ChargePeriodStart",
+                      "period_end": "ChargePeriodEnd", "vendor": "ProviderName", "product": "ServiceName"}
+    messages, _ = pipeline.accept(TENANT, FILE, f"{TENANT}/f.csv", "focus.csv", None, mapping_, {}, FOCUS, now=NOW)
+    [cost] = [m.value for m in messages if m.topic == "cost.records.v1"]
+    assert (cost["billed_cost"], cost["billing_currency"], cost["service_provider_name"]) == (
+        Decimal("123.450000"), "USD", "AWS")
+    assert cost["charge_period_start"] == date(2026, 10, 1)

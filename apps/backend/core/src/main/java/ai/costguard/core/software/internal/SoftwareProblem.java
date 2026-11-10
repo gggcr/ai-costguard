@@ -10,6 +10,7 @@ enum SoftwareProblem implements ProblemCode {
     SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Subscription not found"),
     LICENSE_NOT_FOUND(HttpStatus.NOT_FOUND, "License not found"),
     PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "Plan not found"),
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "Product not found"),
     PLAN_NAME_TAKEN(HttpStatus.CONFLICT, "This product already has a plan with this name"),
     PLAN_WITHOUT_PRICE(HttpStatus.BAD_REQUEST, "A plan needs the price of a month, of a year or both"),
     VENDOR_NAME_TAKEN(HttpStatus.CONFLICT, "A vendor with this name exists"),

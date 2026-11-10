@@ -21,7 +21,7 @@ class SoftwareRepository {
 
     private static final String SUBSCRIPTION = """
             select s.id, s.vendor_id, s.product, s.contract_id, s.department_id, s.seats, s.price_per_seat,
-                   s.billing_period, s.renewal_date, s.plan,
+                   s.billing_period, s.renewal_date, s.plan, s.product_id,
                    (select count(*) from license_assignment l where l.subscription_id = s.id) as assigned
             from subscription s
             """;
@@ -30,7 +30,7 @@ class SoftwareRepository {
             rs.getObject("vendor_id", UUID.class), rs.getString("product"), rs.getObject("contract_id", UUID.class),
             rs.getObject("department_id", UUID.class), rs.getInt("seats"), rs.getBigDecimal("price_per_seat"),
             BillingPeriod.valueOf(rs.getString("billing_period")), rs.getObject("renewal_date", LocalDate.class),
-            rs.getInt("assigned"), rs.getString("plan"));
+            rs.getInt("assigned"), rs.getString("plan"), rs.getObject("product_id", UUID.class));
 
     private static final RowMapper<License> LICENSE = (rs, n) -> new License(rs.getObject("id", UUID.class),
             rs.getObject("subscription_id", UUID.class), rs.getObject("employee_id", UUID.class),

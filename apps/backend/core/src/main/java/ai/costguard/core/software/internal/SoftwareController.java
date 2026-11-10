@@ -147,6 +147,29 @@ class SoftwareController {
         return service.payments(TenantClaim.of(jwt), vendorId);
     }
 
+    @GetMapping("/products")
+    @Operation(summary = "List products: what each vendor sells, with the category people set",
+            description = "A product appears with its first subscription or its first activity.")
+    List<Product> products(@AuthenticationPrincipal Jwt jwt) {
+        return service.products(TenantClaim.of(jwt));
+    }
+
+    @PutMapping("/products/{id}/category")
+    @ManagesSoftware
+    @Operation(summary = "Say what a product is for",
+            description = "mail, documents, calls, chat, tasks, crm, wiki... The overlap rule then takes it over the "
+                    + "names it knows; a blank category gives the product back to them.")
+    Product setCategory(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+            @Valid @RequestBody ProductCategory request) {
+        return service.setCategory(TenantClaim.of(jwt), id, request);
+    }
+
+    @GetMapping("/subscriptions/{id}/activity")
+    @Operation(summary = "Sign-ins and use of the subscription's product, newest first", description = "At most 500.")
+    List<ActivityEvent> activity(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return service.activity(TenantClaim.of(jwt), id);
+    }
+
     @GetMapping("/plans")
     @Operation(summary = "List the plans products are sold on",
             description = "The audit compares a subscription's plan with the other plans of its product.")

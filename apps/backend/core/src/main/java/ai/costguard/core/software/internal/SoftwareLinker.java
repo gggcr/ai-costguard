@@ -14,10 +14,19 @@ class SoftwareLinker implements SoftwareLinks {
 
     private final SoftwareRepository software;
     private final InvoiceBook invoices;
+    private final ActivityBook activity;
 
-    SoftwareLinker(SoftwareRepository software, InvoiceBook invoices) {
+    SoftwareLinker(SoftwareRepository software, InvoiceBook invoices, ActivityBook activity) {
         this.software = software;
         this.invoices = invoices;
+        this.activity = activity;
+    }
+
+    @Override
+    public void activitySeen(UUID tenantId, UUID vendorId, String product, UUID employeeId, java.time.Instant at,
+            String kind, String source) {
+        activity.seen(tenantId, vendorId, product, employeeId, at, kind == null || kind.isBlank() ? "sign_in" : kind,
+                source == null ? "" : source);
     }
 
     @Override
@@ -80,6 +89,7 @@ class SoftwareLinker implements SoftwareLinks {
         }
         if (lastActive != null) {
             software.setActivity(license.get(), lastActive);
+            activity.licenseActive(tenantId, subscription.get(), employeeId, lastActive, "connector");
         }
         return license;
     }

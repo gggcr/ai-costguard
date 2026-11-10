@@ -131,3 +131,39 @@ def test_an_agent_spends_through_the_gateway_and_gets_a_receipt(core):
         r.json() if (r := core.get(f"/api/v1/operations/{op.authorization_id}/receipt")).status_code == 200 else None))
     assert receipt["hash"] and receipt["signature"]
 
+
+
+def test_an_excel_list_of_equipment_reaches_the_assets(core):
+    """Board frame 15 and the e2e step «Excel»: a list of equipment goes through the ingest pipeline, its mapping is
+    confirmed, and the device lands in the assets of the core, held by the employee of the row (ADR 0041)."""
+    import io
+
+    from openpyxl import Workbook
+
+    run = uuid.uuid4().hex[:8].upper()
+    inventory = f"E2E-{run}"
+    book = Workbook()
+    sheet = book.active
+    sheet.append(["Инв. номер", "Серийный номер", "Модель", "E-mail", "Стоимость"])
+    sheet.append([inventory, f"SN{run}", "Ноутбук ThinkPad X1", "ivanov@romashka.example", 95000])
+    out = io.BytesIO()
+    book.save(out)
+    uploaded = core.post("/api/v1/imports", files={"file": (
+        f"техника-{run}.xlsx", out.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")})
+    assert uploaded.status_code == 201, uploaded.text
+    job = uploaded.json()["id"]
+
+    def read():
+        j = core.get(f"/api/v1/imports/{job}").json()
+        return j if j["status"] in ("mapping", "review", "done", "failed") else None
+
+    parsed = wait("the pipeline to read the file", read)
+    assert parsed["status"] == "mapping", parsed
+    assert parsed["mapping"]["Инв. номер"] == "inventory_number"
+    assert parsed["mapping"]["E-mail"] == "email"
+    confirmed = core.put(f"/api/v1/imports/{job}/mapping", json={"mapping": parsed["mapping"], "saveTemplate": False})
+    assert confirmed.status_code == 200, confirmed.text
+
+    device = wait("the device in the assets", lambda: next(
+        (a for a in core.get("/api/v1/assets").json() if a["inventoryNumber"] == inventory), None))
+    assert device["type"] == "LAPTOP" and device["currentAssignment"]["employeeId"] == IVANOV

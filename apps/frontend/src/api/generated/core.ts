@@ -29,6 +29,13 @@ export type ActivityEntry = {
   details?: Record<string, unknown>;
 };
 
+export type ActivityEvent = {
+  employeeId?: string;  // uuid
+  occurredAt?: string;  // date-time
+  kind?: string;
+  source?: string;
+};
+
 export type Agent = {
   id?: string;  // uuid
   name?: string;
@@ -618,6 +625,19 @@ export type ProblemBody = {
   code?: string;
 };
 
+export type Product = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  name?: string;
+  category?: string;
+  subscriptions?: number;
+  lastActivity?: string;  // date-time
+};
+
+export type ProductCategory = {
+  category?: string;
+};
+
 export type Publication = {
   version?: number;
   publishedAt?: string;  // date-time
@@ -796,6 +816,7 @@ export type Subscription = {
   renewalDate?: string;  // date
   assigned?: number;
   plan?: string;
+  productId?: string;  // uuid
 };
 
 export type SubscriptionDetails = {
@@ -981,11 +1002,14 @@ export const operations = {
   policiesDelete: { method: "DELETE", path: "/api/v1/policies/rules/{id}" },
   policiesUpdate: { method: "PUT", path: "/api/v1/policies/rules/{id}" },
   policiesSimulate: { method: "POST", path: "/api/v1/policies/simulation" },
+  softwareProducts: { method: "GET", path: "/api/v1/products" },
+  softwareSetCategory: { method: "PUT", path: "/api/v1/products/{id}/category" },
   registrationRegister: { method: "POST", path: "/api/v1/registrations" },
   softwareSubscriptions: { method: "GET", path: "/api/v1/subscriptions" },
   softwareCreateSubscription: { method: "POST", path: "/api/v1/subscriptions" },
   softwareSubscription: { method: "GET", path: "/api/v1/subscriptions/{id}" },
   softwareUpdateSubscription: { method: "PUT", path: "/api/v1/subscriptions/{id}" },
+  softwareActivity_1: { method: "GET", path: "/api/v1/subscriptions/{id}/activity" },
   softwareLicenses: { method: "GET", path: "/api/v1/subscriptions/{id}/licenses" },
   softwareAssign_1: { method: "POST", path: "/api/v1/subscriptions/{id}/licenses" },
   organisationUsers: { method: "GET", path: "/api/v1/users" },

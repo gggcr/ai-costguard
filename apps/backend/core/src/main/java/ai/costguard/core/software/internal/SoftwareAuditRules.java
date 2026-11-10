@@ -60,15 +60,17 @@ class SoftwareAuditRules implements AuditRules {
     private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
 
     private final SoftwareRepository software;
+    private final ProductRepository products;
     private final EmployeeDirectory people;
     private final JdbcClient jdbc;
     private final int unusedDays;
     private final BigDecimal annualDiscount;
 
-    SoftwareAuditRules(SoftwareRepository software, EmployeeDirectory people, JdbcClient jdbc,
+    SoftwareAuditRules(SoftwareRepository software, ProductRepository products, EmployeeDirectory people, JdbcClient jdbc,
             @Value("${costguard.audit.unused-days:30}") int unusedDays,
             @Value("${costguard.audit.annual-discount:0.17}") BigDecimal annualDiscount) {
         this.software = software;
+        this.products = products;
         this.people = people;
         this.jdbc = jdbc;
         this.unusedDays = unusedDays;
@@ -170,9 +172,12 @@ class SoftwareAuditRules implements AuditRules {
         Map<UUID, Set<UUID>> holders = new HashMap<>();
         software.holdings().forEach(h -> holders.computeIfAbsent(h.subscriptionId(), k -> new HashSet<>())
                 .add(h.employeeId()));
+        // the category a person set for the product goes before the names the dictionary knows (ADR 0042)
+        Map<UUID, String> set = products.categoriesOfSubscriptions();
         Map<UUID, Set<String>> jobs = new HashMap<>();
         for (Subscription s : subscriptions) {
-            jobs.put(s.id(), ToolCategories.of(vendors.get(s.vendorId()).name(), s.product()));
+            jobs.put(s.id(), set.containsKey(s.id()) ? Set.of(set.get(s.id()))
+                    : ToolCategories.of(vendors.get(s.vendorId()).name(), s.product()));
         }
         for (int i = 0; i < subscriptions.size(); i++) {
             for (int j = i + 1; j < subscriptions.size(); j++) {

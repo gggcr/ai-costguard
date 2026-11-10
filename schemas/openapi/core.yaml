@@ -145,6 +145,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Subscription"
+  /api/v1/products/{id}/category:
+    put:
+      tags:
+      - Software
+      summary: Say what a product is for
+      description: "mail, documents, calls, chat, tasks, crm, wiki... The overlap\
+        \ rule then takes it over the names it knows; a blank category gives the product\
+        \ back to them."
+      operationId: setCategory
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCategory"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
   /api/v1/policies/rules/{id}:
     put:
       tags:
@@ -1890,6 +1919,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IssuedKey"
+  /api/v1/subscriptions/{id}/activity:
+    get:
+      tags:
+      - Software
+      summary: "Sign-ins and use of the subscription's product, newest first"
+      description: At most 500.
+      operationId: activity_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+  /api/v1/products:
+    get:
+      tags:
+      - Software
+      summary: "List products: what each vendor sells, with the category people set"
+      description: A product appears with its first subscription or its first activity.
+      operationId: products
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
   /api/v1/payments:
     get:
       tags:
@@ -2943,6 +3011,35 @@ components:
           format: int32
         plan:
           type: string
+        productId:
+          type: string
+          format: uuid
+    ProductCategory:
+      type: object
+      properties:
+        category:
+          type: string
+          maxLength: 40
+          minLength: 0
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          type: string
+        subscriptions:
+          type: integer
+          format: int32
+        lastActivity:
+          type: string
+          format: date-time
     RuleDetails:
       type: object
       properties:
@@ -4478,6 +4575,19 @@ components:
           enum:
           - active
           - revoked
+    ActivityEvent:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        kind:
+          type: string
+        source:
+          type: string
     Payment:
       type: object
       properties:

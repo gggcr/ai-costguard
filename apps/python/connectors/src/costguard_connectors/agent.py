@@ -80,6 +80,7 @@ from costguard_connectors import (
     moysklad,
     okta,
     onec,
+    scim,
     signins,
     tbank,
     yandex360,
@@ -89,7 +90,7 @@ log = logging.getLogger("costguard.connectors")
 
 # Sections of a tenant config the agent reads; Airflow adds its own [report].
 SECTIONS = ("onec", "moysklad", "bitrix24", "yandex360", "mail", "jamf", "intune", "google_workspace", "okta",
-            "entra", "merge", "tbank", "payments")
+            "entra", "merge", "tbank", "scim", "payments")
 
 
 def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
@@ -135,6 +136,10 @@ def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
         found.append(merge.Merge(httpx.Client(base_url=config["merge"].get("url", merge.BASE_URL), timeout=60,
                                               headers={"Authorization": f"Bearer {env['MERGE_API_KEY']}"}),
                                  env.get("MERGE_ACCOUNTING_TOKEN"), env.get("MERGE_HRIS_TOKEN")))
+    for c in config.get("scim", []):  # [[scim]]: one entry per service, its token in token_env
+        found.append(scim.Scim(httpx.Client(base_url=c["url"], timeout=60,
+                                            headers={"Authorization": f"Bearer {env[c['token_env']]}"}),
+                               c["vendor"], c["product"]))
     paying = config.get("payments", {})
     intermediaries = [payments.intermediary(i) for i in paying.get("intermediaries", [])]
     if "tbank" in config:

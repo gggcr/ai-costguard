@@ -15,12 +15,42 @@ class SoftwareService {
 
     private final SoftwareRepository software;
     private final InvoiceRepository invoiceRepository;
+    private final ProductRepository products;
+    private final ActivityBook activity;
     private final TenantSession session;
 
-    SoftwareService(SoftwareRepository software, InvoiceRepository invoiceRepository, TenantSession session) {
+    SoftwareService(SoftwareRepository software, InvoiceRepository invoiceRepository, ProductRepository products,
+            ActivityBook activity, TenantSession session) {
         this.software = software;
         this.invoiceRepository = invoiceRepository;
+        this.products = products;
+        this.activity = activity;
         this.session = session;
+    }
+
+    @Transactional(readOnly = true)
+    List<Product> products(UUID tenantId) {
+        session.bind(tenantId);
+        return products.products();
+    }
+
+    /** A blank category gives the product back to the dictionary of names. */
+    @Transactional
+    Product setCategory(UUID tenantId, UUID id, ProductCategory request) {
+        session.bind(tenantId);
+        String category = request.category() == null || request.category().isBlank() ? null
+                : request.category().strip().toLowerCase(java.util.Locale.ROOT);
+        if (!products.setCategory(id, category)) {
+            throw SoftwareProblem.PRODUCT_NOT_FOUND.failure();
+        }
+        return products.product(id).orElseThrow();
+    }
+
+    @Transactional(readOnly = true)
+    List<ActivityEvent> activity(UUID tenantId, UUID subscriptionId) {
+        session.bind(tenantId);
+        software.subscription(subscriptionId).orElseThrow(SoftwareProblem.SUBSCRIPTION_NOT_FOUND::failure);
+        return products.activityOf(subscriptionId, LIST_LIMIT);
     }
 
     @Transactional(readOnly = true)
@@ -128,6 +158,7 @@ class SoftwareService {
         checkSubscription(details);
         UUID id = UUID.randomUUID();
         software.insertSubscription(tenantId, id, details);
+        products.linkSubscription(id, products.productOf(tenantId, details.vendorId(), details.product()));
         return software.subscription(id).orElseThrow();
     }
 
@@ -141,6 +172,7 @@ class SoftwareService {
             throw SoftwareProblem.SEATS_IN_USE.failure();
         }
         software.updateSubscription(id, details);
+        products.linkSubscription(id, products.productOf(tenantId, details.vendorId(), details.product()));
         return software.subscription(id).orElseThrow();
     }
 
@@ -184,6 +216,9 @@ class SoftwareService {
         if (!software.setActivity(licenseId, activity.lastActive())) {
             throw SoftwareProblem.LICENSE_NOT_FOUND.failure();
         }
+        License held = software.license(licenseId).orElseThrow();
+        software.subscription(held.subscriptionId()).ifPresent(s -> this.activity.licenseActive(tenantId, s,
+                held.employeeId(), activity.lastActive(), "manual"));
         return software.license(licenseId).orElseThrow();
     }
 
