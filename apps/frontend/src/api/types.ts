@@ -150,6 +150,7 @@ export interface Subscription {
   pricePerSeat: number; // ₽ в месяц
   billingPeriod: 'month' | 'year';
   renewalDate: string;
+  plan?: string; // тариф по каталогу тарифов ядра: по нему аудит ищет избыточный тариф и годовую оплату
 }
 
 // Техника сотрудников (кадр 15 доски). Повторяет модуль assets ядра: Asset и Assignment из schemas/openapi/core.yaml.

@@ -127,6 +127,9 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
     source = CostSource.PAYMENT if payments else CostSource.INVOICE_LINE
     invoice_total = Decimal(0)
     invoice_vendor: str | None = None
+    invoice_number = ""
+    invoice_day: date | None = None
+    invoice_currency: str | None = None
     for number, row in table.rows:
         cells = _by_field(row, columns_to_fields)
         cells.update(corrections.get(str(number), {}))
@@ -144,6 +147,10 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
             value, _ = values.amount(cells["amount"])
             if value is not None:
                 parts = paying.split(vendor, inn, product, value, intermediaries, services)
+        # the header of an extracted invoice repeats in every row; a person's correction of it comes by column
+        invoice_number = invoice_number or values.text(cells.get("Номер счёта") or row.get("Номер счёта"))
+        stated, _ = values.day(cells.get("Дата счёта") or row.get("Дата счёта"))
+        invoice_day = invoice_day or stated
         if vendor:
             invoice_vendor = invoice_vendor or vendor
             for name, code in dict.fromkeys((p.vendor, p.inn) for p in parts) if parts else [(vendor, inn)]:
@@ -186,6 +193,9 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
             continue
         code, _ = values.currency(cells.get("currency"))
         code = code or values.currency_in(cells["amount"]) or DEFAULT_CURRENCY
+        invoice_currency = invoice_currency or code
+        if not stated:
+            invoice_day = min(invoice_day, start) if invoice_day else start
         shares = [(p.vendor, p.amount, _suffix(p)) for p in parts] or [(vendor or product or "unknown", amount, ())]
         for provider, share, suffix in shares:
             source_id = ":".join((storage_key, str(number), *suffix))
@@ -200,7 +210,9 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
     if invoice_total and not payments:
         once(_normalized(tenant, file_id, "INVOICE", _entity_key(tenant, "invoice", storage_key),
                          {"file_name": file_name, "vendor": invoice_vendor, "vendor_id": vendor_id,
-                          "total": str(invoice_total)}, now))
+                          "total": str(invoice_total), "number": invoice_number or None,
+                          "date": invoice_day.isoformat() if invoice_day else None,
+                          "currency": invoice_currency or DEFAULT_CURRENCY}, now))
     return messages, skipped
 
 

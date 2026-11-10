@@ -140,7 +140,8 @@ function SubscriptionForm({ sub, onClose }: { sub?: Subscription; onClose: () =>
       <div className="form">
         <div className="form-row">
           <Field label="Поставщик"><select className="input" value={f.vendorId} onChange={(e) => set('vendorId', e.target.value)}>{state.vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
-          <Field label="Продукт и тариф"><input className="input" value={f.product} onChange={(e) => set('product', e.target.value)} /></Field>
+          <Field label="Продукт"><input className="input" value={f.product} onChange={(e) => set('product', e.target.value)} /></Field>
+          <Field label="Тариф"><input className="input" value={f.plan ?? ''} placeholder="например, Стандартный" onChange={(e) => set('plan', e.target.value || undefined)} /></Field>
         </div>
         <div className="form-row">
           <Field label="Отдел"><select className="input" value={f.departmentId} onChange={(e) => set('departmentId', e.target.value)}>{state.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>

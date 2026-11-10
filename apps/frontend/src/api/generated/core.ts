@@ -434,6 +434,27 @@ export type OperationView = {
   receipt?: "pending" | "anchored";
 };
 
+export type Plan = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  product?: string;
+  name?: string;
+  perSeat?: boolean;
+  maxUsers?: number;
+  priceMonth?: number;
+  priceYear?: number;
+};
+
+export type PlanDetails = {
+  vendorId: string;  // uuid
+  product: string;
+  name: string;
+  perSeat?: boolean;
+  maxUsers?: number;
+  priceMonth?: number;
+  priceYear?: number;
+};
+
 export type PolicyRule = {
   id?: string;  // uuid
   name?: string;
@@ -585,6 +606,7 @@ export type Subscription = {
   billingPeriod?: "month" | "year";
   renewalDate?: string;  // date
   assigned?: number;
+  plan?: string;
 };
 
 export type SubscriptionDetails = {
@@ -596,6 +618,7 @@ export type SubscriptionDetails = {
   pricePerSeat: number;
   billingPeriod: "month" | "year";
   renewalDate: string;  // date
+  plan?: string;
 };
 
 export type Summary = {
@@ -745,6 +768,10 @@ export const operations = {
   notificationsRead: { method: "PUT", path: "/api/v1/notifications/{id}/read" },
   journalOperations: { method: "GET", path: "/api/v1/operations" },
   journalReceipt: { method: "GET", path: "/api/v1/operations/{operationId}/receipt" },
+  softwarePlans: { method: "GET", path: "/api/v1/plans" },
+  softwareCreatePlan: { method: "POST", path: "/api/v1/plans" },
+  softwareDeletePlan: { method: "DELETE", path: "/api/v1/plans/{id}" },
+  softwareUpdatePlan: { method: "PUT", path: "/api/v1/plans/{id}" },
   policiesPublication: { method: "GET", path: "/api/v1/policies/publication" },
   policiesPublish: { method: "POST", path: "/api/v1/policies/publication" },
   policiesRules: { method: "GET", path: "/api/v1/policies/rules" },

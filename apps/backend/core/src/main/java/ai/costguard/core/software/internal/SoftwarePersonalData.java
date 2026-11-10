@@ -22,7 +22,7 @@ class SoftwarePersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("vendor", "contract", "subscription", "license_assignment");
+        return List.of("vendor", "contract", "subscription", "license_assignment", "product_plan");
     }
 
     @Override
@@ -33,7 +33,7 @@ class SoftwarePersonalData implements DataHolder {
 
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "software", "license_assignment", "subscription", "contract",
-                "vendor");
+        TenantRows.delete(jdbc, tenantId, report, "software", "license_assignment", "subscription", "product_plan",
+                "contract", "vendor");
     }
 }

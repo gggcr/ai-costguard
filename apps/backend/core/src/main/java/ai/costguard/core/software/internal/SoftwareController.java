@@ -131,4 +131,34 @@ class SoftwareController {
     License activity(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody Activity activity) {
         return service.recordActivity(TenantClaim.of(jwt), id, activity);
     }
+
+    @GetMapping("/plans")
+    @Operation(summary = "List the plans products are sold on",
+            description = "The audit compares a subscription's plan with the other plans of its product.")
+    List<Plan> plans(@AuthenticationPrincipal Jwt jwt) {
+        return service.plans(TenantClaim.of(jwt));
+    }
+
+    @PostMapping("/plans")
+    @ResponseStatus(HttpStatus.CREATED)
+    @ManagesSoftware
+    @Operation(summary = "Add a plan of a product")
+    Plan createPlan(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PlanDetails details) {
+        return service.createPlan(TenantClaim.of(jwt), details);
+    }
+
+    @PutMapping("/plans/{id}")
+    @ManagesSoftware
+    @Operation(summary = "Change a plan")
+    Plan updatePlan(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody PlanDetails details) {
+        return service.updatePlan(TenantClaim.of(jwt), id, details);
+    }
+
+    @DeleteMapping("/plans/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @ManagesSoftware
+    @Operation(summary = "Remove a plan")
+    void deletePlan(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        service.deletePlan(TenantClaim.of(jwt), id);
+    }
 }

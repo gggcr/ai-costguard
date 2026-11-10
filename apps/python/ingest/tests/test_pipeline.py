@@ -1,4 +1,5 @@
 import io
+import json
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -190,6 +191,30 @@ def test_accept_normalizes_entities_once():
     assert kinds.count("INVOICE") == 1
     employee = next(m for m in messages if m.value.get("entity_type") == "EMPLOYEE")
     assert '"email": "ivanov@corp.ru"' in employee.value["payload"]
+
+
+def invoice_of(messages):
+    [entity] = [m.value for m in messages if m.topic == "ingest.normalized.v1" and m.value["entity_type"] == "INVOICE"]
+    return json.loads(entity["payload"])
+
+
+def test_the_invoice_carries_its_day_and_currency_for_the_audit():
+    """The audit finds an invoice that came twice by its number, or by its total on the same day (ADR 0032)."""
+    invoice = invoice_of(accept()[0])
+    assert invoice["total"] == "3000.50"
+    assert invoice["date"] == "2026-10-01"  # no invoice date: the earliest period
+    assert invoice["currency"] == "RUB"
+    assert invoice["number"] is None
+
+
+def test_an_extracted_invoice_keeps_its_number_and_date():
+    content = ("Поставщик;Номер счёта;Дата счёта;Наименование;Сумма\n"
+               "ООО Атлассиан;A-17;05.11.2026;Jira, 3 места;3000\n"
+               "ООО Атлассиан;A-17;05.11.2026;Confluence;1000\n").encode("cp1251")
+    columns = pipeline.parse("a17.csv", content).suggested_mapping
+    messages, _ = pipeline.accept(TENANT, FILE, f"{TENANT}/a17.csv", "a17.csv", None, columns, {}, content, now=NOW)
+    invoice = invoice_of(messages)
+    assert (invoice["number"], invoice["date"], invoice["total"]) == ("A-17", "2026-11-05", "4000")
 
 
 def test_every_output_fits_its_schema():

@@ -37,7 +37,7 @@ export function remoteActions({ getState, currency, reload, patch, toast }: Remo
     ({ vendorId: c.vendorId, number: c.number, startDate: c.startDate, endDate: c.endDate, noticeDays: c.noticeDays, autoRenew: c.autoRenew, amount: c.amount });
   const subscriptionBody = (x: Omit<Subscription, 'id'>): Api.SubscriptionDetails => ({
     vendorId: x.vendorId, product: x.product, contractId: x.contractId || undefined, departmentId: x.departmentId, seats: x.seats,
-    pricePerSeat: x.pricePerSeat, billingPeriod: x.billingPeriod, renewalDate: x.renewalDate,
+    pricePerSeat: x.pricePerSeat, billingPeriod: x.billingPeriod, renewalDate: x.renewalDate, plan: x.plan?.trim() || undefined,
   });
 
   return {

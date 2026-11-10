@@ -135,7 +135,7 @@
 | Экономия засчитывается, когда видна в следующих счетах; не видна два счёта подряд → обратно на проверку | `FindingAction.confirm`, `missInvoice` | сделано иначе (ADR 0020): «видна в счёте» и «не видна» отмечает человек; счета в ядре не хранятся, автоматической сверки нет. Два «не видна» подряд возвращают на проверку |
 | Отпечаток находки: правило и сущности | `fingerprint` в `finding` | сделано |
 | Правила: неиспользуемые лицензии, лицензии уволенных, дубли подписок, скорое автопродление | `license.unused`, `license.dismissed`, `subscription.duplicate`, `contract.renewal` | сделано |
-| Правила: пересекающиеся инструменты, избыточный тариф, ошибки в счетах, теневые подписки, ИИ-расходы мимо шлюза, помесячно вместо годового | — | не сделано |
+| Правила: пересекающиеся инструменты, избыточный тариф, ошибки в счетах, теневые подписки, ИИ-расходы мимо шлюза, помесячно вместо годового | `subscription.overlap`, `subscription.oversized-plan`, `subscription.monthly-billing` (`software`); `invoice.duplicate`, `invoice.overcharge`, `vendor.shadow`, `ai.bypass` (`imports`, `SpendAuditRules`) | сделано (ADR 0032): условия выбраны нами, на доске только названия; «ошибки в счетах» — два правила; избыточный тариф и годовая цена — по каталогу тарифов `product_plan` |
 
 ## 9. Модель данных
 
@@ -222,7 +222,7 @@
 | Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано иначе (ADR 0016): другая раскладка файлов; `batch/` двойных списаний нет |
 | Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано иначе (ADR 0006, 0009) |
 | Ingest: `bronze`, `parsers/` (excel_template, excel_freeform, pdf_text, ocr, bank_1c, mt940), `extract/`, `validate/`, `normalize/`, `review/`, `sinks/`, `tests/fixtures` | `apps/python/ingest/src/costguard_ingest/*` плоско | сделано иначе (ADR 0012, 0013): плоская раскладка, Tesseract, без FastStream и pandera |
-| Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано иначе (ADR 0005); 6 из 10 правил не сделаны (см. фрейм 8) |
+| Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано иначе (ADR 0005); все 10 правил есть (ADR 0032, см. фрейм 8) |
 | Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports` (Холт, XLSX/PDF) | не сделано: есть только прогноз Холта и отчёт |
 | У каждого сервиса свой Dockerfile | Java-сервисы — свой; Python — общий `apps/python/Dockerfile` | сделано иначе, ADR нет |
 
@@ -286,8 +286,6 @@
 
 Не сделано:
 - двойные списания за ПО в детекторе (`batch/`);
-- 6 правил аудита: пересечения инструментов, избыточный тариф, ошибки в счетах, теневые подписки, ИИ-расходы мимо
-  шлюза, помесячно вместо годового;
 - сервис прогнозов в объёме доски (statsforecast, LightGBM, MinT, сценарии, бэктест, переобучение в MLflow) и
   `analytics` ядра (прогнозы, сценарии, отчёты);
 - восстановление счётчиков Redis из журнала проводок;

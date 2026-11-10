@@ -21,7 +21,7 @@ class SoftwareRepository {
 
     private static final String SUBSCRIPTION = """
             select s.id, s.vendor_id, s.product, s.contract_id, s.department_id, s.seats, s.price_per_seat,
-                   s.billing_period, s.renewal_date,
+                   s.billing_period, s.renewal_date, s.plan,
                    (select count(*) from license_assignment l where l.subscription_id = s.id) as assigned
             from subscription s
             """;
@@ -30,11 +30,16 @@ class SoftwareRepository {
             rs.getObject("vendor_id", UUID.class), rs.getString("product"), rs.getObject("contract_id", UUID.class),
             rs.getObject("department_id", UUID.class), rs.getInt("seats"), rs.getBigDecimal("price_per_seat"),
             BillingPeriod.valueOf(rs.getString("billing_period")), rs.getObject("renewal_date", LocalDate.class),
-            rs.getInt("assigned"));
+            rs.getInt("assigned"), rs.getString("plan"));
 
     private static final RowMapper<License> LICENSE = (rs, n) -> new License(rs.getObject("id", UUID.class),
             rs.getObject("subscription_id", UUID.class), rs.getObject("employee_id", UUID.class),
             rs.getObject("last_active", LocalDate.class));
+
+    private static final RowMapper<Plan> PLAN = (rs, n) -> new Plan(rs.getObject("id", UUID.class),
+            rs.getObject("vendor_id", UUID.class), rs.getString("product"), rs.getString("name"),
+            rs.getBoolean("per_seat"), rs.getObject("max_users", Integer.class), rs.getBigDecimal("price_month"),
+            rs.getBigDecimal("price_year"));
 
     private final JdbcClient jdbc;
 
@@ -107,19 +112,23 @@ class SoftwareRepository {
     void insertSubscription(UUID tenantId, UUID id, SubscriptionDetails s) {
         jdbc.sql("""
                 insert into subscription (id, tenant_id, vendor_id, product, contract_id, department_id, seats,
-                                          price_per_seat, billing_period, renewal_date)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                          price_per_seat, billing_period, renewal_date, plan)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """).params(id, tenantId, s.vendorId(), s.product(), s.contractId(), s.departmentId(), s.seats(),
-                s.pricePerSeat(), s.billingPeriod().name(), s.renewalDate()).update();
+                s.pricePerSeat(), s.billingPeriod().name(), s.renewalDate(), blankToNull(s.plan())).update();
     }
 
     void updateSubscription(UUID id, SubscriptionDetails s) {
         jdbc.sql("""
                 update subscription set vendor_id = ?, product = ?, contract_id = ?, department_id = ?, seats = ?,
-                                        price_per_seat = ?, billing_period = ?, renewal_date = ?
+                                        price_per_seat = ?, billing_period = ?, renewal_date = ?, plan = ?
                 where id = ?
                 """).params(s.vendorId(), s.product(), s.contractId(), s.departmentId(), s.seats(), s.pricePerSeat(),
-                s.billingPeriod().name(), s.renewalDate(), id).update();
+                s.billingPeriod().name(), s.renewalDate(), blankToNull(s.plan()), id).update();
+    }
+
+    private static String blankToNull(String text) {
+        return text == null || text.isBlank() ? null : text.strip();
     }
 
     List<License> licenses(UUID subscriptionId) {
@@ -163,5 +172,52 @@ class SoftwareRepository {
                 .query((rs, n) -> new Held(rs.getString("vendor"), rs.getString("product"),
                         rs.getBigDecimal("price_per_seat")))
                 .list();
+    }
+
+    List<Plan> plans() {
+        return jdbc.sql("select * from product_plan order by product, name, id").query(PLAN).list();
+    }
+
+    Optional<Plan> plan(UUID id) {
+        return jdbc.sql("select * from product_plan where id = ?").param(id).query(PLAN).optional();
+    }
+
+    void insertPlan(UUID tenantId, UUID id, PlanDetails p) {
+        jdbc.sql("""
+                insert into product_plan (id, tenant_id, vendor_id, product, name, per_seat, max_users, price_month,
+                                          price_year)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """).params(id, tenantId, p.vendorId(), p.product().strip(), p.name().strip(), p.perSeat(),
+                p.maxUsers(), p.priceMonth(), p.priceYear()).update();
+    }
+
+    boolean updatePlan(UUID id, PlanDetails p) {
+        return jdbc.sql("""
+                update product_plan set vendor_id = ?, product = ?, name = ?, per_seat = ?, max_users = ?,
+                                        price_month = ?, price_year = ?
+                where id = ?
+                """).params(p.vendorId(), p.product().strip(), p.name().strip(), p.perSeat(), p.maxUsers(),
+                p.priceMonth(), p.priceYear(), id).update() == 1;
+    }
+
+    boolean deletePlan(UUID id) {
+        return jdbc.sql("delete from product_plan where id = ?").param(id).update() == 1;
+    }
+
+    /** Pairs of license holders: who holds a seat of which subscription. */
+    List<Holding> holdings() {
+        return jdbc.sql("select subscription_id, employee_id from license_assignment")
+                .query((rs, n) -> new Holding(rs.getObject("subscription_id", UUID.class),
+                        rs.getObject("employee_id", UUID.class)))
+                .list();
+    }
+
+    record Holding(UUID subscriptionId, UUID employeeId) {
+    }
+
+    /** Vendors with a subscription or a contract: the ones the company knows it pays. */
+    List<UUID> registeredVendors() {
+        return jdbc.sql("select vendor_id from subscription union select vendor_id from contract")
+                .query(UUID.class).list();
     }
 }
