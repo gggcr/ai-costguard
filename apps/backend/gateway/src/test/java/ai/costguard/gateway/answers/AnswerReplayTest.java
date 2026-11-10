@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.costguard.gateway.support.FakeProvider;
 import ai.costguard.gateway.support.InMemoryGatewayTest;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
@@ -77,6 +78,19 @@ class AnswerReplayTest extends InMemoryGatewayTest {
                 .expectBody().jsonPath("$.status").isEqualTo("authorized")
                 .jsonPath("$.authorizationId").isEqualTo(op.toString());
         assertThat(reserve.reserved).containsOnlyKeys(op.toString());
+    }
+
+    @Test
+    void afterTheSettlementARetriedAuthorizationGets409() {
+        UUID op = UUID.randomUUID();
+        authorize(op).expectStatus().isOk();
+        web.post().uri("/v1/spend/settle").header("Authorization", "Bearer " + secret)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("authorizationId", op.toString(), "amount", new BigDecimal("5"))).exchange()
+                .expectStatus().isOk();
+        // the authorization is spent: handing it out again would be a lie
+        authorize(op).expectStatus().isEqualTo(409).expectBody().jsonPath("$.error.type")
+                .isEqualTo("duplicate_operation");
     }
 
     @Test

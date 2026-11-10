@@ -78,6 +78,11 @@ public abstract class InMemoryGatewayTest {
         public Mono<Answer> find(UUID tenantId, UUID operationId) {
             return Mono.justOrEmpty(kept.get(key(tenantId, operationId)));
         }
+
+        @Override
+        public Mono<Boolean> forget(UUID tenantId, UUID operationId) {
+            return Mono.just(kept.remove(key(tenantId, operationId)) != null);
+        }
     }
     public static final MemoryQuota QUOTA = new MemoryQuota();
 

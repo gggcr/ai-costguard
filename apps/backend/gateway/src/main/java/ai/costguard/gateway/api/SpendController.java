@@ -149,12 +149,14 @@ public class SpendController {
         Operation op = new Operation(id.get(), null, null, OperationKind.PAID_API, "spend", null, request.amount(),
                 clock.instant());
         op.agent(agent.get());
-        return reserve.settle(op.tenantId(), id.get().toString(), request.amount()).map(ok -> {
+        return reserve.settle(op.tenantId(), id.get().toString(), request.amount()).flatMap(ok -> {
             if (!ok) {
-                return error(409, "reservation_unknown");
+                return Mono.just(error(409, "reservation_unknown"));
             }
             decisions.allowed(op, request.amount(), null, null);
-            return ResponseEntity.ok(new Settled(id.get().toString(), "settled", request.amount()));
+            // the authorization is spent: its retry gets 409, not the old answer (ADR 0039)
+            return answers.forget(op.tenantId(), id.get()).thenReturn(
+                    ResponseEntity.<Object>ok(new Settled(id.get().toString(), "settled", request.amount())));
         });
     }
 
@@ -171,9 +173,11 @@ public class SpendController {
         if (id.isEmpty()) {
             return Mono.just(error(400, "invalid_request"));
         }
-        return reserve.release(agent.get().getTenantId(), id.get().toString())
-                .map(released -> ResponseEntity.ok(new Settled(id.get().toString(),
-                        released ? "released" : "nothing_reserved", BigDecimal.ZERO)));
+        UUID tenant = agent.get().getTenantId();
+        return reserve.release(tenant, id.get().toString())
+                .flatMap(released -> answers.forget(tenant, id.get()).thenReturn(ResponseEntity.<Object>ok(
+                        new Settled(id.get().toString(), released ? "released" : "nothing_reserved",
+                                BigDecimal.ZERO))));
     }
 
     @GetMapping("/approvals/{id}")

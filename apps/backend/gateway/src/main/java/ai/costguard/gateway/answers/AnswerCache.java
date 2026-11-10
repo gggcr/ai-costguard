@@ -50,6 +50,14 @@ public class AnswerCache {
         return redis.opsForValue().set(key(tenantId, operationId), value, ttl);
     }
 
+    /**
+     * The operation is over (settled or released): a retry of its authorization would hand out an authorization
+     * that is spent, so from now on it gets 409 duplicate_operation.
+     */
+    public Mono<Boolean> forget(UUID tenantId, UUID operationId) {
+        return redis.delete(key(tenantId, operationId)).map(n -> n > 0);
+    }
+
     public Mono<Answer> find(UUID tenantId, UUID operationId) {
         return redis.opsForValue().get(key(tenantId, operationId)).map(AnswerCache::parse);
     }
