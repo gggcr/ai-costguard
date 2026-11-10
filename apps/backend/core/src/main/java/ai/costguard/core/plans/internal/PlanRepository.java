@@ -87,8 +87,8 @@ class PlanRepository {
 
     void forget(UUID tenantId) {
         jdbc.sql("delete from plan_schedule where tenant_id = ?").param(tenantId).update();
-        jdbc.sql("delete from payment_ref where tenant_id = ?").param(tenantId).update();
-        jdbc.sql("delete from payment").update();
+        jdbc.sql("delete from plan_payment_ref where tenant_id = ?").param(tenantId).update();
+        jdbc.sql("delete from plan_payment").update();
         jdbc.sql("delete from tenant_plan").update();
     }
 
@@ -126,7 +126,7 @@ class PlanRepository {
     void insertPayment(UUID id, UUID tenantId, String plan, BigDecimal amount, String currency, String provider,
             Instant now) {
         jdbc.sql("""
-                insert into payment (id, tenant_id, plan, amount, currency, provider, status, created_at)
+                insert into plan_payment (id, tenant_id, plan, amount, currency, provider, status, created_at)
                 values (?, ?, ?, ?, ?, ?, 'pending', ?)
                 """).params(id, tenantId, plan, amount, currency, provider, ts(now)).update();
     }
@@ -134,24 +134,24 @@ class PlanRepository {
     Optional<PaymentRow> paymentForUpdate(UUID id) {
         return jdbc.sql("""
                 select id, tenant_id, plan, amount, currency, provider, provider_payment_id, status
-                from payment where id = ? for update
+                from plan_payment where id = ? for update
                 """).param(id).query(PAYMENT).optional();
     }
 
     void started(UUID id, UUID tenantId, String provider, String providerPaymentId) {
-        jdbc.sql("update payment set provider_payment_id = ? where id = ?").params(providerPaymentId, id).update();
+        jdbc.sql("update plan_payment set provider_payment_id = ? where id = ?").params(providerPaymentId, id).update();
         jdbc.sql("""
-                insert into payment_ref (provider, provider_payment_id, tenant_id, payment_id) values (?, ?, ?, ?)
+                insert into plan_payment_ref (provider, provider_payment_id, tenant_id, payment_id) values (?, ?, ?, ?)
                 on conflict do nothing
                 """).params(provider, providerPaymentId, tenantId, id).update();
     }
 
     void status(UUID id, String status, Instant paidAt) {
-        jdbc.sql("update payment set status = ?, paid_at = ? where id = ?").params(status, ts(paidAt), id).update();
+        jdbc.sql("update plan_payment set status = ?, paid_at = ? where id = ?").params(status, ts(paidAt), id).update();
     }
 
     Optional<PaymentRef> ref(String provider, String providerPaymentId) {
-        return jdbc.sql("select tenant_id, payment_id from payment_ref where provider = ? and provider_payment_id = ?")
+        return jdbc.sql("select tenant_id, payment_id from plan_payment_ref where provider = ? and provider_payment_id = ?")
                 .params(provider, providerPaymentId)
                 .query((rs, n) -> new PaymentRef(rs.getObject("tenant_id", UUID.class),
                         rs.getObject("payment_id", UUID.class)))

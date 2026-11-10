@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -33,7 +34,7 @@ record ContractDetails(
 
 /** {@code pricePerSeat} is per month, whatever the billing period. */
 record Subscription(UUID id, UUID vendorId, String product, UUID contractId, UUID departmentId, int seats,
-        BigDecimal pricePerSeat, BillingPeriod billingPeriod, LocalDate renewalDate, int assigned) {
+        BigDecimal pricePerSeat, BillingPeriod billingPeriod, LocalDate renewalDate, int assigned, String plan) {
 }
 
 record SubscriptionDetails(
@@ -44,7 +45,26 @@ record SubscriptionDetails(
         @Min(0) int seats,
         @NotNull @DecimalMin("0") @Digits(integer = 16, fraction = 2) BigDecimal pricePerSeat,
         @NotNull BillingPeriod billingPeriod,
-        @NotNull LocalDate renewalDate) {
+        @NotNull LocalDate renewalDate,
+        @Size(max = 200) String plan) {
+}
+
+/**
+ * A plan a product is sold on. Prices are of the whole period: per seat when {@code perSeat}, else for the whole
+ * plan. {@code maxUsers} is null when the plan allows any number of users.
+ */
+record Plan(UUID id, UUID vendorId, String product, String name, boolean perSeat, Integer maxUsers,
+        BigDecimal priceMonth, BigDecimal priceYear) {
+}
+
+record PlanDetails(
+        @NotNull UUID vendorId,
+        @NotBlank @Size(max = 200) String product,
+        @NotBlank @Size(max = 200) String name,
+        boolean perSeat,
+        @Min(1) Integer maxUsers,
+        @DecimalMin("0") @Digits(integer = 16, fraction = 2) BigDecimal priceMonth,
+        @DecimalMin("0") @Digits(integer = 16, fraction = 2) BigDecimal priceYear) {
 }
 
 record License(UUID id, UUID subscriptionId, UUID employeeId, LocalDate lastActive) {

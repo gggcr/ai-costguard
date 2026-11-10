@@ -124,7 +124,7 @@ class ConnectionService implements ConnectorRuns {
         Instant now = clock.instant();
         var existing = connections.lockByType(details.type());
         if (existing.isEmpty() || !connections.enabled(existing.get())) {
-            // A system that is connected already takes no new place of the plan (ADR 0033).
+            // A system that is connected already takes no new place of the plan (ADR 0037).
             plans.requireRoom(tenantId, Limit.CONNECTED_SYSTEMS, connections::countEnabled);
         }
         UUID id;

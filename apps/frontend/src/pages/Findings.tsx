@@ -10,10 +10,16 @@ const RULE_LABEL: Record<string, string> = {
   unused_licenses: 'Неиспользуемые лицензии', offboarded: 'Лицензии уволенных', duplicates: 'Дубли подписок', overlap: 'Пересекающиеся инструменты',
   oversized_plan: 'Избыточный тариф', auto_renewal: 'Скорое автопродление', invoice_errors: 'Ошибки в счетах', shadow_saas: 'Теневой SaaS',
   ai_bypass: 'ИИ-расходы мимо шлюза', annual_plan: 'Помесячно вместо годового', agent_loop: 'Аномалия ИИ-агента',
+  // правила движка аудита в ядре (ADR 0005, 0032)
+  'license.unused': 'Неиспользуемые лицензии', 'license.dismissed': 'Лицензии уволенных', 'subscription.idle-seats': 'Свободные места',
+  'subscription.duplicate': 'Дубли подписок', 'contract.renewal': 'Скорое автопродление', 'subscription.overlap': 'Пересекающиеся инструменты',
+  'subscription.oversized-plan': 'Избыточный тариф', 'subscription.monthly-billing': 'Помесячно вместо годового',
+  'invoice.duplicate': 'Ошибки в счетах: дубль', 'invoice.overcharge': 'Ошибки в счетах: сумма больше подписок',
+  'vendor.shadow': 'Теневые подписки', 'ai.bypass': 'ИИ-расходы мимо шлюза', 'anomaly.spike': 'Всплеск трат',
   'asset.not-returned': 'Техника не возвращена', 'asset.idle': 'Техника простаивает', 'asset.duplicate': 'Лишняя техника у сотрудника',
 };
-// Экономия по технике разовая (стоимость устройства), а не ежемесячная, и в счетах её не видно
-const oneOff = (rule: string) => rule.startsWith('asset.');
+// Экономия по технике разовая (стоимость устройства), а не ежемесячная, и в счетах её не видно; дубль счёта — тоже разово
+const oneOff = (rule: string) => rule.startsWith('asset.') || rule === 'invoice.duplicate';
 const savingsText = (rule: string, v: number) => `${fmtRub(v)}${oneOff(rule) ? ' разово' : '/мес'}`;
 const FILTERS: { id: 'open' | FindingStatus | 'all'; label: string }[] = [
   { id: 'open', label: 'Открытые' }, { id: 'new', label: 'Новые' }, { id: 'review', label: 'На проверке' }, { id: 'in_progress', label: 'Выполняются' },

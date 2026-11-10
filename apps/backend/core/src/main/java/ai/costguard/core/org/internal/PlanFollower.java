@@ -5,7 +5,7 @@ import ai.costguard.platform.tenant.TenantSession;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-/** The company card shows the plan; the plans module owns it and says when it changes (ADR 0033). */
+/** The company card shows the plan; the plans module owns it and says when it changes (ADR 0037). */
 @Component
 class PlanFollower {
 

@@ -170,7 +170,7 @@ class OrgRepository {
                 .optional();
     }
 
-    /** What the employee limit of the plan counts: people still working, not dismissed or erased (ADR 0033). */
+    /** What the employee limit of the plan counts: people still working, not dismissed or erased (ADR 0037). */
     long countActiveEmployees() {
         return jdbc.sql("select count(*) from employee where dismissed_at is null and erased_at is null")
                 .query(Long.class).single();

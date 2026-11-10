@@ -14,7 +14,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Flux;
 
-/** quota-take.lua and quota-give-back.lua on a real Redis (ADR 0033): the plan's limit holds under concurrency. */
+/** quota-take.lua and quota-give-back.lua on a real Redis (ADR 0037): the plan's limit holds under concurrency. */
 @Testcontainers
 class OperationQuotaIT {
 

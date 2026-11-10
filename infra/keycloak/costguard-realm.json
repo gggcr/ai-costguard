@@ -26,6 +26,10 @@
       {
         "name": "connector",
         "description": "Service account of a company's connector agent: reads the secrets kept in the core (ADR 0030)"
+      },
+      {
+        "name": "forecast",
+        "description": "Service account of a company's forecast job: publishes forecasts to the core (ADR 0034)"
       }
     ]
   },
@@ -99,7 +103,7 @@
     },
     {
       "clientId": "costguard-registration",
-      "name": "Core: creates accounts of self-registered companies and invited people (ADR 0032)",
+      "name": "Core: creates accounts of self-registered companies and invited people (ADR 0036)",
       "description": "Local stack only. Staging and prod create this client in their own Keycloak with a secret from Vault (docs/runbooks/registration.md).",
       "publicClient": false,
       "secret": "costguard-registration-local",

@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-/** An owner invites people with roles (ADR 0032), with Keycloak in memory. Shares the registration test's context. */
+/** An owner invites people with roles (ADR 0036), with Keycloak in memory. Shares the registration test's context. */
 @SpringBootTest(properties = {"costguard.registration.rate-limit.per-ip=4",
         "costguard.registration.rate-limit.per-email=3"})
 @AutoConfigureMockMvc

@@ -47,14 +47,18 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
+          {{- if not $svc.plain }}
           envFrom:
             - secretRef:
                 name: {{ $.Values.secretName }}
+          {{- end }}
           env:
+            {{- if not $svc.plain }}
             {{- include "costguard.env" $ | nindent 12 }}
+            {{- end }}
             {{- range $k, $v := $svc.env }}
             - name: {{ $k }}
-              value: {{ $v | quote }}
+              value: {{ tpl (toString $v) $ | quote }}
             {{- end }}
           {{- with $svc.http }}
           ports:
@@ -72,14 +76,28 @@ spec:
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: http }
             periodSeconds: 5
+          {{- else if eq ($svc.probes | default "") "http" }}
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 5
           {{- end }}
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+            {{- range $i, $dir := $svc.writable }}
+            - { name: writable-{{ $i }}, mountPath: {{ $dir }} }
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- range $i, $dir := $svc.writable }}
+        - name: writable-{{ $i }}
+          emptyDir: {}
+        {{- end }}
 {{- if $svc.http }}
 ---
 apiVersion: v1

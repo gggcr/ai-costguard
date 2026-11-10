@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Self-registration (ADR 0032). A company and its owner's account are created at once, the company pending; Keycloak
+ * Self-registration (ADR 0036). A company and its owner's account are created at once, the company pending; Keycloak
  * e-mails the owner a link to confirm the address and set a password, and only then can the owner log in. The first
  * login activates the company ({@link FirstLogin}); a registration nobody confirms is dropped by {@link
  * RegistrationSweeper}.

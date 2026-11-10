@@ -34,9 +34,9 @@ class SecurityConfig {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/prometheus", "/v3/api-docs/**").permitAll()
-                        // Self-registration and payment provider notices come without a token (ADR 0032, 0034)
+                        // Self-registration and payment provider notices come without a token (ADR 0036, 0038)
                         .requestMatchers(HttpMethod.POST, "/api/v1/registrations",
-                                "/api/v1/payments/notifications/*").permitAll()
+                                "/api/v1/billing/notifications/*").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(tokens)))
                 .csrf(csrf -> csrf.disable())

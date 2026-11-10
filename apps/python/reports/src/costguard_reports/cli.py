@@ -30,14 +30,18 @@ def fetch(core: httpx.Client, months: int) -> tuple[str, str, list[tuple[date, D
     return info.get("name", "компании"), info.get("currency", "RUB"), series, body.get("findings", {})
 
 
-def fetch_clickhouse(clickhouse: httpx.Client, tenant: str, currency: str, months: int) -> list[tuple[date, Decimal]]:
-    """Monthly totals in one currency; records in other currencies are left out, not converted."""
+def fetch_clickhouse(clickhouse: httpx.Client, tenant: str, currency: str, months: int,
+                     tenant_setting: bool = False) -> list[tuple[date, Decimal]]:
+    """Monthly totals in one currency; records in other currencies are left out, not converted. With tenant_setting
+    the query names the company in SQL_tenant_id, as the row policies of a reader ask (ADR 0035)."""
     query = ("SELECT toString(month), toString(sum(billed)) FROM spend_by_month "
              "WHERE tenant_id = {tenant:UUID} AND currency = {currency:String} "
              "AND month >= addMonths(toStartOfMonth(today()), -{back:UInt32}) GROUP BY month ORDER BY month "
              "FORMAT TSV")
-    r = clickhouse.post("/", params={"param_tenant": tenant, "param_currency": currency, "param_back": months - 1},
-                        content=query.encode())
+    params = {"param_tenant": tenant, "param_currency": currency, "param_back": months - 1}
+    if tenant_setting:
+        params["SQL_tenant_id"] = tenant
+    r = clickhouse.post("/", params=params, content=query.encode())
     r.raise_for_status()
     out = []
     for line in r.text.splitlines():
@@ -61,7 +65,8 @@ def main(argv: list[str] | None = None) -> None:
         clickhouse = httpx.Client(base_url=os.environ["CLICKHOUSE_URL"], timeout=60,
                                   auth=(os.environ.get("CLICKHOUSE_USER", "default"),
                                         os.environ.get("CLICKHOUSE_PASSWORD", "")))
-        series = fetch_clickhouse(clickhouse, args.tenant, currency, args.months)
+        series = fetch_clickhouse(clickhouse, args.tenant, currency, args.months,
+                                  os.environ.get("CLICKHOUSE_TENANT_SETTING") == "1")
     r = report.build(company, currency, series, findings, date.today(), args.horizon)
     args.out.write_bytes(report.xlsx(r) if args.format == "xlsx" else report.pdf(r))
     print(f"{args.out}: {len(series)} months, forecast {r.forecast.method}")

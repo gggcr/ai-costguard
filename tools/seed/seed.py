@@ -80,7 +80,7 @@ def build(today: date) -> str:
     ]
     sql = ["begin;\n", insert("tenant", [{"id": t, "name": "ООО «Ромашка»", "currency": "RUB", "country": "RU",
                                           "plan": "business", "status": "active"}])]
-    # The business plan without an end (ADR 0033): the demo is never read-only and stays within every limit.
+    # The business plan without an end (ADR 0037): the demo is never read-only and stays within every limit.
     sql.append(insert("tenant_plan", [{"tenant_id": t, "plan": "business", "trial_ends_at": None,
                                        "access_until": None, "version": 1, "updated_at": today.isoformat()}]))
     sql.append(insert("department", [{"id": str(i), "tenant_id": t, "name": n} for n, i in departments.items()]))

@@ -1,4 +1,4 @@
--- Owned by the org module: self-registration and invitations (ADR 0032).
+-- Owned by the org module: self-registration and invitations (ADR 0036).
 
 -- A self-registered company is pending until its owner confirms the e-mail; companies before that are active.
 alter table tenant add column country char(2);

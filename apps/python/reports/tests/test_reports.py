@@ -106,3 +106,16 @@ def test_fetch_from_clickhouse():
     ch = httpx.Client(base_url="http://ch", transport=httpx.MockTransport(handle))
     assert cli.fetch_clickhouse(ch, "t-1", "RUB", 12) == [(date(2026, 9, 1), Decimal("100.5")),
                                                           (date(2026, 10, 1), Decimal("200"))]
+
+
+def test_a_reader_under_row_policies_names_the_company():
+    seen = []
+
+    def handle(request):
+        seen.append(dict(request.url.params))
+        return httpx.Response(200, text="")
+
+    ch = httpx.Client(base_url="http://ch", transport=httpx.MockTransport(handle))
+    cli.fetch_clickhouse(ch, "t-1", "RUB", 12)
+    cli.fetch_clickhouse(ch, "t-1", "RUB", 12, tenant_setting=True)
+    assert "SQL_tenant_id" not in seen[0] and seen[1]["SQL_tenant_id"] == "t-1"

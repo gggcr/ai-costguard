@@ -28,13 +28,13 @@ class PlanController {
         this.service = service;
     }
 
-    @GetMapping("/api/v1/plans")
+    @GetMapping("/api/v1/billing/plans")
     @Operation(summary = "List the plans and their limits", description = "An empty limit is no limit.")
     List<PlanOffer> catalog() {
         return service.catalog();
     }
 
-    @GetMapping("/api/v1/plan")
+    @GetMapping("/api/v1/billing/plan")
     @Operation(summary = "Get the company's plan", description = "status read_only: the trial or the paid period "
             + "ended and changes are refused with 402 plan_read_only until a plan is paid. 404 plan_not_assigned: "
             + "the company existed before plans and has no limits.")
@@ -43,7 +43,7 @@ class PlanController {
                 .orElseThrow(PlanProblem.PLAN_NOT_ASSIGNED::failure);
     }
 
-    @PostMapping("/api/v1/plan/checkout")
+    @PostMapping("/api/v1/billing/checkout")
     @PreAuthorize("hasRole('owner')")
     @Operation(summary = "Pay for a plan", description = "Owner only. Works when the company is read-only too. "
             + "status pending: send the payer to confirmationUrl, the plan changes when the provider confirms; "
@@ -52,7 +52,7 @@ class PlanController {
         return service.checkout(TenantClaim.of(jwt), request.plan());
     }
 
-    @PostMapping("/api/v1/payments/notifications/{provider}")
+    @PostMapping("/api/v1/billing/notifications/{provider}")
     @SecurityRequirements
     @Operation(summary = "Receive a notice from the payment provider", description = "Called by the provider, "
             + "not by people: no token. The provider's implementation verifies the notice; one it cannot verify "

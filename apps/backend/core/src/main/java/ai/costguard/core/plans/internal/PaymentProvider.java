@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * A payment provider (ADR 0034). The provider is not chosen yet: only {@link DummyPaymentProvider} exists. A real
+ * A payment provider (ADR 0038). The provider is not chosen yet: only {@link DummyPaymentProvider} exists. A real
  * one implements this interface as a bean whose {@link #name()} is set in {@code costguard.plans.payments.provider};
  * its keys come from the environment, never from the code.
  *
@@ -24,7 +24,7 @@ interface PaymentProvider {
     Checkout start(PaymentRequest request);
 
     /**
-     * Reads a notice the provider sent to {@code POST /api/v1/payments/notifications/{provider}}. Empty when it is
+     * Reads a notice the provider sent to {@code POST /api/v1/billing/notifications/{provider}}. Empty when it is
      * not genuine (a wrong signature, an unknown sender) or not about a payment: the core then changes nothing.
      * Header names come in lower case.
      */

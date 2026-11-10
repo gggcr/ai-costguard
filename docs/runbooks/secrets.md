@@ -18,6 +18,7 @@
 | `NEAR_ACCOUNT_ID`, `NEAR_PRIVATE_KEY` | Аккаунт нотариуса, `near generate-key` |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GIGACHAT_AUTH_KEY`, `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | Договоры с провайдерами |
 | `KEYCLOAK_PRIVACY_CLIENT_SECRET` | Секрет клиента `costguard-privacy` в Keycloak окружения: ядро удаляет учётные записи при удалении данных (см. [privacy.md](privacy.md)) |
+| `KEYCLOAK_REGISTRATION_CLIENT_SECRET` | Секрет клиента `costguard-registration` в Keycloak окружения: ядро создаёт учётные записи при регистрации и приглашениях; пусто — регистрация отвечает 503 (см. [registration.md](registration.md)) |
 | `BACKUP_DB_USER`, `BACKUP_DB_PASSWORD` | `terraform output -json secrets`: роль `costguard_backup`, читает все компании (ADR 0025) |
 
 Отдельный секрет `costguard-alerting`: `TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD` ([alerting.md](alerting.md)).

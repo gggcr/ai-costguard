@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * An owner invites a person with a role (ADR 0032): the person gets a Keycloak account of the company with that
+ * An owner invites a person with a role (ADR 0036): the person gets a Keycloak account of the company with that
  * role, a CostGuard user, and an e-mail from Keycloak to confirm the address and set a password. The first login
  * accepts the invitation ({@link FirstLogin}).
  */

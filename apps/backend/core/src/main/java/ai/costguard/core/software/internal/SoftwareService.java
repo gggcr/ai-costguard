@@ -10,11 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class SoftwareService {
 
+    /** The newest invoices and payments a list shows. */
+    static final int LIST_LIMIT = 500;
+
     private final SoftwareRepository software;
+    private final InvoiceRepository invoiceRepository;
     private final TenantSession session;
 
-    SoftwareService(SoftwareRepository software, TenantSession session) {
+    SoftwareService(SoftwareRepository software, InvoiceRepository invoiceRepository, TenantSession session) {
         this.software = software;
+        this.invoiceRepository = invoiceRepository;
         this.session = session;
     }
 
@@ -180,5 +185,66 @@ class SoftwareService {
             throw SoftwareProblem.LICENSE_NOT_FOUND.failure();
         }
         return software.license(licenseId).orElseThrow();
+    }
+
+    @Transactional(readOnly = true)
+    List<Invoice> invoices(UUID tenantId, UUID vendorId, UUID subscriptionId) {
+        session.bind(tenantId);
+        return invoiceRepository.invoices(vendorId, subscriptionId, LIST_LIMIT);
+    }
+
+    @Transactional(readOnly = true)
+    List<Payment> payments(UUID tenantId, UUID vendorId) {
+        session.bind(tenantId);
+        return invoiceRepository.payments(vendorId, LIST_LIMIT);
+    }
+
+    @Transactional(readOnly = true)
+    List<Plan> plans(UUID tenantId) {
+        session.bind(tenantId);
+        return software.plans();
+    }
+
+    @Transactional
+    Plan createPlan(UUID tenantId, PlanDetails details) {
+        checkPlan(details);
+        session.bind(tenantId);
+        requireVendor(details.vendorId());
+        UUID id = UUID.randomUUID();
+        try {
+            software.insertPlan(tenantId, id, details);
+        } catch (DuplicateKeyException e) {
+            throw SoftwareProblem.PLAN_NAME_TAKEN.failure();
+        }
+        return software.plan(id).orElseThrow();
+    }
+
+    @Transactional
+    Plan updatePlan(UUID tenantId, UUID id, PlanDetails details) {
+        checkPlan(details);
+        session.bind(tenantId);
+        requireVendor(details.vendorId());
+        try {
+            if (!software.updatePlan(id, details)) {
+                throw SoftwareProblem.PLAN_NOT_FOUND.failure();
+            }
+        } catch (DuplicateKeyException e) {
+            throw SoftwareProblem.PLAN_NAME_TAKEN.failure();
+        }
+        return software.plan(id).orElseThrow();
+    }
+
+    @Transactional
+    void deletePlan(UUID tenantId, UUID id) {
+        session.bind(tenantId);
+        if (!software.deletePlan(id)) {
+            throw SoftwareProblem.PLAN_NOT_FOUND.failure();
+        }
+    }
+
+    private static void checkPlan(PlanDetails details) {
+        if (details.priceMonth() == null && details.priceYear() == null) {
+            throw SoftwareProblem.PLAN_WITHOUT_PRICE.failure();
+        }
     }
 }

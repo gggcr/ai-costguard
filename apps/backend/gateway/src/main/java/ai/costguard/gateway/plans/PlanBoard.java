@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
 /**
- * Plans of the companies as {@code tenants.plans.v1} describes them (ADR 0033). A company with no record here
+ * Plans of the companies as {@code tenants.plans.v1} describes them (ADR 0037). A company with no record here
  * existed before plans and is not limited; the core publishes a record for every company it gives a plan.
  */
 @Component

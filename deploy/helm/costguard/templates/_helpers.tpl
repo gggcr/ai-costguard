@@ -14,6 +14,23 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 {{- .Values.external.s3Endpoint | default $known.s3Endpoint | required (printf "no S3 endpoint for region %s: add it to regions" $region) -}}
 {{- end -}}
 
+{{- /* Keycloak of the chart is reached at its ingress host; otherwise at external.* */}}
+{{- define "costguard.keycloakUrl" -}}
+{{- if .Values.keycloak.enabled -}}
+https://{{ required "ingress.hosts.keycloak is required with keycloak.enabled" .Values.ingress.hosts.keycloak }}
+{{- else -}}
+{{ .Values.external.keycloakAdminUrl }}
+{{- end -}}
+{{- end -}}
+
+{{- define "costguard.keycloakIssuer" -}}
+{{- if .Values.keycloak.enabled -}}
+{{ include "costguard.keycloakUrl" . }}/realms/{{ .Values.keycloak.realm }}
+{{- else -}}
+{{ .Values.external.keycloakIssuerUri }}
+{{- end -}}
+{{- end -}}
+
 {{- define "costguard.env" -}}
 - name: KAFKA_BOOTSTRAP_SERVERS
   value: {{ .Values.external.kafkaBootstrapServers | quote }}
@@ -32,11 +49,11 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 - name: DATA_REGION
   value: {{ .Values.region | quote }}
 - name: KEYCLOAK_ADMIN_URL
-  value: {{ .Values.external.keycloakAdminUrl | quote }}
+  value: {{ include "costguard.keycloakUrl" . | quote }}
 - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
   value: "true"
 - name: KEYCLOAK_ISSUER_URI
-  value: {{ .Values.external.keycloakIssuerUri | quote }}
+  value: {{ include "costguard.keycloakIssuer" . | quote }}
 {{- if .Values.mlflow.enabled }}
 - name: MLFLOW_TRACKING_URI
   value: "http://costguard-mlflow"

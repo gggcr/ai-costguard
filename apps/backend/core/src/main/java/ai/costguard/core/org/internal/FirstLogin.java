@@ -16,7 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * The first request of a person whose token says the e-mail is confirmed (ADR 0032): a pending company becomes
+ * The first request of a person whose token says the e-mail is confirmed (ADR 0036): a pending company becomes
  * active, and a waiting invitation to that e-mail is accepted. Keycloak issues no token before the e-mail is
  * confirmed and a password set, so the token is the proof. Each instance remembers whom it has seen, so later
  * requests cost nothing.

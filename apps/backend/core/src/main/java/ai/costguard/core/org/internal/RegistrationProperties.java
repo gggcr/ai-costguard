@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * {@code costguard.registration} (ADR 0032).
+ * {@code costguard.registration} (ADR 0036).
  *
  * @param linkLifespan how long the link to confirm the e-mail and set a password works
  * @param unconfirmedFor how long an unconfirmed registration is kept before the sweeper drops it

@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Drops registrations nobody confirmed in time, and the rate-limit attempts past their window (ADR 0032). */
+/** Drops registrations nobody confirmed in time, and the rate-limit attempts past their window (ADR 0036). */
 @Component
 class RegistrationSweeper {
 

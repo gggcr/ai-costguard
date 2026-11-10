@@ -5,8 +5,9 @@ import { useAuth } from '../auth/auth';
 import type { Contract, Subscription } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, FindingBadge, Modal, PageHeader, Progress, ReadOnlyNote, Stat, Tabs } from '../components/ui';
 import { daysUntil, fmtDate, fmtRelative, fmtRub } from '../lib';
+import { InvoicesTab } from './Invoices';
 
-type Tab = 'subscriptions' | 'contracts' | 'vendors';
+type Tab = 'subscriptions' | 'contracts' | 'vendors' | 'invoices';
 const ACTIVE_DAYS = 30;
 
 export function Software() {
@@ -42,7 +43,7 @@ export function Software() {
         <Stat label="Неиспользуемые места" value={idleSeats} hint={`нет входа больше ${ACTIVE_DAYS} дней`} to="/findings" />
         <Stat label="Скоро продление" value={soon.length} hint="договоры, где пора уведомить поставщика" />
       </div>
-      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={[{ id: 'subscriptions', label: 'Подписки' }, { id: 'contracts', label: 'Договоры' }, { id: 'vendors', label: 'Поставщики' }]} />
+      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={[{ id: 'subscriptions', label: 'Подписки' }, { id: 'contracts', label: 'Договоры' }, { id: 'vendors', label: 'Поставщики' }, { id: 'invoices', label: 'Счета и платежи' }]} />
 
       {tab === 'subscriptions' && (
         <Card>
@@ -120,6 +121,8 @@ export function Software() {
         </Card>
       )}
 
+      {tab === 'invoices' && <InvoicesTab />}
+
       {modal === 'sub' && <SubscriptionForm onClose={() => setModal(null)} />}
       {modal === 'contract' && <ContractForm contract={editContract} onClose={() => setModal(null)} />}
       {modal === 'vendor' && <VendorForm onClose={() => setModal(null)} />}
@@ -140,7 +143,8 @@ function SubscriptionForm({ sub, onClose }: { sub?: Subscription; onClose: () =>
       <div className="form">
         <div className="form-row">
           <Field label="Поставщик"><select className="input" value={f.vendorId} onChange={(e) => set('vendorId', e.target.value)}>{state.vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
-          <Field label="Продукт и тариф"><input className="input" value={f.product} onChange={(e) => set('product', e.target.value)} /></Field>
+          <Field label="Продукт"><input className="input" value={f.product} onChange={(e) => set('product', e.target.value)} /></Field>
+          <Field label="Тариф"><input className="input" value={f.plan ?? ''} placeholder="например, Стандартный" onChange={(e) => set('plan', e.target.value || undefined)} /></Field>
         </div>
         <div className="form-row">
           <Field label="Отдел"><select className="input" value={f.departmentId} onChange={(e) => set('departmentId', e.target.value)}>{state.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>

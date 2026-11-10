@@ -214,7 +214,7 @@ class OrgService {
         if (user.role() == UserRole.owner && owners == 1) {
             throw OrgProblem.LAST_OWNER.failure();
         }
-        // An account created by an invitation goes too, or the person could still log in (ADR 0032). Deleted
+        // An account created by an invitation goes too, or the person could still log in (ADR 0036). Deleted
         // before the row: if Keycloak fails, nothing changes and the call can be repeated.
         var account = registrations.accountOfUser(id);
         if (account.isPresent() && accounts.configured()) {

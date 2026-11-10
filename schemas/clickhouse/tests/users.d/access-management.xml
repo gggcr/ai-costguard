@@ -1,0 +1,9 @@
+<!-- CI only: the default user of the test ClickHouse may create the roles, users and row policies of
+     schemas/clickhouse/access, as the user of apply.py may in a cluster with SQL user management (ADR 0035). -->
+<clickhouse>
+    <users>
+        <default>
+            <access_management>1</access_management>
+        </default>
+    </users>
+</clickhouse>

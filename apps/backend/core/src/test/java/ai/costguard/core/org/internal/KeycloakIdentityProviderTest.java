@@ -20,7 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** The admin API calls against a stand-in for Keycloak: what is sent, and what each answer means (ADR 0032). */
+/** The admin API calls against a stand-in for Keycloak: what is sent, and what each answer means (ADR 0036). */
 class KeycloakIdentityProviderTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();

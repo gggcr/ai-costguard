@@ -89,6 +89,24 @@ class FindingRepository {
                 """).params(status, ownerId, postponedUntil, rejectReason, missed, id).update();
     }
 
+    /** Findings in progress on the subscription, locked, with when their task was created. */
+    List<InProgress> lockInProgressOn(UUID subscriptionId) {
+        return jdbc.sql("""
+                select id, task_at from finding where subscription_id = ? and status = 'in_progress'
+                order by created_at, id for update
+                """).param(subscriptionId)
+                .query((rs, n) -> new InProgress(rs.getObject("id", UUID.class),
+                        rs.getTimestamp("task_at") == null ? null : rs.getTimestamp("task_at").toInstant()))
+                .list();
+    }
+
+    record InProgress(UUID id, Instant taskAt) {
+    }
+
+    void taskCreated(UUID id, Instant at) {
+        jdbc.sql("update finding set task_at = ? where id = ?").params(Timestamp.from(at), id).update();
+    }
+
     void log(UUID tenantId, UUID findingId, Instant at, String by, String text) {
         jdbc.sql("insert into finding_event (id, tenant_id, finding_id, at, by_whom, text) values (?, ?, ?, ?, ?, ?)")
                 .params(UUID.randomUUID(), tenantId, findingId, Timestamp.from(at), by, text).update();

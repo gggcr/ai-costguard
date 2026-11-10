@@ -15,7 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
- * The plan's part of step 1 through the whole gateway (ADR 0033): a read-only company spends nothing, the operations
+ * The plan's part of step 1 through the whole gateway (ADR 0037): a read-only company spends nothing, the operations
  * of the month are counted only when an operation passes the whole ladder, and the refusal says what to do.
  */
 class PlanFlowTest extends InMemoryGatewayTest {

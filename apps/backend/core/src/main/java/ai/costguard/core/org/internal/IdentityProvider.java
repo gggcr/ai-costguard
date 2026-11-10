@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Accounts people log in with (ADR 0032): Keycloak in every deployment ({@link KeycloakIdentityProvider}), an
+ * Accounts people log in with (ADR 0036): Keycloak in every deployment ({@link KeycloakIdentityProvider}), an
  * in-memory fake in tests. The account carries the company in its {@code tenant_id} attribute and the role as a
  * realm role, which is what the core reads from the token.
  */

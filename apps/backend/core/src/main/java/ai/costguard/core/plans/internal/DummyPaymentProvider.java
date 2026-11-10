@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * A provider that takes no money: every payment succeeds at once (ADR 0034). For the local stack and tests while
+ * A provider that takes no money: every payment succeeds at once (ADR 0038). For the local stack and tests while
  * no real provider is chosen. It is used only when {@code costguard.plans.payments.provider} is {@code dummy}, so a
  * deployment that forgets the setting has no payments at all rather than free plans.
  */

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 /**
- * Operations of a company in the calendar month (UTC), against its plan (ADR 0033). The counter is in Redis, shared
+ * Operations of a company in the calendar month (UTC), against its plan (ADR 0037). The counter is in Redis, shared
  * by every gateway instance, under the {tenant} hash tag like the budget keys. An operation takes a place when it
  * passes the identity step and gives it back if a later step refuses or holds it, so the counter is what passed
  * the whole ladder.

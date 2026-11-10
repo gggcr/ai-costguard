@@ -52,7 +52,8 @@ def load(monkeypatch, tmp_path):
                          "pendulum": pendulum}.items():
         monkeypatch.setitem(sys.modules, name, module)
     (tmp_path / "romashka.toml").write_text('tenant_id = "11111111-1111-1111-1111-111111111111"\n'
-                                            '[onec]\nurl = "http://1c"\nuser = "u"\n[report]\nmonths = 6\n',
+                                            '[onec]\nurl = "http://1c"\nuser = "u"\n[report]\nmonths = 6\n'
+                                            '[forecast]\nhorizon = 3\n',
                                             "utf-8")
     (tmp_path / "Лютик-2.toml").write_text('tenant_id = "22222222-2222-2222-2222-222222222222"\n', "utf-8")
     (tmp_path / "broken.toml").write_text("tenant_id = ", "utf-8")
@@ -99,6 +100,16 @@ def test_monthly_report_only_for_tenants_that_asked(load):
     assert '--format pdf --months 6' in pdf
     assert 'CORE_TOKEN="$ROMASHKA_CORE_TOKEN"' in pdf
     assert "{{ data_interval_start.strftime('%Y-%m') }}.pdf" in pdf
+
+
+def test_the_forecast_runs_weekly_for_tenants_that_asked(load):
+    dag = load("forecast_weekly")
+    assert dag.dag_id == "costguard_forecast_weekly" and dag.kw["schedule"] == "0 7 * * 1"
+    assert dag.kw["max_active_runs"] == 1 and str(dag.kw["start_date"].tzinfo) == "Europe/Moscow"
+    [task] = dag.tasks
+    assert task.task_id == "forecast_romashka"
+    assert task.bash_command == ('CORE_URL="$ROMASHKA_CORE_URL" CORE_TOKEN="$ROMASHKA_CORE_TOKEN" costguard-forecast '
+                                 "--tenant 11111111-1111-1111-1111-111111111111 --months 24 --horizon 3")
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="bash on Windows is WSL, which may have no distribution")

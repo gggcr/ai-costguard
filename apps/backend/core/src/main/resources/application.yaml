@@ -1,6 +1,6 @@
 server:
   port: ${CORE_PORT:8080}
-  # The client address behind the ingress (registration rate limits, ADR 0032). Tomcat trusts it only from
+  # The client address behind the ingress (registration rate limits, ADR 0036). Tomcat trusts it only from
   # internal proxy addresses.
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
 
@@ -99,7 +99,7 @@ costguard:
       bot-username: ${TELEGRAM_BOT_USERNAME:}
       api-url: ${TELEGRAM_API_URL:https://api.telegram.org}
 
-  # Self-registration and invitations (ADR 0032). Accounts are created in Keycloak as the confidential client
+  # Self-registration and invitations (ADR 0036). Accounts are created in Keycloak as the confidential client
   # costguard-registration; off while its secret is empty: registration then answers 503 registration_unavailable.
   registration:
     keycloak:
@@ -119,7 +119,7 @@ costguard:
       per-ip: ${REGISTRATION_LIMIT_PER_IP:5}
       per-email: ${REGISTRATION_LIMIT_PER_EMAIL:3}
       window: ${REGISTRATION_LIMIT_WINDOW:PT1H}
-  # Pricing plans (ADR 0033). The limits and prices below are placeholders for the product owner to set; an empty
+  # Pricing plans (ADR 0037). The limits and prices below are placeholders for the product owner to set; an empty
   # limit is no limit. Any value can be overridden from the environment by its relaxed name, e.g.
   # COSTGUARD_PLANS_CATALOG_START_LIMITS_AGENTS=20.
   plans:
@@ -128,7 +128,7 @@ costguard:
     paid-period: P1M
     watch-delay: PT15M
     payments:
-      # Empty: no payments (checkout answers 503). dummy: every payment succeeds at once, local stack only (ADR 0034).
+      # Empty: no payments (checkout answers 503). dummy: every payment succeeds at once, local stack only (ADR 0038).
       provider: ${PAYMENT_PROVIDER:}
       return-url: ${WEB_URL:http://localhost:3000}/settings/plan
     catalog:

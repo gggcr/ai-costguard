@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * After the trial or the paid period ends, a company can read everything and change nothing (ADR 0033): every
+ * After the trial or the paid period ends, a company can read everything and change nothing (ADR 0037): every
  * POST, PUT, PATCH and DELETE of its users is refused with 402 plan_read_only. Paying for a plan stays open, and so
  * does the privacy section: a company that leaves must be able to ask for its data to be erased.
  *
@@ -22,7 +22,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 class ReadOnlyGuard implements HandlerInterceptor {
 
     private static final Set<String> CHANGES = Set.of("POST", "PUT", "PATCH", "DELETE");
-    private static final List<String> OPEN = List.of("/api/v1/plan/", "/api/v1/payments/", "/api/v1/privacy/",
+    private static final List<String> OPEN = List.of("/api/v1/billing/", "/api/v1/privacy/",
             "/api/v1/registrations");
 
     private final PlanService plans;

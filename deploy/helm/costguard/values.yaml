@@ -14,7 +14,9 @@ regions:
 
 # Managed services outside the cluster (deploy/terraform creates them). Secrets are not here: every service reads
 # the Kubernetes secret named in `secretName` (create it from Lockbox or Vault, see docs/runbooks/secrets.md).
-# Keycloak is not created by deploy/terraform: it must run in `region` as well (docs/runbooks/privacy.md).
+# Keycloak is not created by deploy/terraform: with keycloak.enabled the chart runs it (ADR 0035), otherwise it must
+# run elsewhere in `region` as well (docs/runbooks/privacy.md). With keycloak.enabled the two Keycloak addresses below
+# are not read: they follow from ingress.hosts.keycloak.
 external:
   kafkaBootstrapServers: kafka:9092
   schemaRegistryUrl: http://schema-registry:8081
@@ -30,7 +32,22 @@ external:
 secretName: costguard-secrets
 
 # One entry per workload. `http` services get a Service, probes and metrics; the others are Kafka consumers.
+# `plain` services get neither the secret nor the shared environment (the web client needs none of it); `writable`
+# lists the directories they write to under a read-only root. Values of `env` may use templates ({{ .Release.Namespace }}).
 services:
+  frontend:
+    enabled: true
+    image: frontend
+    replicas: 2
+    plain: true
+    http: { port: 3000 }
+    probes: http
+    writable: [/etc/nginx/conf.d]
+    resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { memory: 128Mi } }
+    env:
+      # nginx resolves the core itself and does not use the search domains of the pod: the full name
+      CORE_URL: "http://costguard-core.{{ .Release.Namespace }}.svc.cluster.local"
+      NGINX_RESOLVER: kube-dns.kube-system.svc.cluster.local
   core:
     enabled: true
     image: core
@@ -47,8 +64,8 @@ services:
       # Notifications to people (ADR 0031): put SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME,
       # SPRING_MAIL_PASSWORD, MAIL_FROM and TELEGRAM_BOT_TOKEN in the secret; a channel without them stays off.
       # WEB_URL: where links in e-mail and Telegram lead, e.g. https://costguard.example.ru
-      # Self-registration and invitations (ADR 0032): KEYCLOAK_REGISTRATION_CLIENT_SECRET in the secret; without it
-      # registration answers 503. Payments (ADR 0034): PAYMENT_PROVIDER stays unset until a provider is chosen;
+      # Self-registration and invitations (ADR 0036): KEYCLOAK_REGISTRATION_CLIENT_SECRET in the secret; without it
+      # registration answers 503. Payments (ADR 0038): PAYMENT_PROVIDER stays unset until a provider is chosen;
       # never dummy here, it gives plans away.
   gateway:
     enabled: true
@@ -96,6 +113,40 @@ services:
       NEAR_RPC_URL: https://rpc.mainnet.near.org
       NEAR_CONTRACT_ID: notary.costguard.near
 
+# Ingress (ADR 0035): the web client, the core's API for connectors and scripts, the agent gateway and, with
+# keycloak.enabled, Keycloak, each on its own host, over TLS. Needs an ingress controller (ingress-nginx by default)
+# and, for certificates, cert-manager with the ClusterIssuer `clusterIssuer`; without one, the secret `tlsSecret`
+# must hold a certificate for every host.
+ingress:
+  enabled: false
+  className: nginx
+  clusterIssuer: letsencrypt
+  tlsSecret: costguard-tls
+  hosts:
+    web: costguard.example.ru
+    api: api.costguard.example.ru
+    gateway: gateway.costguard.example.ru
+    keycloak: id.costguard.example.ru
+  # Uploads of invoices and statements go through the web client's /api
+  maxBodySize: 50m
+  # Agents stream answers of models through the gateway
+  gatewayReadTimeoutSeconds: 600
+
+# Keycloak in the cluster (ADR 0035): Keycloak 26 on its own PostgreSQL database, behind the ingress on
+# ingress.hosts.keycloak. On the first start it imports the realm files/keycloak-realm.json (the roles and clients of
+# the realm of the local stack without what only that stack needs); a realm that exists is kept. The
+# secret `secretName` holds KC_DB_URL, KC_DB_USERNAME, KC_DB_PASSWORD, KC_BOOTSTRAP_ADMIN_USERNAME,
+# KC_BOOTSTRAP_ADMIN_PASSWORD, KEYCLOAK_PRIVACY_CLIENT_SECRET and KEYCLOAK_REGISTRATION_CLIENT_SECRET
+# (docs/runbooks/keycloak.md). Replicas share their
+# sessions over the headless service (Infinispan, DNS discovery).
+keycloak:
+  enabled: false
+  image: quay.io/keycloak/keycloak:26.0.7
+  replicas: 2
+  realm: costguard
+  secretName: costguard-keycloak
+  resources: { requests: { cpu: 500m, memory: 1Gi }, limits: { memory: 2Gi } }
+
 # KEDA (keda.sh) scales the Kafka workers that have a `keda` entry by the lag of their consumer group (ADR 0017).
 # The KEDA operator must be installed in the cluster. Without keda.enabled those workers keep their `replicas`.
 keda:
@@ -124,6 +175,11 @@ connectorsCronJob:
 
 clickhouseMigrations:
   enabled: true
+  # Row policies of schemas/clickhouse/access (ADR 0035): a reader of one company sees that company only. The job's
+  # user must manage access, which a managed ClickHouse allows only with SQL user management, a switch that cannot be
+  # undone; CLICKHOUSE_READER_PASSWORD must be in the secret. The reports and forecast jobs then connect as
+  # costguard_reader with CLICKHOUSE_TENANT_SETTING=1 (docs/runbooks/clickhouse-access.md).
+  rowPolicies: false
 
 monitoring:
   serviceMonitor: true
@@ -137,6 +193,13 @@ monitoring:
   outboxOldestSeconds: 900
   diskFreeRatio: 0.15
   connectorFailureRatio: 0.5
+
+# Logs (ADR 0035): Loki and Grafana Alloy run in the namespace observability (deploy/argocd/observability.yaml).
+# With logging.enabled the chart adds Loki as a data source of the Grafana of kube-prometheus-stack, whose sidecar
+# picks up ConfigMaps labelled grafana_datasource.
+logging:
+  enabled: false
+  lokiUrl: http://loki-gateway.observability.svc.cluster.local
 
 # Delivery of alerts (ADR 0026): an AlertmanagerConfig for the Alertmanager of kube-prometheus-stack. Warnings go
 # to Telegram, critical alerts to Telegram and e-mail. The secret `secretName` holds TELEGRAM_BOT_TOKEN and

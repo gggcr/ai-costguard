@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * Self-registration through the API, with Keycloak in memory (ADR 0032): what is created, what the answer does not
+ * Self-registration through the API, with Keycloak in memory (ADR 0036): what is created, what the answer does not
  * reveal, the rate limit, activation at the first login and the sweeper. Everything runs as the application role,
  * so RLS applies.
  */
@@ -202,7 +202,7 @@ class RegistrationIntegrationTest extends PostgresTestSupport {
         UUID tenant = tenantOf(email);
         ACCOUNTS.confirm(email);
 
-        mvc.perform(get("/api/v1/plan").with(loggedIn(tenant, email, "owner"))).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/billing/plan").with(loggedIn(tenant, email, "owner"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan").value("trial")).andExpect(jsonPath("$.status").value("trial"));
 
         assertThat(tenantStatus(tenant)).isEqualTo("active");

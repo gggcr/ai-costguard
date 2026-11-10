@@ -46,7 +46,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Pricing plans through the API (ADR 0033, ADR 0034): the limits in the modules that create agents, employees and
+ * Pricing plans through the API (ADR 0037, ADR 0038): the limits in the modules that create agents, employees and
  * connections, read-only access after the trial, the watcher, and payment with a provider that stands in for a real
  * one. The trial allows one of each here.
  */
@@ -185,18 +185,18 @@ class PlansIntegrationTest extends PostgresTestSupport {
 
     @Test
     void theCatalogAndTheCompanysPlan() throws Exception {
-        mvc.perform(get("/api/v1/plans").with(as("auditor"))).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/billing/plans").with(as("auditor"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("trial"))
                 .andExpect(jsonPath("$[1].name").value("start"))
                 .andExpect(jsonPath("$[2].name").value("business"))
                 .andExpect(jsonPath("$[0].limits.agents").value(1))
                 .andExpect(jsonPath("$[1].monthlyPrice").value(4990));
-        mvc.perform(get("/api/v1/plan").with(as("auditor"))).andExpect(status().isNotFound())
+        mvc.perform(get("/api/v1/billing/plan").with(as("auditor"))).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("plan_not_assigned"));
 
         trial();
 
-        mvc.perform(get("/api/v1/plan").with(as("auditor"))).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/billing/plan").with(as("auditor"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan").value("trial")).andExpect(jsonPath("$.status").value("trial"))
                 .andExpect(jsonPath("$.limits.employees").value(1));
         assertThat(events(TenantPlanChanged.class)).singleElement().satisfies(e -> {
@@ -281,10 +281,10 @@ class PlansIntegrationTest extends PostgresTestSupport {
                 .andExpect(status().isPaymentRequired()).andExpect(jsonPath("$.code").value("plan_read_only"));
         employee(department).andExpect(status().isPaymentRequired());
         mvc.perform(get("/api/v1/departments").with(as("it_admin"))).andExpect(status().isOk());
-        mvc.perform(get("/api/v1/plan").with(as("it_admin"))).andExpect(jsonPath("$.status").value("read_only"));
+        mvc.perform(get("/api/v1/billing/plan").with(as("it_admin"))).andExpect(jsonPath("$.status").value("read_only"));
 
         provider.next = PaymentProvider.Status.SUCCEEDED;
-        mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
+        mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.plan.status").value("active"));
         mvc.perform(json(post("/api/v1/departments"), "{\"name\":\"y\"}").with(as("it_admin")))
                 .andExpect(status().isCreated());
@@ -317,7 +317,7 @@ class PlansIntegrationTest extends PostgresTestSupport {
         trial();
         provider.next = PaymentProvider.Status.SUCCEEDED;
 
-        String body = mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"business\"}").with(as("owner")))
+        String body = mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"business\"}").with(as("owner")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("succeeded"))
                 .andExpect(jsonPath("$.confirmationUrl").doesNotExist())
                 .andExpect(jsonPath("$.plan.plan").value("business"))
@@ -326,7 +326,7 @@ class PlansIntegrationTest extends PostgresTestSupport {
         Instant until = Instant.parse(JsonPath.read(body, "$.plan.accessUntil"));
         Instant month = OffsetDateTime.now(ZoneOffset.UTC).plusMonths(1).toInstant();
         assertThat(until).isBetween(month.minusSeconds(60), month.plusSeconds(60));
-        assertThat(admin.sql("select status from payment where tenant_id = ?").param(tenant).query(String.class)
+        assertThat(admin.sql("select status from plan_payment where tenant_id = ?").param(tenant).query(String.class)
                 .single()).isEqualTo("succeeded");
         assertThat(events(TenantPlanChanged.class)).last().satisfies(e -> {
             assertThat(e.plan()).isEqualTo("business");
@@ -338,25 +338,25 @@ class PlansIntegrationTest extends PostgresTestSupport {
     void aPendingPaymentChangesThePlanOnlyOnAVerifiedNoticeAndOnlyOnce() throws Exception {
         trial();
         provider.next = PaymentProvider.Status.PENDING;
-        String body = mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
+        String body = mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.plan.plan").value("trial")).andReturn().getResponse().getContentAsString();
         String payment = JsonPath.read(body, "$.paymentId");
         assertThat((String) JsonPath.read(body, "$.confirmationUrl")).isEqualTo("https://pay.example/" + payment);
 
-        mvc.perform(post("/api/v1/payments/notifications/test").header("X-Signature", "forged")
+        mvc.perform(post("/api/v1/billing/notifications/test").header("X-Signature", "forged")
                         .content("SUCCEEDED:tp-" + payment))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("payment_notice_invalid"));
-        mvc.perform(get("/api/v1/plan").with(as("owner"))).andExpect(jsonPath("$.plan").value("trial"));
+        mvc.perform(get("/api/v1/billing/plan").with(as("owner"))).andExpect(jsonPath("$.plan").value("trial"));
 
-        mvc.perform(post("/api/v1/payments/notifications/test").header("X-Signature", "ok")
+        mvc.perform(post("/api/v1/billing/notifications/test").header("X-Signature", "ok")
                 .content("SUCCEEDED:tp-" + payment)).andExpect(status().isOk());
-        mvc.perform(post("/api/v1/payments/notifications/test").header("X-Signature", "ok")
+        mvc.perform(post("/api/v1/billing/notifications/test").header("X-Signature", "ok")
                 .content("SUCCEEDED:tp-" + payment)).andExpect(status().isOk());
 
-        mvc.perform(get("/api/v1/plan").with(as("owner"))).andExpect(jsonPath("$.plan").value("start"));
+        mvc.perform(get("/api/v1/billing/plan").with(as("owner"))).andExpect(jsonPath("$.plan").value("start"));
         assertThat(events(TenantPlanChanged.class)).hasSize(2);
-        mvc.perform(post("/api/v1/payments/notifications/yookassa").content("x"))
+        mvc.perform(post("/api/v1/billing/notifications/yookassa").content("x"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("payment_provider_unknown"));
     }
 
@@ -365,25 +365,25 @@ class PlansIntegrationTest extends PostgresTestSupport {
         trial();
         provider.next = null;
         try {
-            mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
+            mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
                     .andExpect(status().isBadGateway())
                     .andExpect(jsonPath("$.code").value("payment_provider_failed"));
         } finally {
             provider.next = PaymentProvider.Status.SUCCEEDED;
         }
 
-        assertThat(admin.sql("select status from payment where tenant_id = ?").param(tenant).query(String.class)
+        assertThat(admin.sql("select status from plan_payment where tenant_id = ?").param(tenant).query(String.class)
                 .single()).isEqualTo("canceled");
-        mvc.perform(get("/api/v1/plan").with(as("owner"))).andExpect(jsonPath("$.plan").value("trial"));
+        mvc.perform(get("/api/v1/billing/plan").with(as("owner"))).andExpect(jsonPath("$.plan").value("trial"));
     }
 
     @Test
     void onlyAnOwnerPaysAndOnlyForAPaidPlan() throws Exception {
         trial();
 
-        mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"start\"}").with(as("finance")))
+        mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"start\"}").with(as("finance")))
                 .andExpect(status().isForbidden());
-        mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"trial\"}").with(as("owner")))
+        mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"trial\"}").with(as("owner")))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("plan_unknown"));
     }
 
@@ -391,7 +391,7 @@ class PlansIntegrationTest extends PostgresTestSupport {
     void anErasedCompanyTakesItsPlanAndPaymentsAlong() throws Exception {
         trial();
         provider.next = PaymentProvider.Status.SUCCEEDED;
-        mvc.perform(json(post("/api/v1/plan/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
+        mvc.perform(json(post("/api/v1/billing/checkout"), "{\"plan\":\"start\"}").with(as("owner")))
                 .andExpect(status().isOk());
         List<String> tombstones = new ArrayList<>();
         Report report = new Report() {

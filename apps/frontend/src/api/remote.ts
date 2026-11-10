@@ -52,6 +52,7 @@ const toContract = (c: Api.Contract): Contract => ({
 const toSubscription = (x: Api.Subscription): Subscription => ({
   id: s(x.id), vendorId: s(x.vendorId), product: s(x.product), contractId: x.contractId, departmentId: s(x.departmentId), seats: n(x.seats),
   pricePerSeat: n(x.pricePerSeat), billingPeriod: x.billingPeriod ?? 'month', renewalDate: s(x.renewalDate),
+  plan: x.plan ?? undefined,
 });
 const toLicense = (l: Api.License): LicenseAssignment => ({ id: s(l.id), subscriptionId: s(l.subscriptionId), employeeId: s(l.employeeId), lastActive: l.lastActive ?? null });
 

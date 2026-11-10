@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 /**
- * The plan's part of the identity step (ADR 0033): a read-only company spends nothing, and a company that used up
+ * The plan's part of the identity step (ADR 0037): a read-only company spends nothing, and a company that used up
  * its operations of the month waits for the next one or a bigger plan. Both answer 402, with a message that says
  * what to do.
  */

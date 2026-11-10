@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The registration rate limit (ADR 0032): attempts per client address and per e-mail in a sliding window, in
+ * The registration rate limit (ADR 0036): attempts per client address and per e-mail in a sliding window, in
  * PostgreSQL so that every core instance counts the same. Every attempt counts, refused ones too, so hammering does
  * not reset the window. Only SHA-256 hashes are stored, and only for the window.
  */

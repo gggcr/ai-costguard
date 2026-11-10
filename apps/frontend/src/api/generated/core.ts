@@ -94,6 +94,14 @@ export type ChainVerification = {
   unverifiedSignatures?: number;
 };
 
+export type ChangeEffect = {
+  subscriptionId?: string;  // uuid
+  subscription?: string;
+  kind?: "freeSeats" | "seats" | "cancel" | "yearly" | "price";
+  description?: string;
+  monthlySavings?: number;
+};
+
 export type ChecklistSection = {
   name?: string;
   items?: Array<Item>;
@@ -281,6 +289,35 @@ export type FindingTotals = {
   confirmedSavings?: number;
 };
 
+export type ForecastDocument = {
+  currency: string;
+  horizon?: number;
+  company: ForecastSeries;
+  departments: Array<ForecastSeries>;
+  savings: Array<SavingsMonth>;
+  generatedBy: string;
+};
+
+export type ForecastPoint = {
+  month: string;
+  value: number;
+  low: number;
+  high: number;
+  baseline?: number;
+};
+
+export type ForecastSeries = {
+  departmentId?: string;  // uuid
+  name: string;
+  model: string;
+  wape?: number;
+  mase?: number;
+  challenger?: string;
+  challengerWape?: number;
+  history: Array<MonthAmount>;
+  points: Array<ForecastPoint>;
+};
+
 export type FxRate = {
   date?: string;  // date
   currency?: string;
@@ -314,6 +351,27 @@ export type Invitation = {
   status?: "sent" | "accepted" | "revoked";
   createdAt?: string;  // date-time
   acceptedAt?: string;  // date-time
+};
+
+export type Invoice = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  subscriptionId?: string;  // uuid
+  number?: string;
+  issuedOn?: string;  // date
+  dated?: boolean;
+  currency?: string;
+  total?: number;
+  source?: string;
+  receivedAt?: string;  // date-time
+  paymentId?: string;  // uuid
+  lines?: Array<InvoiceLine>;
+};
+
+export type InvoiceLine = {
+  lineNo?: number;
+  description?: string;
+  amount?: number;
 };
 
 export type IssuedKey = {
@@ -384,6 +442,11 @@ export type MappingRequest = {
 export type Month = {
   month?: string;
   amount?: number;
+};
+
+export type MonthAmount = {
+  month: string;
+  amount: number;
 };
 
 export type NewAsset = {
@@ -472,6 +535,45 @@ export type OperationView = {
   receipt?: "pending" | "anchored";
 };
 
+export type Payment = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  invoiceId?: string;  // uuid
+  amount?: number;
+  currency?: string;
+  paidOn?: string;  // date
+  dated?: boolean;
+  purpose?: string;
+  kind?: string;
+  card?: string;
+  mcc?: string;
+  role?: string;
+  intermediary?: string;
+  source?: string;
+  receivedAt?: string;  // date-time
+};
+
+export type Plan = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  product?: string;
+  name?: string;
+  perSeat?: boolean;
+  maxUsers?: number;
+  priceMonth?: number;
+  priceYear?: number;
+};
+
+export type PlanDetails = {
+  vendorId: string;  // uuid
+  product: string;
+  name: string;
+  perSeat?: boolean;
+  maxUsers?: number;
+  priceMonth?: number;
+  priceYear?: number;
+};
+
 export type PlanLimitsView = {
   agents?: number;
   employees?: number;
@@ -519,6 +621,12 @@ export type ProblemBody = {
 export type Publication = {
   version?: number;
   publishedAt?: string;  // date-time
+};
+
+export type PublishedForecast = {
+  id?: string;  // uuid
+  publishedAt?: string;  // date-time
+  forecast?: ForecastDocument;
 };
 
 export type ReceiptView = {
@@ -589,6 +697,42 @@ export type SampleOperation = {
   weekday?: number;
 };
 
+export type SavingsMonth = {
+  month: string;
+  expected: number;
+  confirmed: number;
+};
+
+export type ScenarioChange = {
+  kind: "freeSeats" | "seats" | "cancel" | "yearly" | "price";
+  subscriptionId?: string;  // uuid
+  seats?: number;
+  pricePerSeat?: number;
+  discount?: number;
+  from?: string;
+};
+
+export type ScenarioMonth = {
+  month?: string;
+  registry?: number;
+  registryAfter?: number;
+  forecast?: number;
+  forecastAfter?: number;
+};
+
+export type ScenarioRequest = {
+  horizon?: number;
+  changes: Array<ScenarioChange>;
+};
+
+export type ScenarioResult = {
+  months?: Array<ScenarioMonth>;
+  effects?: Array<ChangeEffect>;
+  monthlySavings?: number;
+  totalSavings?: number;
+  onForecast?: boolean;
+};
+
 export type SettingsChange = {
   emailLevel: "off" | "info" | "warning" | "critical";
   telegramLevel: "off" | "info" | "warning" | "critical";
@@ -651,6 +795,7 @@ export type Subscription = {
   billingPeriod?: "month" | "year";
   renewalDate?: string;  // date
   assigned?: number;
+  plan?: string;
 };
 
 export type SubscriptionDetails = {
@@ -662,6 +807,7 @@ export type SubscriptionDetails = {
   pricePerSeat: number;
   billingPeriod: "month" | "year";
   renewalDate: string;  // date
+  plan?: string;
 };
 
 export type Summary = {
@@ -730,6 +876,9 @@ export const operations = {
   agentsRevokeKey: { method: "DELETE", path: "/api/v1/agents/{id}/keys/{keyId}" },
   agentsResume: { method: "DELETE", path: "/api/v1/agents/{id}/suspension" },
   agentsSuspend: { method: "PUT", path: "/api/v1/agents/{id}/suspension" },
+  analyticsForecast: { method: "GET", path: "/api/v1/analytics/forecast" },
+  analyticsPublish: { method: "PUT", path: "/api/v1/analytics/forecast" },
+  analyticsScenario: { method: "POST", path: "/api/v1/analytics/scenarios" },
   analyticsSummary: { method: "GET", path: "/api/v1/analytics/summary" },
   approvalsList_3: { method: "GET", path: "/api/v1/approvals" },
   approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
@@ -742,6 +891,10 @@ export const operations = {
   assetsHistory_1: { method: "GET", path: "/api/v1/assets/{id}/assignments" },
   assetsAct_1: { method: "GET", path: "/api/v1/assets/{id}/assignments/{assignmentId}/act" },
   assetsRetire: { method: "PUT", path: "/api/v1/assets/{id}/retirement" },
+  plansCheckout: { method: "POST", path: "/api/v1/billing/checkout" },
+  plansNotice: { method: "POST", path: "/api/v1/billing/notifications/{provider}" },
+  plansCurrent: { method: "GET", path: "/api/v1/billing/plan" },
+  plansCatalog: { method: "GET", path: "/api/v1/billing/plans" },
   ledgerBudgets: { method: "GET", path: "/api/v1/budgets" },
   ledgerCreate_1: { method: "POST", path: "/api/v1/budgets" },
   ledgerBudget: { method: "GET", path: "/api/v1/budgets/{id}" },
@@ -793,6 +946,7 @@ export const operations = {
   registrationInvite: { method: "POST", path: "/api/v1/invitations" },
   registrationRevoke_1: { method: "DELETE", path: "/api/v1/invitations/{id}" },
   registrationResend: { method: "POST", path: "/api/v1/invitations/{id}/resend" },
+  softwareInvoices: { method: "GET", path: "/api/v1/invoices" },
   journalKey: { method: "GET", path: "/api/v1/journal/signing-key" },
   journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
@@ -815,12 +969,13 @@ export const operations = {
   notificationsRead: { method: "PUT", path: "/api/v1/notifications/{id}/read" },
   journalOperations: { method: "GET", path: "/api/v1/operations" },
   journalReceipt: { method: "GET", path: "/api/v1/operations/{operationId}/receipt" },
-  plansNotice: { method: "POST", path: "/api/v1/payments/notifications/{provider}" },
-  plansCurrent: { method: "GET", path: "/api/v1/plan" },
-  plansCheckout: { method: "POST", path: "/api/v1/plan/checkout" },
-  plansCatalog: { method: "GET", path: "/api/v1/plans" },
+  softwarePayments: { method: "GET", path: "/api/v1/payments" },
+  softwarePlans: { method: "GET", path: "/api/v1/plans" },
+  softwareCreatePlan: { method: "POST", path: "/api/v1/plans" },
+  softwareDeletePlan: { method: "DELETE", path: "/api/v1/plans/{id}" },
+  softwareUpdatePlan: { method: "PUT", path: "/api/v1/plans/{id}" },
   policiesPublication: { method: "GET", path: "/api/v1/policies/publication" },
-  policiesPublish: { method: "POST", path: "/api/v1/policies/publication" },
+  policiesPublish_1: { method: "POST", path: "/api/v1/policies/publication" },
   policiesRules: { method: "GET", path: "/api/v1/policies/rules" },
   policiesCreate: { method: "POST", path: "/api/v1/policies/rules" },
   policiesDelete: { method: "DELETE", path: "/api/v1/policies/rules/{id}" },

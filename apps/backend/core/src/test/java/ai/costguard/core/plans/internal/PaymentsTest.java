@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Which provider takes payments (ADR 0034): none unless one is named, and never one the build does not have. */
+/** Which provider takes payments (ADR 0038): none unless one is named, and never one the build does not have. */
 class PaymentsTest {
 
     private static PlansProperties properties(String provider) {

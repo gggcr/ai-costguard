@@ -63,5 +63,5 @@ gateway, `EventMappingTest` for what the core publishes, and `tests/contracts` f
 feed every consumer random messages the schema allows. A listener added without its contract fails those tests.
 
 `tenants.plans.v1` is not on the board: self-registration and pricing plans came after it
-([ADR 0033](../../docs/adr/0033-pricing-plans-and-limits.md)). The gateway refuses operations of a read-only
+([ADR 0037](../../docs/adr/0037-pricing-plans-and-limits.md)). The gateway refuses operations of a read-only
 company and counts the operations of the month against the plan.

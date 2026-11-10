@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useLookup, useStore } from '../api/store';
+import { DATA_MODE, useLookup, useStore } from '../api/store';
+import { ForecastPanel } from './Forecast';
 import { useAuth } from '../auth/auth';
 import type { Report } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, Modal, PageHeader, Stat, Tabs } from '../components/ui';
@@ -81,6 +82,7 @@ export function Analytics() {
   return (
     <>
       <PageHeader title="Прогнозы и отчёты" subtitle="Прогноз расходов, сценарии экономии «что если» и отчёты для руководства" />
+      {DATA_MODE === 'api' ? <ForecastPanel /> : <>
       <div className="stats">
         <Stat label="Прогноз на следующий месяц" value={fmtRub(nextForecast)} hint={series === 'total' ? 'ПО и ИИ-агенты' : series === 'software' ? 'только ПО' : 'только ИИ-агенты'} />
         <Stat label="Рост ИИ-расходов за год" value={agentFirst > 0 ? `×${(agentMonthly / agentFirst).toFixed(1)}` : '—'} hint={`${fmtRub(agentFirst)} → ${fmtRub(agentMonthly)} в месяц`} />
@@ -96,8 +98,10 @@ export function Analytics() {
         </details>
       </Card>
 
+      </>}
+
       <div className="grid-2">
-        <Card title="Сценарий «что если»">
+        {DATA_MODE !== 'api' && <Card title="Сценарий «что если»">
           <div className="form">
             <Field label={`Снять неиспользуемые места: ${seatCut}%`} hint={`экономия ${fmtRub(savingSeats)} в месяц`}>
               <input type="range" min={0} max={40} value={seatCut} onChange={(e) => setSeatCut(Number(e.target.value))} />
@@ -108,7 +112,7 @@ export function Analytics() {
             </Field>
             <div className="scenario-total">Итого: <strong>{fmtRub(scenarioTotal)}</strong> в месяц · <strong>{fmtRub(scenarioTotal * 12)}</strong> в год</div>
           </div>
-        </Card>
+        </Card>}
 
         <Card title="Отчёты" actions={canEdit('analytics') && <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>Сформировать</Button>}>
           {state.reports.length === 0 ? <Empty>Отчётов пока нет</Empty> : (

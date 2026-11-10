@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Warns before a trial or a paid period ends, and makes the company read-only when it ends (ADR 0033). */
+/** Warns before a trial or a paid period ends, and makes the company read-only when it ends (ADR 0037). */
 @Component
 class PlanWatch {
 

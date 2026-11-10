@@ -2,15 +2,18 @@ package ai.costguard.core.findings.internal;
 
 import ai.costguard.core.findings.FindingOpened;
 import ai.costguard.core.findings.FindingsIntake;
+import ai.costguard.core.findings.InvoiceEvidence;
 import ai.costguard.core.findings.SavingsConfirmed;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,12 +29,20 @@ class FindingService implements FindingsIntake {
     private final TenantSession session;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final BigDecimal confirmShare;
 
-    FindingService(FindingRepository findings, TenantSession session, Clock clock, ApplicationEventPublisher events) {
+    /**
+     * @param confirmShare the share of the expected saving an invoice has to show to confirm it
+     *     ({@code costguard.findings.confirm-share}, 0.9): prices and VAT round, a seat may be billed for part of a
+     *     month
+     */
+    FindingService(FindingRepository findings, TenantSession session, Clock clock, ApplicationEventPublisher events,
+            @Value("${costguard.findings.confirm-share:0.9}") BigDecimal confirmShare) {
         this.findings = findings;
         this.session = session;
         this.clock = clock;
         this.events = events;
+        this.confirmShare = confirmShare;
     }
 
     @Override
@@ -81,6 +92,55 @@ class FindingService implements FindingsIntake {
                         what + ". Закрыта автоматически");
             }
         });
+    }
+
+    @Override
+    @Transactional
+    public void invoiced(UUID tenantId, InvoiceEvidence invoice) {
+        session.bind(tenantId);
+        for (FindingRepository.InProgress p : findings.lockInProgressOn(invoice.subscriptionId())) {
+            Finding f = findings.find(p.id()).orElseThrow();
+            if (Transitions.settledByEvent(f.rule()) || f.expectedSavings().signum() <= 0) {
+                continue;
+            }
+            LocalDate task = p.taskAt() == null ? null : LocalDate.ofInstant(p.taskAt(), clock.getZone());
+            if (task != null && invoice.issuedOn().isBefore(task)) {
+                continue; // an invoice from before the work tells nothing about it
+            }
+            // the last invoice before the task is what the company paid without the change
+            Optional<InvoiceEvidence.Earlier> before = invoice.earlier().stream()
+                    .filter(e -> task == null ? !e.issuedOn().isAfter(invoice.issuedOn()) : e.issuedOn().isBefore(task))
+                    .findFirst();
+            if (before.isEmpty()) {
+                findings.log(tenantId, f.id(), clock.instant(), SYSTEM, "Пришёл счёт " + invoice.label()
+                        + ", но счёта до задачи нет: сравнить не с чем. Подтвердите экономию вручную");
+                continue;
+            }
+            BigDecimal expected = f.expectedSavings().multiply(BigDecimal.valueOf(invoice.yearly() ? 12 : 1));
+            BigDecimal less = before.get().total().subtract(invoice.total());
+            String compared = "было " + rub(before.get().total()) + ", стало " + rub(invoice.total())
+                    + ", ожидалось меньше на " + rub(expected);
+            if (less.compareTo(expected.multiply(confirmShare)) >= 0) {
+                move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, SYSTEM,
+                        "Экономия видна в счёте " + invoice.label() + " (" + compared + "). Подтверждена");
+                events.publishEvent(new SavingsConfirmed(tenantId, f.id(), f.title(), f.expectedSavings()));
+                continue;
+            }
+            int missed = f.missedInvoices() + 1;
+            if (missed >= INVOICES_BEFORE_REVIEW) {
+                move(tenantId, f, FindingStatus.review, f.ownerId(), null, null, 0, SYSTEM,
+                        "Экономии нет и в счёте " + invoice.label() + " (" + compared
+                                + "): два счёта подряд. Вернулась на проверку");
+            } else {
+                move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, missed, SYSTEM,
+                        "Экономии нет в счёте " + invoice.label() + " (" + compared + "), " + missed + " из "
+                                + INVOICES_BEFORE_REVIEW);
+            }
+        }
+    }
+
+    private static String rub(BigDecimal amount) {
+        return amount.setScale(2, RoundingMode.HALF_EVEN).toPlainString() + " ₽";
     }
 
     private void move(UUID tenantId, Finding f, FindingStatus to, UUID owner, LocalDate until, String reason,
@@ -137,8 +197,11 @@ class FindingService implements FindingsIntake {
                 move(tenantId, f, FindingStatus.rejected, f.ownerId(), null, request.reason(), 0, by,
                         "Отклонена: " + request.reason());
             }
-            case createTask -> move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, 0, by,
-                    "Создана задача" + (request.reason() == null ? "" : ": " + request.reason()));
+            case createTask -> {
+                move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, 0, by,
+                        "Создана задача" + (request.reason() == null ? "" : ": " + request.reason()));
+                findings.taskCreated(f.id(), clock.instant());
+            }
             case confirm -> {
                 move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, by,
                         "Экономия видна в следующем счёте. Подтверждена");

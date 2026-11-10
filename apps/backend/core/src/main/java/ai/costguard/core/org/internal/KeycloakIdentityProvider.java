@@ -16,7 +16,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * Accounts in Keycloak through its admin API (ADR 0032). The core signs in as the confidential client
+ * Accounts in Keycloak through its admin API (ADR 0036). The core signs in as the confidential client
  * {@code costguard-registration}, whose service account may manage users and read realm roles. Keycloak itself
  * sends the e-mail to confirm the address and set a password, with the realm's SMTP settings.
  */

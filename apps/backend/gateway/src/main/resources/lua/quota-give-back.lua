@@ -1,4 +1,4 @@
--- Gives back the place an operation took when a later step refused or held it (ADR 0033).
+-- Gives back the place an operation took when a later step refused or held it (ADR 0037).
 -- KEYS[1] counter of the month. Never goes below zero, so a counter that expired meanwhile stays gone.
 -- Returns the counter after.
 local used = tonumber(redis.call('GET', KEYS[1]) or '0')

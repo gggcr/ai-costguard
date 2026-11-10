@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * {@code costguard.plans} (ADR 0033). The catalog and its limits come from the configuration only; any value can
+ * {@code costguard.plans} (ADR 0037). The catalog and its limits come from the configuration only; any value can
  * be overridden from the environment, e.g. {@code COSTGUARD_PLANS_CATALOG_START_LIMITS_AGENTS=20}.
  *
  * @param trialLength how long a new company's trial lasts
@@ -16,7 +16,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param paidPeriod what one payment buys
  * @param watchDelay how often the watcher looks for periods that end
  * @param catalog the plans by name: trial, start, business
- * @param payments the payment provider (ADR 0034)
+ * @param payments the payment provider (ADR 0038)
  */
 @ConfigurationProperties("costguard.plans")
 record PlansProperties(

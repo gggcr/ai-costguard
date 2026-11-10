@@ -1,4 +1,4 @@
--- Owned by the plans module (ADR 0033, ADR 0034). Every table with RLS also gets the backup policy (ADR 0025).
+-- Owned by the plans module (ADR 0037, ADR 0038). Every table with RLS also gets the backup policy (ADR 0025).
 
 -- The plan of a company. No row: a company that existed before plans, which keeps working without limits until an
 -- operator gives it a plan.
@@ -29,7 +29,7 @@ create table plan_schedule (
 
 create index plan_schedule_due on plan_schedule (access_until) where access_until is not null;
 
-create table payment (
+create table plan_payment (
     id                  uuid primary key,
     tenant_id           uuid          not null,
     plan                text          not null,
@@ -42,14 +42,14 @@ create table payment (
     paid_at             timestamptz
 );
 
-alter table payment enable row level security;
-alter table payment force row level security;
-create policy tenant_isolation on payment
+alter table plan_payment enable row level security;
+alter table plan_payment force row level security;
+create policy tenant_isolation on plan_payment
     using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
-create policy backup_read on payment for select using (current_user = 'costguard_backup');
+create policy backup_read on plan_payment for select using (current_user = 'costguard_backup');
 
--- A provider's notice names its own payment id and no company: this finds the company (ids only, no RLS).
-create table payment_ref (
+-- A provider's notice names its own plan_payment id and no company: this finds the company (ids only, no RLS).
+create table plan_payment_ref (
     provider            text not null,
     provider_payment_id text not null,
     tenant_id           uuid not null,

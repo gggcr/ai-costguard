@@ -181,7 +181,7 @@ class ConnectionRepository {
                 .list();
     }
 
-    /** What the connected-systems limit of the plan counts: systems connected now, not disconnected ones (ADR 0033). */
+    /** What the connected-systems limit of the plan counts: systems connected now, not disconnected ones (ADR 0037). */
     long countEnabled() {
         return jdbc.sql("select count(*) from connection where enabled").query(Long.class).single();
     }

@@ -1,0 +1,158 @@
+{{- /*
+Keycloak in the cluster (ADR 0035). Production mode behind the ingress: TLS ends at the ingress, Keycloak trusts its
+X-Forwarded headers and serves plain HTTP inside. Health and metrics are on the management port 9000. The realm is
+imported on the first start; the import keeps a realm that exists, so changes made in the console survive restarts.
+Its ${...} placeholders are filled from the environment by Keycloak.
+*/}}
+{{- if .Values.keycloak.enabled }}
+{{- $kc := .Values.keycloak }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: costguard-keycloak-realm
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+data:
+  costguard-realm.json: |-
+    {{- .Files.Get "files/keycloak-realm.json" | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: costguard-keycloak
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+    app.kubernetes.io/name: keycloak
+  {{- if .Values.reloadOnSecretChange }}
+  annotations:
+    secret.reloader.stakater.com/reload: {{ $kc.secretName | quote }}
+  {{- end }}
+spec:
+  replicas: {{ $kc.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: costguard
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: costguard
+        app.kubernetes.io/name: keycloak
+      annotations:
+        # a new realm file restarts Keycloak; the import still keeps a realm that exists
+        checksum/realm: {{ .Files.Get "files/keycloak-realm.json" | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: keycloak
+          image: {{ $kc.image }}
+          args: [start, --import-realm]
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Keycloak builds its optimized configuration into its own directories on start
+            readOnlyRootFilesystem: false
+            capabilities: { drop: [ALL] }
+          envFrom:
+            - secretRef:
+                name: {{ $kc.secretName }}
+          env:
+            - { name: KC_DB, value: postgres }
+            - { name: KC_HOSTNAME, value: {{ include "costguard.keycloakUrl" . | quote }} }
+            - { name: KC_PROXY_HEADERS, value: xforwarded }
+            - { name: KC_HTTP_ENABLED, value: "true" }
+            - { name: KC_HEALTH_ENABLED, value: "true" }
+            - { name: KC_METRICS_ENABLED, value: "true" }
+            - { name: KC_CACHE, value: ispn }
+            - { name: KC_CACHE_STACK, value: kubernetes }
+            - name: JAVA_OPTS_APPEND
+              value: "-Djgroups.dns.query=costguard-keycloak-headless.{{ .Release.Namespace }}.svc.cluster.local"
+            # placeholders of the realm file
+            - name: COSTGUARD_WEB_URL
+              value: "https://{{ .Values.ingress.hosts.web }}"
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: management, containerPort: 9000 }
+            - { name: jgroups, containerPort: 7800 }
+          startupProbe:
+            httpGet: { path: /health/started, port: management }
+            failureThreshold: 60
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: management }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health/ready, port: management }
+            periodSeconds: 5
+          resources:
+            {{- toYaml $kc.resources | nindent 12 }}
+          volumeMounts:
+            - { name: realm, mountPath: /opt/keycloak/data/import, readOnly: true }
+      volumes:
+        - name: realm
+          configMap: { name: costguard-keycloak-realm }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: costguard-keycloak
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+    app.kubernetes.io/name: keycloak
+spec:
+  selector:
+    app.kubernetes.io/part-of: costguard
+    app.kubernetes.io/name: keycloak
+  ports:
+    - { name: http, port: 80, targetPort: http }
+    - { name: management, port: 9000, targetPort: management }
+---
+# Replicas find each other here to share sessions (JGroups DNS_PING)
+apiVersion: v1
+kind: Service
+metadata:
+  name: costguard-keycloak-headless
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/part-of: costguard
+    app.kubernetes.io/name: keycloak
+  ports:
+    - { name: jgroups, port: 7800, targetPort: jgroups }
+{{- if gt (int $kc.replicas) 1 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: costguard-keycloak
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: costguard
+      app.kubernetes.io/name: keycloak
+{{- end }}
+{{- if .Values.monitoring.serviceMonitor }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: costguard-keycloak
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: costguard
+      app.kubernetes.io/name: keycloak
+  endpoints:
+    - { port: management, path: /metrics, interval: 30s }
+{{- end }}
+{{- end }}

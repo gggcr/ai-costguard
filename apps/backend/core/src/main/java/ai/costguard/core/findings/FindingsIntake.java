@@ -21,4 +21,11 @@ public interface FindingsIntake {
      * @param what what happened, for the history of the finding
      */
     void settled(UUID tenantId, String fingerprint, String what);
+
+    /**
+     * A new invoice for a subscription (board frame 8). A finding in progress on that subscription compares it with
+     * the last invoice before its task: the saving shows, and the finding is confirmed, or it does not, and two such
+     * invoices in a row send it back to review. Call once per invoice.
+     */
+    void invoiced(UUID tenantId, InvoiceEvidence invoice);
 }

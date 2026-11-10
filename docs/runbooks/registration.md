@@ -1,7 +1,7 @@
 # Регистрация, приглашения и тарифы
 
-Решения: [ADR 0032](../adr/0032-self-registration-and-invitations.md), [ADR 0033](../adr/0033-pricing-plans-and-limits.md),
-[ADR 0034](../adr/0034-payment-provider-interface.md).
+Решения: [ADR 0036](../adr/0036-self-registration-and-invitations.md), [ADR 0037](../adr/0037-pricing-plans-and-limits.md),
+[ADR 0038](../adr/0038-payment-provider-interface.md).
 
 ## Включить регистрацию и приглашения на стенде
 Локально всё уже настроено: realm `infra/keycloak/costguard-realm.json` создаёт клиента и шлёт почту в Mailpit
@@ -37,11 +37,11 @@
   `COSTGUARD_PLANS_CATALOG_START_LIMITS_AGENTS=20`. Шлюз узнаёт лимит операций из `tenants.plans.v1` при следующем
   изменении тарифа компании.
 - Назначить тариф компании, существовавшей до тарифов (у неё нет строки `tenant_plan` и нет лимитов): оплата через
-  `POST /api/v1/plan/checkout` от владельца создаёт тариф.
+  `POST /api/v1/billing/checkout` от владельца создаёт тариф.
 - `402 plan_read_only` у всей компании — закончился пробный или оплаченный период; владелец оплачивает тариф,
   ограничение снимается сразу (шлюз — после доставки `tenants.plans.v1`).
 - `402 plan_limit_exceeded` — тело ответа говорит, какой лимит, сколько разрешено и сколько есть.
 
 ## Оплата
-Провайдер не выбран ([ADR 0034](../adr/0034-payment-provider-interface.md)). `PAYMENT_PROVIDER` пуст — checkout отвечает
+Провайдер не выбран ([ADR 0038](../adr/0038-payment-provider-interface.md)). `PAYMENT_PROVIDER` пуст — checkout отвечает
 `503 payment_provider_missing`. `PAYMENT_PROVIDER=dummy` — любой платёж проходит без денег: **только локальный стенд**.

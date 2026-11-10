@@ -124,7 +124,7 @@ class NotificationTriggers {
                 "/findings/" + e.findingId(), Level.good, Audience.roles("owner", "finance"));
     }
 
-    /** Owners are warned before the trial or the paid period ends, and told when it ended (ADR 0033). */
+    /** Owners are warned before the trial or the paid period ends, and told when it ended (ADR 0037). */
     @ApplicationModuleListener
     void on(PlanAccessEnding e) {
         String day = DAY.format(e.accessUntil().atZone(MOSCOW));

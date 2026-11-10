@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 /**
  * Runs the ladder and makes its outcome stick: a refused or held operation gets its reserve back, and every
  * outcome is recorded. A step that fails becomes 503 check_unavailable, never a pass. An operation that took a
- * place in the plan's monthly quota gives it back when it does not pass (ADR 0033).
+ * place in the plan's monthly quota gives it back when it does not pass (ADR 0037).
  */
 @Component
 public class Decisions {

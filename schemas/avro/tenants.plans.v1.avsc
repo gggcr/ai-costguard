@@ -2,7 +2,7 @@
   "type": "record",
   "name": "TenantPlan",
   "namespace": "ai.costguard.events",
-  "doc": "A company's pricing plan as the gateway enforces it (ADR 0033). Compacted. Key: tenant_id.",
+  "doc": "A company's pricing plan as the gateway enforces it (ADR 0037). Compacted. Key: tenant_id.",
   "fields": [
     {
       "name": "tenant_id",
