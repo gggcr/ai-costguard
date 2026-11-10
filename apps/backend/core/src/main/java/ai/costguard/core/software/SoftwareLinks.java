@@ -26,8 +26,9 @@ public interface SoftwareLinks {
     Optional<UUID> licenseSeen(UUID tenantId, UUID subscriptionId, UUID employeeId, LocalDate lastActive);
 
     /**
-     * An invoice a source reported, stored or corrected by its entity key, and tied to its subscription and its
-     * payments (ADR 0033). Returns the invoice id.
+     * An invoice a source reported, stored or corrected by its entity key. A new one is tied to its subscription
+     * and its payments, and the findings in progress on that subscription look for their saving in it (ADR 0033).
+     * Returns the invoice id.
      */
     UUID invoiceSeen(UUID tenantId, ReportedInvoice invoice);
 

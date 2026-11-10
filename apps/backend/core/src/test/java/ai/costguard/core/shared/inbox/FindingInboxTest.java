@@ -33,6 +33,10 @@ class FindingInboxTest {
         @Override
         public void settled(UUID tenantId, String fingerprint, String what) {
         }
+
+        @Override
+        public void invoiced(UUID tenantId, ai.costguard.core.findings.InvoiceEvidence invoice) {
+        }
     };
 
     Finding finding(List<String> entities) {
