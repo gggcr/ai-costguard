@@ -63,10 +63,10 @@ make demo               # инфраструктура, ядро и шлюз в 
 | API ядра (Swagger) | http://localhost:8080/swagger-ui.html |
 | Шлюз агентов | http://localhost:8081 |
 | Keycloak | http://localhost:8180, вход `demo` / `demo` |
-| Фронтенд | `cd apps/frontend && npm install && npm run dev` → http://localhost:3000 |
+| Фронтенд | http://localhost:3000, вход `demo` / `demo` (Keycloak) |
 
-Фронтенд пока прототип: работает на синтетических данных в браузере и к API ядра ещё не подключён
-(`apps/frontend/README.md`). Без `make` (Windows): команды цели `demo` из `Makefile` по очереди, через
+Фронтенд работает с API ядра, вход через Keycloak (`apps/frontend/README.md`). Для разработки:
+`cd apps/frontend && npm install && npm run dev`. Без `make` (Windows): команды цели `demo` из `Makefile` по очереди, через
 `docker compose -f infra/local/docker-compose.yml --env-file .env ...`.
 
 Тесты: `./gradlew build` (Java, нужен Docker), `uv sync --all-packages && uv run pytest` (Python),

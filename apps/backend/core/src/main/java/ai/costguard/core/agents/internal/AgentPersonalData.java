@@ -26,7 +26,7 @@ class AgentPersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("mandate", "agent", "virtual_key", "mandate_notarization");
+        return List.of("mandate", "agent", "virtual_key", "mandate_notarization", "agent_risk");
     }
 
     @Override
@@ -45,7 +45,7 @@ class AgentPersonalData implements DataHolder {
             report.tombstone("agents.state.v1", agent.toString());
             report.tombstone("agent.risk-signals.v1", agent.toString());
         }
-        TenantRows.delete(jdbc, tenantId, report, "agents", "virtual_key", "mandate_notarization", "agent",
+        TenantRows.delete(jdbc, tenantId, report, "agents", "agent_risk", "virtual_key", "mandate_notarization", "agent",
                 "mandate");
     }
 }

@@ -1,7 +1,7 @@
 // Техника сотрудников (кадр 15 доски): кто что держит, что пора вернуть, акты выдачи.
 // В ядре это модуль assets: GET/POST /api/v1/assets, PUT/DELETE /api/v1/assets/{id}/assignment,
 // GET /api/v1/assets/{id}/assignments/{assignmentId}/act (PDF акта).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
@@ -45,6 +45,7 @@ type StatusFilter = 'all' | AssetStatus;
 
 export function Assets() {
   const { state } = useStore();
+  const showAct = useShowAct();
   const { canEdit } = useAuth();
   const L = useLookup();
   const navigate = useNavigate();
@@ -132,7 +133,7 @@ export function Assets() {
                         <td><StatusBadge status={a.status} /></td>
                         <td><HolderCell employee={e} /></td>
                         <td><ReturnDue g={g} /></td>
-                        <td>{g?.actNumber ? <button className="link-btn" onClick={(ev) => { ev.stopPropagation(); openAct(state, a, g); }}>{g.actNumber}</button> : <span className="muted">—</span>}</td>
+                        <td>{g?.actNumber ? <button className="link-btn" onClick={(ev) => { ev.stopPropagation(); showAct(a, g); }}>{g.actNumber}</button> : <span className="muted">—</span>}</td>
                         <td className="num">{fmtRub(a.cost)}</td>
                       </tr>
                     ))}
@@ -202,8 +203,8 @@ function AssetForm({ onClose }: { onClose: () => void }) {
   return (
     <Modal open onClose={onClose} title="Новая техника" footer={
       <><Button variant="ghost" onClick={onClose}>Отмена</Button>
-        <Button variant="primary" disabled={!inventoryNumber.trim() || !model.trim() || costBad} onClick={() => {
-          const id = actions.createAsset({ inventoryNumber, model, type, cost, serialNumber: serialNumber.trim() || undefined });
+        <Button variant="primary" disabled={!inventoryNumber.trim() || !model.trim() || costBad} onClick={async () => {
+          const id = await actions.createAsset({ inventoryNumber, model, type, cost, serialNumber: serialNumber.trim() || undefined });
           if (id) { onClose(); navigate(`/assets/${id}`); }
         }}>Поставить на учёт</Button></>
     }>
@@ -223,7 +224,7 @@ function AssetForm({ onClose }: { onClose: () => void }) {
 }
 
 function IssueForm({ asset, onClose }: { asset: Asset; onClose: () => void }) {
-  const { state, actions } = useStore();
+  const { state, actions, mode } = useStore();
   const { user } = useAuth();
   const [employeeId, setEmployeeId] = useState('');
   const [temporary, setTemporary] = useState(false);
@@ -234,10 +235,12 @@ function IssueForm({ asset, onClose }: { asset: Asset; onClose: () => void }) {
   return (
     <Modal open onClose={onClose} title={`Выдать: ${asset.model}`} footer={
       <><Button variant="ghost" onClick={onClose}>Отмена</Button>
-        <Button variant="primary" disabled={!employeeId || dueBad} onClick={() => {
-          const issued = actions.issueAsset(asset.id, employeeId, temporary ? returnDue : null, user?.name ?? '—');
+        <Button variant="primary" disabled={!employeeId || dueBad} onClick={async () => {
+          const issued = await actions.issueAsset(asset.id, employeeId, temporary ? returnDue : null, user?.name ?? '—');
+          if (!issued) return;
           onClose();
-          if (issued) openAct(state, asset, issued);
+          if (mode === 'api') { if (issued.actNumber) void actions.downloadAct(asset.id, issued.id, issued.actNumber); }
+          else openAct(state, asset, issued);
         }}>Выдать и сформировать акт</Button></>
     }>
       <div className="form">
@@ -273,9 +276,20 @@ function DueForm({ asset, g, onClose }: { asset: Asset; g: AssetAssignment; onCl
   );
 }
 
+/** Акт выдачи: в режиме API — неизменяемый PDF из ядра, в демо — страница для печати. */
+function useShowAct() {
+  const { state, actions, mode } = useStore();
+  return (asset: Asset, g: AssetAssignment) => {
+    if (mode === 'api') void actions.downloadAct(asset.id, g.id, g.actNumber ?? 'act');
+    else openAct(state, asset, g);
+  };
+}
+
 export function AssetDetail() {
   const { id } = useParams();
   const { state, actions } = useStore();
+  const showAct = useShowAct();
+  useEffect(() => { if (id) void actions.loadAssetHistory(id); }, [id, actions]);
   const { canEdit } = useAuth();
   const L = useLookup();
   const [modal, setModal] = useState<'issue' | 'due' | null>(null);
@@ -312,7 +326,7 @@ export function AssetDetail() {
               <dt>Выдана</dt><dd>{fmtDate(g.issuedAt)}{g.issuedBy.startsWith('connector:') && <span className="muted small"> · по данным {g.issuedBy.slice('connector:'.length)}</span>}</dd>
               <dt>Вернуть до</dt><dd><ReturnDue g={g} /></dd>
               <dt>Акт</dt><dd>{g.actNumber
-                ? <Button icon="download" onClick={() => openAct(state, asset, g)}>Акт {g.actNumber}</Button>
+                ? <Button icon="download" onClick={() => showAct(asset, g)}>Акт {g.actNumber}</Button>
                 : <span className="muted">нет: выдача записана до появления актов</span>}</dd>
               {others.length > 0 && <><dt>Ещё у сотрудника</dt><dd>{others.map((o, i) => { const x = L.asset(o.assetId); return <span key={o.id}>{i > 0 && ', '}<Link to={`/assets/${o.assetId}`}>{x?.model}</Link></span>; })}</dd></>}
             </dl>
@@ -339,7 +353,7 @@ export function AssetDetail() {
                     <td>{x.returnDue ? fmtDate(x.returnDue) : <span className="muted">бессрочно</span>}</td>
                     <td>{x.returnedAt ? fmtDate(x.returnedAt) : <Badge tone="good">на руках</Badge>}</td>
                     <td>{x.issuedBy.startsWith('connector:') ? `по данным ${x.issuedBy.slice('connector:'.length)}` : x.issuedBy}</td>
-                    <td>{x.actNumber ? <button className="link-btn" onClick={() => openAct(state, asset, x)}>{x.actNumber}</button> : <span className="muted">—</span>}</td>
+                    <td>{x.actNumber ? <button className="link-btn" onClick={() => showAct(asset, x)}>{x.actNumber}</button> : <span className="muted">—</span>}</td>
                   </tr>
                 ))}
               </tbody>

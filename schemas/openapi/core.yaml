@@ -16,16 +16,16 @@ tags:
     \ erasures"
 - name: Assets
   description: "Employee equipment: who holds what and when it is due back"
+- name: Notifications
+  description: "The company feed, its live stream, e-mail and Telegram"
 - name: Connections
   description: Systems the connector agent pulls and how each pull went
-- name: Notifications
-  description: The company feed and its live stream
 - name: Journal
   description: Signed receipts of operations and their anchoring in NEAR
-- name: Ledger
-  description: Budgets and the journal of entries
 - name: Organisation
   description: "Company, departments, employees, users and dismissals"
+- name: Ledger
+  description: Budgets and the journal of entries
 - name: Catalog
   description: "Prices of models and paid APIs, Bank of Russia exchange rates"
 - name: Privacy
@@ -198,6 +198,39 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/notifications/settings:
+    get:
+      tags:
+      - Notifications
+      summary: My e-mail and Telegram notifications
+      description: "Levels: off, info, warning, critical. Without saved settings:\
+        \ e-mail for critical ones."
+      operationId: settings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsView"
+    put:
+      tags:
+      - Notifications
+      summary: Change my notification levels
+      operationId: saveSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsChange"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsView"
   /api/v1/notifications/read:
     put:
       tags:
@@ -1005,6 +1038,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Publication"
+  /api/v1/notifications/telegram-link:
+    post:
+      tags:
+      - Notifications
+      summary: A one-time link that connects my Telegram
+      description: Open it in Telegram and press Start. 409 telegram_unavailable when
+        no bot is configured.
+      operationId: telegramLink
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramLink"
   /api/v1/mandates:
     get:
       tags:
@@ -1579,6 +1627,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IssuedKey"
+  /api/v1/operations:
+    get:
+      tags:
+      - Journal
+      summary: "Latest decisions of the gateway, newest first; page back with before"
+      operationId: operations
+      parameters:
+      - name: agentId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: before
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 200
+          maximum: 500
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperationView"
   /api/v1/operations/{operationId}/receipt:
     get:
       tags:
@@ -2286,6 +2371,36 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityEntry"
+  /api/v1/users/{id}:
+    delete:
+      tags:
+      - Organisation
+      summary: Close a user's access
+      description: The last owner cannot be removed.
+      operationId: removeUser
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/notifications/telegram:
+    delete:
+      tags:
+      - Notifications
+      summary: Stop sending me notifications to Telegram
+      operationId: unlinkTelegram
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsView"
   /api/v1/licenses/{id}:
     delete:
       tags:
@@ -2497,6 +2612,54 @@ components:
         updatedAt:
           type: string
           format: date-time
+    SettingsChange:
+      type: object
+      properties:
+        emailLevel:
+          type: string
+          enum:
+          - "off"
+          - info
+          - warning
+          - critical
+        telegramLevel:
+          type: string
+          enum:
+          - "off"
+          - info
+          - warning
+          - critical
+      required:
+      - emailLevel
+      - telegramLevel
+    SettingsView:
+      type: object
+      properties:
+        email:
+          type: string
+        emailLevel:
+          type: string
+          enum:
+          - "off"
+          - info
+          - warning
+          - critical
+        emailAvailable:
+          type: boolean
+        telegramLevel:
+          type: string
+          enum:
+          - "off"
+          - info
+          - warning
+          - critical
+        telegramLinked:
+          type: boolean
+        telegramLinkedAt:
+          type: string
+          format: date-time
+        telegramAvailable:
+          type: boolean
     MandateDetails:
       type: object
       properties:
@@ -3116,6 +3279,14 @@ components:
         publishedAt:
           type: string
           format: date-time
+    TelegramLink:
+      type: object
+      properties:
+        url:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
     ActionRequest:
       type: object
       properties:
@@ -3498,6 +3669,45 @@ components:
           enum:
           - active
           - revoked
+    OperationView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        kind:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        decision:
+          type: string
+        denialCode:
+          type: string
+        estimatedCost:
+          type: number
+        cost:
+          type: number
+        currency:
+          type: string
+        inputTokens:
+          type: integer
+          format: int64
+        outputTokens:
+          type: integer
+          format: int64
+        receipt:
+          type: string
+          enum:
+          - pending
+          - anchored
     ReceiptView:
       type: object
       properties:

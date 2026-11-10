@@ -121,7 +121,7 @@ function NotificationsBell() {
 }
 
 function UserMenu() {
-  const { state, actions } = useStore();
+  const { state, actions, mode } = useStore();
   const { user, login, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -138,15 +138,18 @@ function UserMenu() {
       </button>
       {open && (
         <div className="dropdown user-dropdown" role="menu">
-          <div className="dropdown-head"><strong>Войти как другая роль</strong></div>
-          {state.users.map((u) => (
-            <button key={u.id} className={`dropdown-item ${u.id === user.id ? 'current' : ''}`} onClick={() => { login(u.id); setOpen(false); navigate('/'); }}>
-              {u.name} <span className="muted small">· {ROLE_LABEL[u.role]}</span>
-            </button>
-          ))}
-          <div className="dropdown-sep" />
-          <button className="dropdown-item" onClick={() => { actions.reset(); setOpen(false); }}>
-            <Icon name="refresh" size={14} /> Сбросить демо-данные
+          {mode === 'demo' && <>
+            <div className="dropdown-head"><strong>Войти как другая роль</strong></div>
+            {state.users.map((u) => (
+              <button key={u.id} className={`dropdown-item ${u.id === user.id ? 'current' : ''}`} onClick={() => { login(u.id); setOpen(false); navigate('/'); }}>
+                {u.name} <span className="muted small">· {ROLE_LABEL[u.role]}</span>
+              </button>
+            ))}
+            <div className="dropdown-sep" />
+          </>}
+          {mode === 'api' && <div className="dropdown-head"><span className="muted small">{user.email}</span></div>}
+          <button className="dropdown-item" onClick={() => { void actions.reset(); setOpen(false); }}>
+            <Icon name="refresh" size={14} /> {mode === 'demo' ? 'Сбросить демо-данные' : 'Обновить данные'}
           </button>
           <button className="dropdown-item" onClick={() => { logout(); navigate('/login'); }}>
             <Icon name="logout" size={14} /> Выйти
@@ -158,7 +161,7 @@ function UserMenu() {
 }
 
 export function Layout() {
-  const { state, live, setLive } = useStore();
+  const { state, live, setLive, mode, loading, error, company } = useStore();
   const { canView } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -192,7 +195,7 @@ export function Layout() {
             );
           })}
         </nav>
-        <div className="sidebar-foot muted small">Демо-компания «Северный ветер»<br />Прототип, данные синтетические</div>
+        <div className="sidebar-foot muted small">{mode === 'demo' ? <>Демо-компания «Северный ветер»<br />Прототип, данные синтетические</> : company.name}</div>
       </aside>
       <div className="sidebar-scrim" onClick={() => setMenuOpen(false)} />
       <div className="main">
@@ -200,7 +203,7 @@ export function Layout() {
           <button className="icon-btn burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Меню"><Icon name="menu" /></button>
           <GlobalSearch />
           <div className="topbar-right">
-            <button className={`live-toggle ${live ? 'on' : ''}`} onClick={() => setLive(!live)} title="Имитация событий SSE от ядра: новые операции агентов, согласования">
+            <button className={`live-toggle ${live ? 'on' : ''}`} onClick={() => setLive(!live)} title={mode === 'demo' ? 'Имитация событий SSE от ядра: новые операции агентов, согласования' : 'Живые уведомления ядра (SSE) и обновление журнала операций'}>
               <span className="live-dot" aria-hidden="true" /> {live ? 'Поток событий: вкл' : 'Поток событий: выкл'}
             </button>
             <NotificationsBell />
@@ -208,7 +211,9 @@ export function Layout() {
           </div>
         </header>
         <main className="content">
-          <Outlet />
+          {loading ? <div className="empty" role="status">Загружаем данные компании…</div>
+            : error ? <div className="empty" role="alert"><p className="error-text">{error}</p><button className="btn" onClick={() => window.location.reload()}>Повторить</button></div>
+              : <Outlet />}
         </main>
       </div>
       <Toasts />

@@ -4,8 +4,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type {
   Agent, AppState, Approval, Asset, AssetAssignment, Budget, Contract, Employee, Finding, FindingStatus, GatewayCode, ImportJob,
-  ImportType, Mandate, Notification, Operation, Role, Subscription, User, Vendor,
+  ImportType, Mandate, Notification, Operation, Role, Subscription, SystemType, User, Vendor,
 } from './types';
+import { ApiStoreProvider } from './api-store';
 import { SYSTEM_TYPES, createSeed } from './mock-data';
 import { fakeHash, fmtRub, localDay, newId } from '../lib';
 
@@ -403,7 +404,8 @@ function useActions(
       },
 
       // ——— Импорт ———
-      createImport(fileName: string, by: string, vendorId?: string): string {
+      createImport(file: File | { name: string }, by: string, vendorId?: string): string {
+        const fileName = file.name;
         const id = newId('imp');
         const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
         const type: ImportType = ['xlsx', 'xls'].includes(ext) ? 'excel' : ext === 'csv' ? 'csv' : ext === 'pdf' ? 'pdf' : ['jpg', 'jpeg', 'png', 'heic'].includes(ext) ? 'scan' : 'bank';
@@ -558,7 +560,7 @@ function useActions(
       // ——— Имитация потока событий (в продакшене — SSE от ядра) ———
       // ——— Подключённые системы (ядро: модуль connections, ADR 0019) ———
       // POST /api/v1/connections: 201 новая, 200 подключена снова (та же id), 409 already_connected
-      connectSystem(type: string, name: string, settings: Record<string, string>): string | null {
+      connectSystem(type: string, name: string, settings: Record<string, string>, _secrets?: Record<string, string>): string | null {
         const s0 = getState();
         const t = SYSTEM_TYPES.find((x) => x.type === type);
         if (!t) { pushToast('Этот тип систем агент не поддерживает', 'critical'); return null; }
@@ -626,6 +628,12 @@ function useActions(
         }), 4000);
       },
 
+      // В демо история выдач, квитанции и акты уже в состоянии
+      loadAssetHistory(_assetId: string) { /* всё уже в памяти */ },
+      downloadAct(_assetId: string, _assignmentId: string, _actNumber: string) { /* акт открывается страницей для печати */ },
+      loadReceipt(_operationId: string) { /* квитанция уже в памяти */ },
+      verifyChain(): { valid?: boolean; problem?: string } | null { return { valid: true }; },
+
       simulateTick() {
         // Решение принимается по текущему снимку, изменение применяется в setState
         const snap = getState();
@@ -680,9 +688,15 @@ function useActions(
   }, [setState, pushToast, getState]);
 }
 
-type Actions = ReturnType<typeof useActions>;
+type DemoActions = ReturnType<typeof useActions>;
+// Действия обоих режимов: в режиме API они асинхронные, страницы ждут результат через await
+export type Actions = { [K in keyof DemoActions]: (...args: Parameters<DemoActions[K]>) => ReturnType<DemoActions[K]> | Promise<Awaited<ReturnType<DemoActions[K]>>> };
 
-interface StoreValue {
+/** demo — данные в браузере (тесты и показ без бэкенда), api — REST API ядра. */
+export const DATA_MODE: 'demo' | 'api' =
+  import.meta.env.VITE_DATA === 'demo' || import.meta.env.MODE === 'test' ? 'demo' : 'api';
+
+export interface StoreValue {
   state: AppState;
   actions: Actions;
   toasts: Toast[];
@@ -690,11 +704,17 @@ interface StoreValue {
   toast: (text: string, level?: Notification['level']) => void;
   live: boolean;
   setLive: (v: boolean) => void;
+  mode: 'demo' | 'api';
+  /** Первая загрузка из API ещё идёт или не удалась */
+  loading: boolean;
+  error: string | null;
+  systemTypes: SystemType[];
+  company: { name: string; currency: string };
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
+function DemoStoreProvider({ children }: { children: ReactNode }) {
   const [state, setRaw] = useState<AppState>(loadState);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [live, setLive] = useState(true);
@@ -731,9 +751,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [live, actions]);
 
-  const value = useMemo(() => ({ state, actions, toasts, dismissToast, toast, live, setLive }), [state, actions, toasts, dismissToast, toast, live]);
+  const value = useMemo<StoreValue>(() => ({ state, actions, toasts, dismissToast, toast, live, setLive, mode: 'demo', loading: false, error: null, systemTypes: SYSTEM_TYPES, company: { name: 'ООО «Ромашка»', currency: 'RUB' } }), [state, actions, toasts, dismissToast, toast, live]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
+
+export function StoreProvider({ children }: { children: ReactNode }) {
+  return DATA_MODE === 'demo' ? <DemoStoreProvider>{children}</DemoStoreProvider> : <ApiStoreProvider>{children}</ApiStoreProvider>;
+}
+
+export { StoreContext };
 
 export function useStore() {
   const ctx = useContext(StoreContext);

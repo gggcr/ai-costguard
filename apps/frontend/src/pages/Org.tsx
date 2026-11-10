@@ -8,7 +8,7 @@ import { Badge, Button, Card, ConfirmButton, Field, Modal, PageHeader, ReadOnlyN
 const ROLES: Role[] = ['owner', 'finance', 'it_admin', 'agent_owner', 'auditor'];
 
 export function Org() {
-  const { state, actions } = useStore();
+  const { state, actions, mode } = useStore();
   const { user, canEdit } = useAuth();
   const L = useLookup();
   const [params, setParams] = useSearchParams();
@@ -57,7 +57,7 @@ export function Org() {
                             <Button variant="ghost" onClick={() => { setEditEmployee(e); setModal('employee'); }}>Изменить</Button>
                             {e.active
                               ? <ConfirmButton variant="ghost" title="Отметить увольнение?" text={`${e.name}: движок аудита проверит лицензии (${licenses.length}) и технику (${held}) и создаст находки.`} confirmLabel="Отметить" onConfirm={() => actions.setEmployeeActive(e.id, false)}>Уволен</ConfirmButton>
-                              : <Button variant="ghost" onClick={() => actions.setEmployeeActive(e.id, true)}>Восстановить</Button>}
+                              : mode === 'demo' && <Button variant="ghost" onClick={() => actions.setEmployeeActive(e.id, true)}>Восстановить</Button>}
                           </span>
                         )}</td>
                       </tr>

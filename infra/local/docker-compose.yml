@@ -148,6 +148,12 @@ services:
       COSTGUARD_AUDIT_DELAY: PT1M
       # A development key only: secrets of connections made locally are encrypted with it (ADR 0030).
       CONNECTIONS_ENCRYPTION_KEY: ${CONNECTIONS_ENCRYPTION_KEY:-ZGV2LW9ubHktY29ubmVjdGlvbnMta2V5LTMyLWJ5dGU=}
+      # E-mail goes to Mailpit: open http://localhost:8025 to read it. Telegram needs a bot token from @BotFather.
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-mailpit}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-costguard@localhost}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      WEB_URL: ${WEB_URL:-http://localhost:3000}
       # «Синхронизировать сейчас» starts costguard_connector_sync when the airflow profile runs
       AIRFLOW_URL: ${AIRFLOW_URL:-}
       AIRFLOW_USERNAME: admin
@@ -171,6 +177,21 @@ services:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8081'"]
       interval: 5s
       retries: 60
+
+  # Catches the e-mail of the local stack: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports: ["8025:8025", "1025:1025"]
+
+  # The web client for `make demo`: http://localhost:3000, log in as demo / demo. nginx proxies /api to the core.
+  frontend:
+    profiles: [demo]
+    build: ../../apps/frontend
+    depends_on:
+      core: { condition: service_healthy }
+    ports: ["3000:3000"]
+    environment:
+      CORE_URL: http://core:8080
 
   # MLflow for the models of the anomaly detector (ADR 0016, 0017). Not started by `make up`:
   # `docker compose --profile ml up -d mlflow`. Runs in SQLite on a volume, artifacts in SeaweedFS (bucket

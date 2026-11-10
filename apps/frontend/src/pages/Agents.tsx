@@ -74,13 +74,14 @@ function AgentForm({ open, onClose, agent }: { open: boolean; onClose: () => voi
   const [mandateId, setMandateId] = useState(agent?.mandateId ?? state.mandates.find((m) => m.status === 'published')?.id ?? '');
   const [limit, setLimit] = useState(30000);
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) return;
     if (agent) {
-      actions.updateAgent(agent.id, { name, description, framework, departmentId, ownerId, mandateId });
+      await actions.updateAgent(agent.id, { name, description, framework, departmentId, ownerId, mandateId });
       onClose();
     } else {
-      const id = actions.createAgent({ name, description, framework, departmentId, ownerId, mandateId }, limit);
+      const id = await actions.createAgent({ name, description, framework, departmentId, ownerId, mandateId }, limit);
+      if (!id) return;
       onClose();
       navigate(`/agents/${id}`);
     }
@@ -161,7 +162,7 @@ export function AgentDetail() {
       <div className="stats">
         <Stat label="Статус" value={agent.status === 'active' ? <Badge tone="good">Работает</Badge> : <Badge tone="critical">Остановлен</Badge>} hint={`${agent.framework} · с ${fmtDate(agent.createdAt)}`} />
         <Stat label="Риск-оценка детектора" value={<RiskBadge score={agent.riskScore} />} hint={agent.riskReason} />
-        <Stat label="Потрачено в ноябре" value={budget ? fmtRub(budget.spent) : '—'} hint={budget && <>из {fmtRub(budget.limit)} <Progress value={budget.spent} max={budget.limit} /></>} to="/budgets" />
+        <Stat label="Потрачено за период бюджета" value={budget ? fmtRub(budget.spent) : '—'} hint={budget && <>из {fmtRub(budget.limit)} <Progress value={budget.spent} max={budget.limit} /></>} to="/budgets" />
         <Stat label="Операций за 14 дней" value={ops.length} hint={`${denied} отказов шлюза`} />
       </div>
 
@@ -177,7 +178,7 @@ export function AgentDetail() {
           </dl>
         </Card>
 
-        <Card title="Виртуальные ключи" actions={manage && <Button icon="key" onClick={() => { setNewKey(actions.issueKey(agent.id)); setCopied(false); }}>Выпустить ключ</Button>}>
+        <Card title="Виртуальные ключи" actions={manage && <Button icon="key" onClick={async () => { const key = await actions.issueKey(agent.id); if (key) { setNewKey(key); setCopied(false); } }}>Выпустить ключ</Button>}>
           <p className="muted small">Агент передаёт ключ шлюзу вместо ключей провайдеров. Настоящие ключи хранятся в Vault.</p>
           <ul className="list">
             {keys.map((k) => (

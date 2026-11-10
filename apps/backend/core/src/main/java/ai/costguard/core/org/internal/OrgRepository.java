@@ -157,6 +157,10 @@ class OrgRepository {
         return jdbc.sql("select id from user_account where role = 'owner' for update").query(UUID.class).list().size();
     }
 
+    void deleteUser(UUID id) {
+        jdbc.sql("delete from user_account where id = ?").param(id).update();
+    }
+
     void setRole(UUID id, UserRole role) {
         jdbc.sql("update user_account set role = ? where id = ?").params(role.name(), id).update();
     }

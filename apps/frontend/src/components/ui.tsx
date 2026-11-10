@@ -74,6 +74,7 @@ export const CODE_META: Record<GatewayCode, { label: string; tone: Tone; http: s
   '423_agent_suspended': { label: 'Агент остановлен', tone: 'critical', http: '423' },
   '429_rate_limited': { label: 'Замедлен', tone: 'warning', http: '429' },
   approval_rejected: { label: 'Отклонено человеком', tone: 'serious', http: '403' },
+  pending_approval: { label: 'Ждёт согласования', tone: 'warning', http: '202' },
 };
 export function CodeBadge({ code }: { code: GatewayCode }) {
   const m = CODE_META[code];
@@ -96,6 +97,7 @@ export function FindingBadge({ status }: { status: FindingStatus }) {
 }
 
 export const IMPORT_META: Record<ImportStatus, { label: string; tone: Tone }> = {
+  uploaded: { label: 'Разбирается', tone: 'info' },
   mapping: { label: 'Нужно сопоставить колонки', tone: 'warning' },
   review: { label: 'Ручная проверка', tone: 'warning' },
   done: { label: 'Готово', tone: 'good' },

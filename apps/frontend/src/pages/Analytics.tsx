@@ -8,6 +8,12 @@ import { downloadText, fmtDate, fmtMonth, fmtRub, toCsv } from '../lib';
 
 type Series = 'total' | 'software' | 'agents';
 
+const NOW = new Date();
+const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const monthBack = (k: number) => ym(new Date(NOW.getFullYear(), NOW.getMonth() - k, 1));
+const PERIODS = [monthBack(0), monthBack(1), monthBack(2), `${NOW.getFullYear()}-Q${Math.floor(NOW.getMonth() / 3) + 1}`, String(NOW.getFullYear())];
+const MONTH_NAME = NOW.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+
 export function Analytics() {
   const { state, actions } = useStore();
   const { user, canEdit } = useAuth();
@@ -17,20 +23,22 @@ export function Analytics() {
   const [annual, setAnnual] = useState(true);
   const [agentCut, setAgentCut] = useState(10);
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('Расходы и экономия за ноябрь 2026');
+  const [name, setName] = useState(`Расходы и экономия за ${MONTH_NAME}`);
   const [format, setFormat] = useState<'xlsx' | 'pdf'>('xlsx');
-  const [period, setPeriod] = useState('2026-11');
+  const [period, setPeriod] = useState(PERIODS[0]);
 
   const points = useMemo<LinePoint[]>(() => {
     const val = (p: { software: number; agents: number }) => (series === 'total' ? p.software + p.agents : p[series]);
     const hist = state.costHistory.map((p) => ({ label: fmtMonth(p.month), value: val(p) }));
     // Прогноз: тренд за последние 6 месяцев (в рабочей версии — ETS/Theta из сервиса прогнозов)
     const last = state.costHistory.slice(-6).map(val);
-    const slope = (last[last.length - 1] - last[0]) / (last.length - 1);
+    if (!last.length) return hist;
+    const slope = last.length > 1 ? (last[last.length - 1] - last[0]) / (last.length - 1) : 0;
     const base = last[last.length - 1];
-    const months = ['2026-11', '2026-12', '2027-01', '2027-02'];
+    const lastMonth = state.costHistory[state.costHistory.length - 1].month;
+    const months = [1, 2, 3, 4].map((k) => { const [y, m] = lastMonth.split('-').map(Number); const d = new Date(y, m - 1 + k, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
     const fc = months.map((m, i) => {
-      const v = Math.round(base + slope * (i + 1));
+      const v = Math.max(0, Math.round(base + slope * (i + 1)));
       const spread = 0.04 + i * 0.03;
       return { label: fmtMonth(m), value: v, forecast: true, low: Math.round(v * (1 - spread)), high: Math.round(v * (1 + spread)) };
     });
@@ -39,7 +47,8 @@ export function Analytics() {
 
   const softwareMonthly = state.subscriptions.reduce((s, x) => s + x.seats * x.pricePerSeat, 0);
   const monthlyOnly = state.subscriptions.filter((s) => s.billingPeriod === 'month').reduce((s, x) => s + x.seats * x.pricePerSeat, 0);
-  const agentMonthly = state.costHistory[state.costHistory.length - 1].agents;
+  const agentMonthly = state.costHistory[state.costHistory.length - 1]?.agents ?? 0;
+  const agentFirst = state.costHistory[0]?.agents ?? 0;
   const savingSeats = Math.round(softwareMonthly * (seatCut / 100));
   const savingAnnual = annual ? Math.round(monthlyOnly * 0.17) : 0;
   const savingAgents = Math.round(agentMonthly * (agentCut / 100));
@@ -73,8 +82,8 @@ export function Analytics() {
     <>
       <PageHeader title="Прогнозы и отчёты" subtitle="Прогноз расходов, сценарии экономии «что если» и отчёты для руководства" />
       <div className="stats">
-        <Stat label="Прогноз на ноябрь" value={fmtRub(nextForecast)} hint={series === 'total' ? 'ПО и ИИ-агенты' : series === 'software' ? 'только ПО' : 'только ИИ-агенты'} />
-        <Stat label="Рост ИИ-расходов за год" value={`×${(agentMonthly / state.costHistory[0].agents).toFixed(1)}`} hint={`${fmtRub(state.costHistory[0].agents)} → ${fmtRub(agentMonthly)} в месяц`} />
+        <Stat label="Прогноз на следующий месяц" value={fmtRub(nextForecast)} hint={series === 'total' ? 'ПО и ИИ-агенты' : series === 'software' ? 'только ПО' : 'только ИИ-агенты'} />
+        <Stat label="Рост ИИ-расходов за год" value={agentFirst > 0 ? `×${(agentMonthly / agentFirst).toFixed(1)}` : '—'} hint={`${fmtRub(agentFirst)} → ${fmtRub(agentMonthly)} в месяц`} />
         <Stat label="Экономия по сценарию" value={`${fmtRub(scenarioTotal)}/мес`} hint={`${fmtRub(scenarioTotal * 12)} в год`} />
       </div>
 
@@ -127,7 +136,7 @@ export function Analytics() {
         <div className="form">
           <Field label="Название"><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <div className="form-row">
-            <Field label="Период"><select className="input" value={period} onChange={(e) => setPeriod(e.target.value)}>{['2026-11', '2026-10', '2026-09', '2026-Q3', '2026'].map((p) => <option key={p}>{p}</option>)}</select></Field>
+            <Field label="Период"><select className="input" value={period} onChange={(e) => setPeriod(e.target.value)}>{PERIODS.map((p) => <option key={p}>{p}</option>)}</select></Field>
             <Field label="Формат"><select className="input" value={format} onChange={(e) => setFormat(e.target.value as 'xlsx' | 'pdf')}><option value="xlsx">XLSX</option><option value="pdf">PDF</option></select></Field>
           </div>
         </div>

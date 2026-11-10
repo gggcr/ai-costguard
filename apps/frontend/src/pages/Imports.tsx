@@ -25,11 +25,11 @@ export function Imports() {
   const [drag, setDrag] = useState(false);
   const edit = canEdit('imports');
 
-  const upload = (files: FileList | null) => {
+  const upload = async (files: FileList | null) => {
     const f = files?.[0];
     if (!f) return;
-    const id = actions.createImport(f.name, user?.name ?? '', vendorId || undefined);
-    navigate(`/imports/${id}`);
+    const id = await actions.createImport(f, user?.name ?? '', vendorId || undefined);
+    if (id) navigate(`/imports/${id}`);
   };
   const onDrop = (e: DragEvent) => { e.preventDefault(); setDrag(false); if (edit) upload(e.dataTransfer.files); };
 
@@ -82,7 +82,7 @@ export function Imports() {
 
 function Pipeline({ job }: { job: ImportJob }) {
   const steps = ['Bronze: файл в S3', 'Разбор', 'Проверки: схема, суммы, ИНН, даты, дубли', 'Silver: записи FOCUS', 'Движок аудита'];
-  const reached = job.status === 'failed' ? 1 : job.status === 'mapping' ? 1 : job.status === 'review' ? 2 : 5;
+  const reached = job.status === 'failed' || job.status === 'uploaded' || job.status === 'mapping' ? 1 : job.status === 'review' ? 2 : 5;
   return (
     <ol className="pipeline">
       {steps.map((s, i) => (
@@ -97,7 +97,7 @@ function Pipeline({ job }: { job: ImportJob }) {
 
 export function ImportDetail() {
   const { id } = useParams();
-  const { state, actions } = useStore();
+  const { state, actions, mode } = useStore();
   const { canEdit } = useAuth();
   const L = useLookup();
   const navigate = useNavigate();
@@ -118,7 +118,7 @@ export function ImportDetail() {
         subtitle={`${TYPE_LABEL[job.type]} · ${L.vendor(job.vendorId)?.name ?? 'поставщик не указан'} · ${job.uploadedBy}, ${fmtDateTime(job.uploadedAt)}`}
         actions={<>
           <Badge tone={IMPORT_META[job.status].tone}>{IMPORT_META[job.status].label}</Badge>
-          {edit && <ConfirmButton variant="ghost" title="Удалить импорт?" text="Файл и созданные из него записи затрат будут удалены." confirmLabel="Удалить" onConfirm={() => { actions.deleteImport(job.id); navigate('/imports'); }}>Удалить</ConfirmButton>}
+          {edit && mode === 'demo' && <ConfirmButton variant="ghost" title="Удалить импорт?" text="Файл и созданные из него записи затрат будут удалены." confirmLabel="Удалить" onConfirm={() => { actions.deleteImport(job.id); navigate('/imports'); }}>Удалить</ConfirmButton>}
         </>} />
       <Card><Pipeline job={job} /><p className="muted small">Маршрут разбора: {ROUTE[job.type]}</p></Card>
 
@@ -166,10 +166,18 @@ export function ImportDetail() {
         </Card>
       )}
 
+      {job.status === 'uploaded' && (
+        <Card title="Файл разбирается">
+          <p className="muted">Сервис разбора читает файл: таблицы, PDF и сканы. Страница обновится, когда он закончит.</p>
+        </Card>
+      )}
+
       {job.status === 'failed' && (
         <Card title="Не удалось разобрать файл">
+          {job.failure && <p>{job.failure}</p>}
           <ul className="bullets">{job.errors.map((e) => <li key={e.message}>{e.message}</li>)}</ul>
-          {edit && <Button variant="primary" icon="refresh" onClick={() => actions.retryImport(job.id)}>Распознать повторно</Button>}
+          {mode === 'api' && <p className="muted small">Исправьте файл и загрузите его снова.</p>}
+          {edit && mode === 'demo' && <Button variant="primary" icon="refresh" onClick={() => actions.retryImport(job.id)}>Распознать повторно</Button>}
         </Card>
       )}
 

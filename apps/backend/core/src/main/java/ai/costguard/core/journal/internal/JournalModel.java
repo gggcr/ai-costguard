@@ -1,5 +1,6 @@
 package ai.costguard.core.journal.internal;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -23,4 +24,18 @@ record SigningKey(String keyId, String algorithm, String publicKey) {
 }
 
 record Batch(UUID id, String merkleRoot, String txHash) {
+}
+
+/**
+ * One decision of the gateway as the web client shows it. {@code cost} is what was charged, null unless allowed;
+ * {@code receipt} is null for operations without a receipt (denied ones, or not yet received by the core).
+ */
+record OperationView(UUID id, UUID agentId, Instant at, String kind, String provider, String model, String decision,
+        String denialCode, BigDecimal estimatedCost, BigDecimal cost, String currency, Long inputTokens,
+        Long outputTokens, ReceiptStatus receipt) {
+
+    OperationView withReceipt(ReceiptStatus status) {
+        return new OperationView(id, agentId, at, kind, provider, model, decision, denialCode, estimatedCost, cost,
+                currency, inputTokens, outputTokens, status);
+    }
 }

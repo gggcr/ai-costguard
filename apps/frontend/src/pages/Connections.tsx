@@ -2,10 +2,9 @@
 // В ядре это модуль connections: GET/POST /api/v1/connections, GET /api/v1/connections/types,
 // GET /api/v1/connections/{id}, GET /api/v1/connections/{id}/runs, POST /api/v1/connections/{id}/sync,
 // DELETE /api/v1/connections/{id}. Менять могут owner и it_admin, смотреть — остальные роли раздела.
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../api/store';
-import { SYSTEM_TYPES } from '../api/mock-data';
 import { useAuth } from '../auth/auth';
 import type { Connection, ConnectionStatus, SystemType } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, Modal, PageHeader, ReadOnlyNote, type Tone } from '../components/ui';
@@ -30,7 +29,10 @@ const SETTING_LABEL: Record<string, string> = {
 };
 const NUMERIC = new Set(['min_image_kb', 'min_image_side']);
 
-const typeOf = (type: string): SystemType | undefined => SYSTEM_TYPES.find((t) => t.type === type);
+function useTypeOf() {
+  const { systemTypes } = useStore();
+  return useCallback((type: string): SystemType | undefined => systemTypes.find((t) => t.type === type), [systemTypes]);
+}
 const firstLine = (text: string) => text.split('\n')[0];
 
 export function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
@@ -74,13 +76,14 @@ function Actions({ c, onReconnect }: { c: Connection; onReconnect: (c: Connectio
 
 export function Connections() {
   const { state } = useStore();
+  const typeOf = useTypeOf();
   const { canEdit } = useAuth();
   const navigate = useNavigate();
   const edit = canEdit('connections');
   const [kind, setKind] = useState('all');
   const [form, setForm] = useState<{ open: boolean; again?: Connection }>({ open: false });
 
-  const kinds = useMemo(() => [...new Set(state.connections.map((c) => typeOf(c.type)?.kind ?? 'other'))], [state.connections]);
+  const kinds = useMemo(() => [...new Set(state.connections.map((c) => typeOf(c.type)?.kind ?? 'other'))], [state.connections, typeOf]);
   const rows = state.connections.filter((c) => kind === 'all' || typeOf(c.type)?.kind === kind);
   const connectButton = edit ? <Button variant="primary" icon="plus" onClick={() => setForm({ open: true })}>Подключить систему</Button> : undefined;
 
@@ -144,6 +147,7 @@ export function Connections() {
 export function ConnectionDetail() {
   const { id } = useParams();
   const { state } = useStore();
+  const typeOf = useTypeOf();
   const { canEdit } = useAuth();
   const [again, setAgain] = useState<Connection | null>(null);
   const navigate = useNavigate();
@@ -185,7 +189,7 @@ export function ConnectionDetail() {
           {t && t.secrets.length > 0 && (
             <div className={`callout ${needsSecrets ? 'callout-critical' : ''}`} role={needsSecrets ? 'alert' : undefined}>
               <strong className="block">Что нужно агенту</strong>
-              <span className="muted small block">Секреты задают в окружении агента коннекторов или в Vault, а не на этой странице.</span>
+              <span className="muted small block">Секреты задают при подключении (хранятся в CostGuard зашифрованными) или в окружении агента коннекторов.</span>
               <ul className="plain">{t.secrets.map((s) => <li key={s}><code>{s}</code></li>)}</ul>
             </div>
           )}
@@ -217,22 +221,24 @@ export function ConnectionDetail() {
 }
 
 function ConnectForm({ again, onClose, onDone }: { again?: Connection; onClose: () => void; onDone: (id: string) => void }) {
-  const { state, actions } = useStore();
+  const { state, actions, mode, systemTypes } = useStore();
+  const typeOf = useTypeOf();
   const [type, setType] = useState<string | null>(again?.type ?? null);
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
   const t = type ? typeOf(type) : undefined;
   const [name, setName] = useState(again?.name ?? '');
   const [settings, setSettings] = useState<Record<string, string>>(again?.settings ?? {});
   const [tried, setTried] = useState(false);
 
   const taken = (st: SystemType) => state.connections.some((c) => c.type === st.type && c.enabled && c.managedInCore);
-  const groups = [...new Set(SYSTEM_TYPES.map((s) => s.kind))];
+  const groups = [...new Set(systemTypes.map((s) => s.kind))];
   const missing = t ? t.required.filter((k) => !settings[k]?.trim()) : [];
 
   const choose = (st: SystemType) => { setType(st.type); setName(st.title); setSettings({}); setTried(false); };
-  const submit = () => {
+  const submit = async () => {
     setTried(true);
     if (!t || missing.length || !name.trim()) return;
-    const id = actions.connectSystem(t.type, name, settings);
+    const id = await actions.connectSystem(t.type, name, settings, secrets);
     if (id) { onClose(); onDone(id); }
   };
 
@@ -250,7 +256,7 @@ function ConnectForm({ again, onClose, onDone }: { again?: Connection; onClose: 
             <div key={g}>
               <h3 className="h3">{KIND_LABEL[g] ?? g}</h3>
               <div className="type-grid">
-                {SYSTEM_TYPES.filter((s) => s.kind === g).map((s) => (
+                {systemTypes.filter((s) => s.kind === g).map((s) => (
                   <button key={s.type} type="button" className="type-card" disabled={taken(s)} onClick={() => choose(s)}>
                     <strong>{s.title}</strong>
                     {taken(s) && <span className="muted small block">Уже подключено</span>}
@@ -274,7 +280,16 @@ function ConnectForm({ again, onClose, onDone }: { again?: Connection; onClose: 
               </Field>
             );
           })}
-          {t.secrets.length > 0 && (
+          {t.secrets.length > 0 && mode === 'api' && <>
+            <h3 className="h3">Секреты</h3>
+            <p className="muted small">Хранятся в CostGuard в зашифрованном виде и уходят только агенту коннекторов; обратно не показываются. Оставьте пустыми, если секреты заданы в окружении агента.</p>
+            {t.secrets.map((k) => (
+              <Field key={k} label={k}>
+                <input className="input" type="password" autoComplete="new-password" value={secrets[k] ?? ''} onChange={(e) => setSecrets({ ...secrets, [k]: e.target.value })} />
+              </Field>
+            ))}
+          </>}
+          {t.secrets.length > 0 && mode === 'demo' && (
             <div className="callout">
               <strong className="block">Задайте в окружении агента</strong>
               <span className="muted small block">Пароли и токены сюда не вводятся: ядро их не хранит.</span>

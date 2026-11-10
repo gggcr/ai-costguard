@@ -2,16 +2,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../api/store';
 import { Button, Card, Empty, PageHeader } from '../components/ui';
 import { fmtDateTime } from '../lib';
+import { ChannelSettings } from './ChannelSettings';
 
 const LEVEL: Record<string, string> = { info: 'Информация', warning: 'Внимание', critical: 'Важно', good: 'Готово' };
 
 export function Notifications() {
-  const { state, actions } = useStore();
+  const { state, actions, mode } = useStore();
   const navigate = useNavigate();
   const unread = state.notifications.filter((n) => !n.read).length;
   return (
     <>
-      <PageHeader title="Уведомления" subtitle="В рабочей версии приходят в реальном времени через SSE, а также в Telegram и на почту"
+      <PageHeader title="Уведомления" subtitle="Приходят в реальном времени; важные — ещё на почту и в Telegram, как вы настроите ниже"
         actions={<><Button disabled={!unread} onClick={() => actions.markAllRead()}>Прочитать все</Button><Button variant="ghost" disabled={!state.notifications.length} onClick={() => actions.clearNotifications()}>Очистить</Button></>} />
       <Card>
         {state.notifications.length === 0 ? <Empty>Уведомлений нет</Empty> : (
@@ -28,6 +29,7 @@ export function Notifications() {
           </ul>
         )}
       </Card>
+      {mode === 'api' && <ChannelSettings />}
     </>
   );
 }

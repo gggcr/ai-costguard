@@ -1,8 +1,27 @@
-// Имитация входа через Keycloak (realm costguard, клиент costguard-frontend).
-// Роли совпадают с infra/keycloak/costguard-realm.json: owner, finance, it_admin, agent_owner, auditor.
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+// Вход через Keycloak (realm costguard, клиент costguard-frontend): в режиме API — настоящий OIDC (oidc.ts),
+// в демо — выбор демо-пользователя. Роли совпадают с infra/keycloak/costguard-realm.json.
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Agent, Role, User } from '../api/types';
 import { useStore } from '../api/store';
+import * as oidc from './oidc';
+
+const ROLES: Role[] = ['owner', 'finance', 'it_admin', 'agent_owner', 'auditor'];
+
+/** Пользователь из токена: роль — старшая из ролей realm, сотрудник — из списка пользователей ядра по почте. */
+export function userFromClaims(claims: oidc.Claims, users: User[]): User | null {
+  const roles = claims.realm_access?.roles ?? [];
+  const role = ROLES.find((r) => roles.includes(r));
+  if (!role) return null;
+  const email = (claims.email ?? '').toLowerCase();
+  const known = users.find((u) => u.email.toLowerCase() === email);
+  return {
+    id: known?.id ?? claims.sub,
+    name: known?.name ?? claims.name ?? claims.preferred_username ?? email,
+    email: claims.email ?? known?.email ?? '',
+    role,
+    employeeId: known?.employeeId,
+  };
+}
 
 export const ROLE_LABEL: Record<Role, string> = {
   owner: 'Владелец',
@@ -56,6 +75,37 @@ const AuthContext = createContext<AuthValue | null>(null);
 const KEY = 'costguard-demo-user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { mode } = useStore();
+  return mode === 'api' ? <OidcAuthProvider>{children}</OidcAuthProvider> : <DemoAuthProvider>{children}</DemoAuthProvider>;
+}
+
+function access(user: User | null, login: (id: string) => void, logout: () => void): AuthValue {
+  return {
+    user,
+    login,
+    logout,
+    canView: (s) => !!user && VIEW[user.role].includes(s),
+    canEdit: (s) => !!user && EDIT[user.role].includes(s),
+    canManageAgent: (a) => {
+      if (!user || !a) return false;
+      if (user.role === 'owner' || user.role === 'it_admin') return true;
+      return user.role === 'agent_owner' && a.ownerId === user.employeeId;
+    },
+  };
+}
+
+function OidcAuthProvider({ children }: { children: ReactNode }) {
+  const { state } = useStore();
+  const [claims, setClaims] = useState(oidc.currentClaims);
+  useEffect(() => oidc.onTokensChange(() => setClaims(oidc.currentClaims())), []);
+  const user = useMemo(() => (claims ? userFromClaims(claims, state.users) : null), [claims, state.users]);
+  const login = useCallback(() => { void oidc.login(window.location.pathname === '/login' ? '/' : window.location.pathname); }, []);
+  const logout = useCallback(() => oidc.logout(), []);
+  const value = useMemo(() => access(user, login, logout), [user, login, logout]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function DemoAuthProvider({ children }: { children: ReactNode }) {
   const { state } = useStore();
   const [userId, setUserId] = useState<string | null>(() => {
     try { return localStorage.getItem(KEY); } catch { return null; }
@@ -71,18 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { localStorage.removeItem(KEY); } catch { /* приватный режим */ }
   }, []);
 
-  const value = useMemo<AuthValue>(() => ({
-    user,
-    login,
-    logout,
-    canView: (s) => !!user && VIEW[user.role].includes(s),
-    canEdit: (s) => !!user && EDIT[user.role].includes(s),
-    canManageAgent: (a) => {
-      if (!user || !a) return false;
-      if (user.role === 'owner' || user.role === 'it_admin') return true;
-      return user.role === 'agent_owner' && a.ownerId === user.employeeId;
-    },
-  }), [user, login, logout]);
+  const value = useMemo(() => access(user, login, logout), [user, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,10 +1,56 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../api/store';
 import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
+import { completeLogin, currentClaims } from '../auth/oidc';
 import { Button, Icon } from '../components/ui';
 
 export function Login() {
+  const { mode } = useStore();
+  return mode === 'api' ? <KeycloakLogin /> : <DemoLogin />;
+}
+
+/** Вход через Keycloak: кнопка ведёт на страницу входа realm costguard, Keycloak возвращает сюда с ?code=. */
+function KeycloakLogin() {
+  const { user, login } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(() => new URLSearchParams(location.search).has('code'));
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current || !new URLSearchParams(location.search).has('code')) return;
+    started.current = true;
+    completeLogin(location.search)
+      .then((to) => navigate(to ?? '/', { replace: true }))
+      .catch((e: unknown) => { setError(e instanceof Error ? e.message : 'Не удалось войти'); setBusy(false); });
+  }, [location.search, navigate]);
+
+  if (user) return <Navigate to="/" replace />;
+  const noRole = !busy && !error && currentClaims() !== null;
+
+  return (
+    <div className="login">
+      <div className="login-card">
+        <div className="brand login-brand">
+          <span className="brand-mark"><Icon name="policies" size={20} /></span>
+          <span>AI CostGuard</span>
+        </div>
+        <h1>Вход</h1>
+        {busy && <p className="muted">Проверяем вход…</p>}
+        {error && <p className="error-text" role="alert">{error}</p>}
+        {noRole && <p className="error-text" role="alert">У вашей учётной записи нет роли CostGuard. Попросите владельца компании выдать доступ.</p>}
+        {!busy && <>
+          <p className="muted">Вход через единую учётную запись компании (Keycloak).</p>
+          <Button variant="primary" className="block-btn" onClick={() => login('')}>Войти через Keycloak</Button>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+function DemoLogin() {
   const { state } = useStore();
   const { user, login } = useAuth();
   const navigate = useNavigate();

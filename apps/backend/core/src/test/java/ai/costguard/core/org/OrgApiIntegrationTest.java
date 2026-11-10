@@ -3,6 +3,7 @@ package ai.costguard.core.org;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -178,5 +179,20 @@ class OrgApiIntegrationTest extends PostgresTestSupport {
         user("owner");
         mvc.perform(json(put("/api/v1/users/" + owner + "/role"), "{\"role\":\"auditor\"}").with(admin()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("auditor"));
+    }
+
+    @Test
+    void aUserIsRemovedButNotTheLastOwner() throws Exception {
+        String owner = user("owner");
+        mvc.perform(delete("/api/v1/users/" + owner).with(admin()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("last_owner"));
+
+        String auditor = user("auditor");
+        mvc.perform(delete("/api/v1/users/" + auditor).with(as(tenant, "finance")))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/users/" + auditor).with(admin())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/users").with(admin()))
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(auditor)).isEmpty());
+        mvc.perform(delete("/api/v1/users/" + auditor).with(admin())).andExpect(status().isNotFound());
     }
 }

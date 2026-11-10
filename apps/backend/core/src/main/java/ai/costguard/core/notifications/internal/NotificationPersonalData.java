@@ -10,7 +10,10 @@ import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
-/** The feed names nobody (its texts say what happened, its links carry ids) and is kept for a term. */
+/**
+ * The feed names nobody (its texts say what happened, its links carry ids) and is kept for a term. Channel settings
+ * (a Telegram chat id) and deliveries belong to a user and go with the user_account row (on delete cascade).
+ */
 @Component
 class NotificationPersonalData implements DataHolder {
 
@@ -22,7 +25,8 @@ class NotificationPersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("notification");
+        return List.of("notification", "notification_delivery", "notification_setting", "notification_tenant",
+                "telegram_link");
     }
 
     @Override
@@ -33,6 +37,7 @@ class NotificationPersonalData implements DataHolder {
 
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "notifications", "notification");
+        TenantRows.delete(jdbc, tenantId, report, "notifications", "notification_delivery", "notification",
+                "notification_setting", "telegram_link", "notification_tenant");
     }
 }

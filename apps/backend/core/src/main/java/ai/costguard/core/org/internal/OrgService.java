@@ -194,4 +194,18 @@ class OrgService {
         }
         return org.user(id).orElseThrow(OrgProblem.USER_NOT_FOUND::failure);
     }
+
+    /** Closes a user's access. The last owner stays: someone must be able to manage the company. */
+    @Transactional
+    void removeUser(UUID tenantId, UUID id) {
+        session.bind(tenantId);
+        long owners = org.lockOwners();
+        UserAccount user = org.user(id).orElseThrow(OrgProblem.USER_NOT_FOUND::failure);
+        if (user.role() == UserRole.owner && owners == 1) {
+            throw OrgProblem.LAST_OWNER.failure();
+        }
+        org.deleteUser(id);
+        events.publishEvent(ActionTaken.of(tenantId, "user.removed", "user", id,
+                Map.of("role", user.role().name())));
+    }
 }

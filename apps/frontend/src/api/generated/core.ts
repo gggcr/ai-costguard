@@ -417,6 +417,23 @@ export type NotificationPage = {
   unread?: number;
 };
 
+export type OperationView = {
+  id?: string;  // uuid
+  agentId?: string;  // uuid
+  at?: string;  // date-time
+  kind?: string;
+  provider?: string;
+  model?: string;
+  decision?: string;
+  denialCode?: string;
+  estimatedCost?: number;
+  cost?: number;
+  currency?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  receipt?: "pending" | "anchored";
+};
+
 export type PolicyRule = {
   id?: string;  // uuid
   name?: string;
@@ -506,6 +523,21 @@ export type SampleOperation = {
   weekday?: number;
 };
 
+export type SettingsChange = {
+  emailLevel: "off" | "info" | "warning" | "critical";
+  telegramLevel: "off" | "info" | "warning" | "critical";
+};
+
+export type SettingsView = {
+  email?: string;
+  emailLevel?: "off" | "info" | "warning" | "critical";
+  emailAvailable?: boolean;
+  telegramLevel?: "off" | "info" | "warning" | "critical";
+  telegramLinked?: boolean;
+  telegramLinkedAt?: string;  // date-time
+  telegramAvailable?: boolean;
+};
+
 export type SigningKey = {
   keyId?: string;
   algorithm?: string;
@@ -578,6 +610,11 @@ export type SystemType = {
   required?: Array<string>;
   optional?: Array<string>;
   secrets?: Array<string>;
+};
+
+export type TelegramLink = {
+  url?: string;
+  expiresAt?: string;  // date-time
 };
 
 export type Totals = {
@@ -700,8 +737,13 @@ export const operations = {
   notificationsClear: { method: "DELETE", path: "/api/v1/notifications" },
   notificationsPage: { method: "GET", path: "/api/v1/notifications" },
   notificationsReadAll: { method: "PUT", path: "/api/v1/notifications/read" },
+  notificationsSettings: { method: "GET", path: "/api/v1/notifications/settings" },
+  notificationsSaveSettings: { method: "PUT", path: "/api/v1/notifications/settings" },
   notificationsStream: { method: "GET", path: "/api/v1/notifications/stream" },
+  notificationsUnlinkTelegram: { method: "DELETE", path: "/api/v1/notifications/telegram" },
+  notificationsTelegramLink: { method: "POST", path: "/api/v1/notifications/telegram-link" },
   notificationsRead: { method: "PUT", path: "/api/v1/notifications/{id}/read" },
+  journalOperations: { method: "GET", path: "/api/v1/operations" },
   journalReceipt: { method: "GET", path: "/api/v1/operations/{operationId}/receipt" },
   policiesPublication: { method: "GET", path: "/api/v1/policies/publication" },
   policiesPublish: { method: "POST", path: "/api/v1/policies/publication" },
@@ -718,6 +760,7 @@ export const operations = {
   softwareAssign_1: { method: "POST", path: "/api/v1/subscriptions/{id}/licenses" },
   organisationUsers: { method: "GET", path: "/api/v1/users" },
   organisationCreateUser: { method: "POST", path: "/api/v1/users" },
+  organisationRemoveUser: { method: "DELETE", path: "/api/v1/users/{id}" },
   organisationChangeRole: { method: "PUT", path: "/api/v1/users/{id}/role" },
   softwareVendors: { method: "GET", path: "/api/v1/vendors" },
   softwareCreateVendor: { method: "POST", path: "/api/v1/vendors" },

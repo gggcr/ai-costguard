@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import type { GatewayCode } from '../api/types';
@@ -83,18 +83,25 @@ export function Operations() {
 
 export function OperationDetail() {
   const { id } = useParams();
-  const { state, actions, toast } = useStore();
+  const { state, actions, toast, mode } = useStore();
   const L = useLookup();
   const op = state.operations.find((o) => o.id === id);
-  const [verify, setVerify] = useState<'idle' | 'running' | 'ok'>('idle');
+  const [verify, setVerify] = useState<'idle' | 'running' | 'ok' | 'broken'>('idle');
+  const [problem, setProblem] = useState('');
+  // Список приносит только статус квитанции; хэши, подпись и путь Меркла — отдельным запросом
+  const hasReceipt = !!op?.receipt;
+  useEffect(() => { if (id && hasReceipt) void actions.loadReceipt(id); }, [id, hasReceipt, actions]);
 
   if (!op) return <Empty action={<Link to="/operations" className="btn btn-primary">В журнал</Link>}>Операция не найдена</Empty>;
   const agent = L.agent(op.agentId);
   const r = op.receipt;
 
-  const runVerify = () => {
+  const runVerify = async () => {
     setVerify('running');
-    setTimeout(() => setVerify('ok'), 1200);
+    if (mode === 'demo') { setTimeout(() => setVerify('ok'), 1200); return; }
+    const v = await actions.verifyChain();
+    setProblem(v?.problem ?? '');
+    setVerify(v?.valid ? 'ok' : 'broken');
   };
   const downloadReceipt = () => {
     downloadText(`receipt-${op.id}.json`, JSON.stringify({ operation_id: op.id, agent_id: op.agentId, at: op.at, vendor: op.vendor, resource: op.resource, amount: op.cost, ...r }, null, 2), 'application/json');
@@ -144,10 +151,18 @@ export function OperationDetail() {
               {r.merklePath && <><dt>Путь Меркла</dt><dd>{r.merklePath.map((p) => <code key={p} className="block">{short(p, 12)}</code>)}</dd></>}
             </dl>
             <div className="row-gap wrap">
-              {r.status === 'pending' && <Button onClick={() => { const n = actions.anchorPending(); toast(`Нотариус закрепил пакет: ${n} квитанций`, 'good'); }}>Закрепить пакет сейчас (демо)</Button>}
+              {r.status === 'pending' && mode === 'demo' && <Button onClick={() => { const n = actions.anchorPending(); toast(`Нотариус закрепил пакет: ${n} квитанций`, 'good'); }}>Закрепить пакет сейчас (демо)</Button>}
               {r.status === 'anchored' && <Button variant="primary" onClick={runVerify} disabled={verify === 'running'}>{verify === 'running' ? 'Проверяю…' : 'Проверить в NEAR'}</Button>}
             </div>
-            {verify === 'ok' && (
+            {verify === 'ok' && mode === 'api' && (
+              <div className="alert alert-good">
+                <strong>✓ Журнал квитанций цел.</strong> Ядро проверило всю цепочку: каждый хэш и каждую подпись Ed25519. Квитанция закреплена в NEAR транзакцией <code>{r.txHash}</code>, корень Меркла пакета <code>{r.batchId}</code>.
+              </div>
+            )}
+            {verify === 'broken' && (
+              <div className="alert alert-critical" role="alert"><strong>Цепочка квитанций нарушена.</strong> {problem}</div>
+            )}
+            {verify === 'ok' && mode === 'demo' && (
               <div className="alert alert-good">
                 <strong>✓ Квитанция подлинная.</strong> Корень Меркла, вычисленный из квитанции и пути, совпал с корнем пакета <code>{r.batchId}</code> в контракте <code>costguard-notary</code> (вызов <code>get_batch</code>). Суммы и персональные данные в блокчейн не попадали.
               </div>

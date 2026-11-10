@@ -1,0 +1,44 @@
+server {
+    listen 3000;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Resolve the core on every request: it gets a new address when it restarts (Docker, Kubernetes)
+    resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+    set $core ${CORE_URL};
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # The live notification stream: no buffering, long reads
+    location = /api/v1/notifications/stream {
+        proxy_pass $core;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+
+    location /api/ {
+        proxy_pass $core;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50m;
+    }
+
+    # Hashed bundles never change; index.html always revalidates
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri /index.html;
+    }
+}

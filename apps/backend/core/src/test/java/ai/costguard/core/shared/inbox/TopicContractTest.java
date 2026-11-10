@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.costguard.core.shared.TopicSchemas;
 import ai.costguard.events.AgentOperation;
+import ai.costguard.events.AgentRiskSignal;
 import ai.costguard.events.ConnectorRun;
 import ai.costguard.events.Finding;
 import ai.costguard.events.IngestNormalized;
@@ -32,7 +33,8 @@ class TopicContractTest {
             "findings.v1", Finding.class,
             "journal.anchors.v1", JournalAnchor.class,
             "notary.confirmations.v1", NotaryConfirmation.class,
-            "connectors.runs.v1", ConnectorRun.class);
+            "connectors.runs.v1", ConnectorRun.class,
+            "agent.risk-signals.v1", AgentRiskSignal.class);
 
     @Test
     void everyListenerHasAContract() {

@@ -27,7 +27,7 @@ export function Dashboard() {
 
   return (
     <>
-      <PageHeader title={`Добрый день, ${user?.name.split(' ')[0]}`} subtitle="Сводка цифровых расходов компании за ноябрь 2026" />
+      <PageHeader title={`Добрый день, ${user?.name.split(' ')[0]}`} subtitle={`Сводка цифровых расходов компании за ${new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`} />
 
       <div className="stats">
         <Stat label="ИИ-агенты: потрачено в ноябре" value={fmtRub(company?.spent ?? 0)} hint={company && <>из {fmtRub(company.limit)} · <Progress value={company.spent} max={company.limit} /></>} to={canView('budgets') ? '/budgets' : undefined} />

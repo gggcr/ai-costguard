@@ -21,6 +21,8 @@ const FILTERS: { id: 'open' | FindingStatus | 'all'; label: string }[] = [
 ];
 const OPEN: FindingStatus[] = ['new', 'review', 'accepted', 'in_progress', 'postponed'];
 
+const ENGINE_ONLY: FindingAction[] = ['autoClose', 'reopen', 'dateReached'];
+
 export function Findings() {
   const { state } = useStore();
   const { canEdit } = useAuth();
@@ -99,7 +101,7 @@ function Lifecycle({ status }: { status: FindingStatus }) {
 
 export function FindingDetail() {
   const { id } = useParams();
-  const { state, actions } = useStore();
+  const { state, actions, mode } = useStore();
   const { user, canEdit } = useAuth();
   const L = useLookup();
   const [modal, setModal] = useState<FindingAction | null>(null);
@@ -113,7 +115,9 @@ export function FindingDetail() {
   const sub = L.subscription(f.subscriptionId);
   const agent = L.agent(f.agentId);
   // Технику в счетах не видно: её находки закрывает возврат, а не «видна в счёте» (ADR 0020)
-  const available = FINDING_TRANSITIONS[f.status].filter((a) => !(f.rule.startsWith('asset.') && (a === 'confirm' || a === 'missInvoice')));
+  // autoClose, reopen и dateReached в ядре делает движок аудита и таймер, человеку они не доступны
+  const available = FINDING_TRANSITIONS[f.status].filter((a) => !(f.rule.startsWith('asset.') && (a === 'confirm' || a === 'missInvoice'))
+    && !(mode === 'api' && ENGINE_ONLY.includes(a)));
   const needsInput: FindingAction[] = ['assign', 'postpone', 'reject', 'createTask'];
 
   const run = (a: FindingAction) => {

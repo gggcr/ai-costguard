@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -112,6 +113,14 @@ class OrgController {
     ResponseEntity<UserAccount> createUser(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody NewUser request) {
         UserAccount created = service.createUser(TenantClaim.of(jwt), request);
         return ResponseEntity.created(URI.create("/api/v1/users/" + created.id())).body(created);
+    }
+
+    @DeleteMapping("/users/{id}")
+    @ManagesOrg
+    @Operation(summary = "Close a user's access", description = "The last owner cannot be removed.")
+    ResponseEntity<Void> removeUser(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        service.removeUser(TenantClaim.of(jwt), id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/users/{id}/role")

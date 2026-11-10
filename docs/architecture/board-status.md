@@ -39,7 +39,7 @@
 | MLflow: модели прогнозов | `deploy/mlflow`, Helm `mlflow.yaml` | сделано иначе (ADR 0016, 0017): в MLflow лежат модели детектора аномалий, моделей прогноза там нет |
 | ClickHouse: единый реестр затрат, витрины | `schemas/clickhouse/migrations` 001–003 | сделано (ADR 0007) |
 | S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано иначе, ADR нет: локально SeaweedFS вместо MinIO. В ядре файлы импорта пишутся на локальный диск (`FileStore`) |
-| Фронтенд: отдельная команда, REST API и SSE | `apps/frontend`, `schemas/openapi`, `/api/v1/notifications/stream` | сделано |
+| Фронтенд: отдельная команда, REST API и SSE | `apps/frontend` (`api/remote*.ts`, `api/api-store.tsx`, `auth/oidc.ts`), `schemas/openapi`, `/api/v1/notifications/stream` | сделано: вход через Keycloak (PKCE), все страницы на API ядра, уведомления по SSE; журнал операций — `GET /api/v1/operations` из ClickHouse |
 | Синхронно в момент операции работают только шлюз и Redis | Лестница шлюза; ядро получает операции из `agent.operations.v1` | сделано (ADR 0004) |
 
 ## 2. Путь операции агента
@@ -78,7 +78,7 @@
 | Isolation Forest и онлайн-модели river | `models.py`, модели в MLflow | сделано (ADR 0016) |
 | Риск 0–100 с объяснением → порог → агент остановлен, `423` | `scorer.py` (50/70/90, STOP только по правилу), `gateway/risk/RiskBoard.java`, `RiskFilter` | сделано (ADR 0016) |
 | `agent.risk-signals.v1` (compacted) → шлюз | `gateway/risk/RiskBoard.java` | сделано |
-| `agent.risk-signals.v1` → ядро agents и notifications: уведомление владельцу агента | — | не сделано: ядро этот топик не читает (`TopicContractTest.CONSUMED`) |
+| `agent.risk-signals.v1` → ядро agents и notifications: уведомление владельцу агента | `shared/inbox/RiskSignalInbox`, `agents/internal/RiskService` (`agent_risk`), `notifications/internal/NotificationTriggers` | сделано (ADR 0031): риск и объяснение в карточке агента, уведомление при смене действия владельцу агента, владельцам и ИТ |
 | `batch/`: платежи за ПО, двойные списания | `detector.py` (`anomaly.spike` → `findings.v1`) | не сделано: есть только правило всплеска трат по провайдеру, двойных списаний нет |
 
 ## 5. Подтверждение операций в NEAR
@@ -166,7 +166,7 @@
 | `agents.state.v1`, `budgets.limits.v1` ядро → шлюз | `EventMapping`, шлюз | сделано |
 | `agent.operations.v1` шлюз → ядро (ledger и journal), детектор, ClickHouse | `gateway/events`, `core/shared/inbox`, `apps/python/anomaly` | сделано |
 | `agent.risk-signals.v1` детектор → шлюз | `gateway/risk` | сделано |
-| `agent.risk-signals.v1` детектор → ядро: agents и notifications | — | не сделано |
+| `agent.risk-signals.v1` детектор → ядро: agents и notifications | `InboxConfig` (группа `core-risk`) | сделано (ADR 0031) |
 | `journal.receipts.v1` → нотариус → `journal.anchors.v1` → ядро | `core/journal`, `apps/python/notary`, `core/shared/inbox` | сделано |
 | `cost.records.v1` → сервис прогнозов и ClickHouse | ClickHouse (ADR 0007); `apps/python/reports` читает ClickHouse, а не топик | сделано иначе (ADR 0007) |
 | `ingest.files.v1` ядро → конвейер приёма; `ingest.normalized.v1` → ядро: software и org | `core/imports`, `apps/python/ingest` | сделано |
@@ -217,7 +217,7 @@
 | Шлюз: `api/`, `providers/` (OpenAI, Anthropic, GigaChat, YandexGPT), `egress/`, `ladder/`, `filters/` (7 ступеней), `rules/` (CEL), `budget/`, `metering/` (jtokkit), `risk/`, `keys/` (Vault), `events/` (Kafka и буфер на диске) | `apps/backend/gateway/src/main/java/ai/costguard/gateway/*` | сделано; дополнительно `approvals/` (ADR 0011) |
 | Ядро: `org`, `agents`, `policies`, `ledger`, `catalog`, `approvals` (эскалация по таймеру), `journal` (Ed25519, ключ из Vault), `software`, `assets`, `imports`, `findings`, `analytics`, `notifications`, `shared` | `apps/backend/core/src/main/java/ai/costguard/core/*` | сделано; дополнительно модуль `connections` (ADR 0019) |
 | Ядро `analytics/`: прогнозы, сценарии, отчёты | `core/analytics` — только `GET /api/v1/analytics/summary` | не сделано |
-| Ядро `notifications/`: Telegram, почта, поток SSE | `core/notifications` | не сделано (частично): лента и SSE есть, Telegram и почты нет |
+| Ядро `notifications/`: Telegram, почта, поток SSE | `core/notifications` | сделано (ADR 0031): лента и SSE; почта (SMTP) и Telegram-бот через очередь доставки в PostgreSQL с повторами; у каждого пользователя свои уровни, Telegram привязывается одноразовой ссылкой |
 | Flyway V1 tenant и RLS; тест границ модулей | `V1__org_tenant.sql`, `ModuleBoundariesTest` | сделано |
 | Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано иначе (ADR 0016): другая раскладка файлов; `batch/` двойных списаний нет |
 | Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано иначе (ADR 0006, 0009) |
@@ -240,7 +240,7 @@
 | Системы на серверах клиента читает агент, наружу ничего не открывается | `connectors/agent.py` (только исходящие к Kafka) | сделано |
 | Склейка поставщиков и людей | `costguard_common.normalized`, `core/imports` | сделано (ADR 0008) |
 | Новый коннектор только переводит формат в единую модель | `connectors/contract.py` | сделано |
-| Страница «Подключённые системы» | API `core/connections`, ТЗ для фронтенда в [connections-page.md](connections-page.md) | сделано иначе (ADR 0019): на доске нет; страницы во фронтенде ещё нет |
+| Страница «Подключённые системы» | API `core/connections`, ТЗ для фронтенда в [connections-page.md](connections-page.md) | сделано иначе (ADR 0019): на доске нет; страница `apps/frontend/src/pages/Connections.tsx` работает с API, секреты вводятся при подключении |
 
 ## 15. Учёт оборудования сотрудников
 
@@ -285,13 +285,11 @@
 ## Коротко: что расходится с доской
 
 Не сделано:
-- уведомление владельцу агента по `agent.risk-signals.v1`: ядро не читает этот топик;
 - двойные списания за ПО в детекторе (`batch/`);
 - 6 правил аудита: пересечения инструментов, избыточный тариф, ошибки в счетах, теневые подписки, ИИ-расходы мимо
   шлюза, помесячно вместо годового;
 - сервис прогнозов в объёме доски (statsforecast, LightGBM, MinT, сценарии, бэктест, переобучение в MLflow) и
   `analytics` ядра (прогнозы, сценарии, отчёты);
-- Telegram и почта в `notifications`;
 - восстановление счётчиков Redis из журнала проводок;
 - Ingress и Keycloak в кластере; Prometheus, Grafana, Loki, OpenTelemetry Collector, `infra/observability`;
 - row policies в ClickHouse;

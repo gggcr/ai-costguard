@@ -54,7 +54,12 @@
             "userinfo.token.claim": "true"
           }
         }
-      ]
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "directAccessGrantsEnabled": false
     },
     {
       "clientId": "costguard-e2e",

@@ -1,21 +1,59 @@
-# CostGuard: фронтенд (прототип)
+# CostGuard: фронтенд
 
-Кликабельный прототип интерфейса AI CostGuard: React 19 + TypeScript + Vite, без бэкенда.
-Данные синтетические и хранятся в браузере (`localStorage`), все кнопки меняют их.
+Веб-клиент AI CostGuard: React 19 + TypeScript + Vite. Работает с REST API ядра (`schemas/openapi/core.yaml`),
+вход через Keycloak (realm `costguard`, публичный клиент `costguard-frontend`, Authorization Code + PKCE).
 
 ## Запуск
 
 Нужен Node.js 20+.
 
 ```bash
+make demo                       # из корня: весь стенд, фронтенд на http://localhost:3000, вход demo / demo
+
 cd apps/frontend
 npm install
-npm run dev        # http://localhost:3000
-npm run build      # проверка типов и сборка в dist/
-npm test           # тесты (Vitest + Testing Library)
+npm run dev                     # http://localhost:3000, /api проксируется в ядро на localhost:8080 (CORE_URL)
+VITE_DATA=demo npm run dev      # без бэкенда: синтетические данные в браузере, вход выбором роли
+npm run build                   # проверка типов и сборка в dist/
+npm test                        # тесты (Vitest + Testing Library), идут в демо-режиме и на подменённом fetch
 ```
 
 Порт 3000 выбран под клиент `costguard-frontend` в `infra/keycloak/costguard-realm.json`.
+
+### Настройки сборки
+
+| Переменная | По умолчанию | Что это |
+|---|---|---|
+| `VITE_KEYCLOAK_URL` | `http://localhost:8180` | адрес Keycloak, который видит браузер |
+| `VITE_KEYCLOAK_REALM` | `costguard` | realm |
+| `VITE_KEYCLOAK_CLIENT` | `costguard-frontend` | публичный клиент; в нём разрешён адрес `https://<сайт>/*` |
+| `VITE_API_URL` | пусто | адрес ядра, если оно не за тем же доменом (тогда в ядре нужен CORS) |
+| `VITE_DATA` | `api` | `demo` — данные в браузере без бэкенда |
+
+Образ: `apps/frontend/Dockerfile` — nginx раздаёт сборку и проксирует `/api` в ядро (`CORE_URL`, по умолчанию
+`http://core:8080`); поток уведомлений `/api/v1/notifications/stream` идёт без буферизации.
+
+## Как устроено
+
+- `src/auth/oidc.ts` — вход через Keycloak: PKCE, обмен кода на токены, обновление по refresh_token за минуту
+  до истечения, выход. Токены в `sessionStorage` вкладки. Роль — старшая из ролей realm
+  (owner → finance → it_admin → agent_owner → auditor); без роли CostGuard войти нельзя.
+- `src/api/http.ts` — запросы с токеном, ошибки ядра (`application/problem+json`, поле `code`) превращаются в
+  понятные сообщения; загрузка и скачивание файлов; поток SSE через `fetch` (EventSource не передаёт токен).
+- `src/api/remote.ts` — ответы ядра в форме состояния страниц; `remote-actions.ts` — действия кнопок как запросы
+  к ядру с перечитыванием затронутых разделов; `api-store.tsx` — хранилище режима API.
+- `src/api/store.tsx` — общий интерфейс хранилища и демо-режим (`mock-data.ts`).
+- Новое уведомление по SSE показывается всплывающим сообщением и перечитывает связанные разделы; журнал
+  операций и бюджеты перечитываются раз в 30 секунд, пока включён «Поток событий».
+- Клиент `src/api/generated/core.ts` генерируется из спецификации: `make codegen`.
+
+Что в режиме API устроено иначе, чем в демо:
+- журнал операций — последние 500 решений шлюза из ClickHouse (`GET /api/v1/operations`); без ClickHouse пуст;
+- квитанция, история выдач техники и PDF акта загружаются при открытии карточки;
+- «Проверить» у квитанции проверяет всю цепочку квитанций в ядре (`GET /api/v1/journal/verification`);
+- «Условие исчезло», «Условие вернулось», «Наступила дата» у находок делают движок аудита и таймер, кнопок нет;
+- увольнение не отменяется; удаления и повторного распознавания импорта в ядре нет — кнопок нет;
+- отчёты XLSX/PDF собираются в браузере из загруженных данных и живут до закрытия вкладки.
 
 ## Что внутри
 
@@ -39,15 +77,3 @@ npm test           # тесты (Vitest + Testing Library)
 
 Переключатель «Поток событий» в шапке имитирует SSE: раз в 15 секунд приходят новые операции агентов,
 отказы по бюджету и запросы на согласование. В меню пользователя есть смена роли и «Сбросить демо-данные».
-
-## Как подключить настоящий бэкенд
-
-- `src/api/types.ts` — типы по модели данных с доски. Их заменит клиент, сгенерированный из
-  `schemas/openapi/core.yaml` и `gateway.yaml`, когда спецификации появятся.
-- `src/api/store.tsx` — все действия кнопок в одном месте. Каждое действие соответствует будущему
-  запросу к REST API, интерфейс функций менять не нужно.
-- Акт выдачи техники в прототипе открывается как страница для печати (`actHtml` в `src/pages/Assets.tsx`). С
-  настоящим бэкендом кнопка акта скачивает неизменяемый PDF из `GET /api/v1/assets/{id}/assignments/{assignmentId}/act`.
-- `src/api/mock-data.ts` — демо-компания, после подключения API удаляется.
-- `src/auth/auth.tsx` — имитация Keycloak и права ролей. Меняется на OIDC-клиент (например, `keycloak-js`).
-- `simulateTick` в `store.tsx` меняется на подписку `EventSource` на SSE ядра.

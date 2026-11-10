@@ -83,7 +83,8 @@ export type GatewayCode =
   | '409_duplicate_operation'
   | '423_agent_suspended'
   | '429_rate_limited'
-  | 'approval_rejected';
+  | 'approval_rejected'
+  | 'pending_approval';
 
 export interface Receipt {
   hash: string;
@@ -223,7 +224,7 @@ export interface Finding {
 }
 
 export type ImportType = 'excel' | 'csv' | 'pdf' | 'scan' | 'bank';
-export type ImportStatus = 'mapping' | 'review' | 'done' | 'failed';
+export type ImportStatus = 'uploaded' | 'mapping' | 'review' | 'done' | 'failed';
 
 export interface ReviewTask {
   id: string;
@@ -249,6 +250,7 @@ export interface ImportJob {
   errors: { row: number; message: string }[];
   reviewTasks: ReviewTask[];
   templateSaved: boolean;
+  failure?: string; // почему разбор не удался (от ingest)
 }
 
 export interface Notification {
