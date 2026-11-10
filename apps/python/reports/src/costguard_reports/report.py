@@ -57,7 +57,8 @@ def label(d: date) -> str:
     return f"{MONTHS_RU[d.month - 1]} {d.year}"
 
 
-def xlsx(r: Report) -> bytes:
+def xlsx(r: Report, explanation: str | None = None) -> bytes:
+    """explanation: the text of explain.explain, on the summary sheet."""
     from openpyxl import Workbook
     from openpyxl.chart import LineChart, Reference
     from openpyxl.styles import Font
@@ -106,6 +107,14 @@ def xlsx(r: Report) -> bytes:
         summary.append(["Её ошибка (WAPE)", r.forecast.challenger.wape])
     summary.column_dimensions["A"].width = 28
     summary.column_dimensions["B"].width = 18
+    if explanation:
+        from openpyxl.styles import Alignment
+
+        summary.append([])
+        summary.append(["Пояснение", explanation])
+        summary.cell(summary.max_row, 2).alignment = Alignment(wrap_text=True, vertical="top")
+        summary.row_dimensions[summary.max_row].height = 15 * (len(explanation) // 60 + 1)
+        summary.column_dimensions["B"].width = 60
     out = io.BytesIO()
     book.save(out)
     return out.getvalue()
@@ -115,7 +124,7 @@ def _money(v: Decimal) -> str:
     return f"{v:,.2f}".replace(",", " ")
 
 
-def pdf(r: Report) -> bytes:
+def pdf(r: Report, explanation: str | None = None) -> bytes:
     from fpdf import FPDF
 
     doc = FPDF()
@@ -133,6 +142,9 @@ def pdf(r: Report) -> bytes:
                         ("Подтверждённая экономия", _money(r.confirmed_savings))]:
         doc.cell(80, 7, name)
         doc.cell(0, 7, value, new_x="LMARGIN", new_y="NEXT")
+    if explanation:
+        doc.ln(3)
+        doc.multi_cell(0, 6, explanation)
     doc.ln(4)
     widths = (35, 38, 38, 38, 38)
     for w, title in zip(widths, ("Месяц", "Факт", "Прогноз", "Нижняя", "Верхняя"), strict=True):

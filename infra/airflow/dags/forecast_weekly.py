@@ -3,7 +3,8 @@ publishes it to the core (costguard-forecast, ADR 0034). The models are fitted a
 is the retraining.
 
 [forecast] takes months (history, 24) and horizon (6). The worker needs <TENANT>_CORE_URL, <TENANT>_CORE_TOKEN (the
-forecast service account) and CLICKHOUSE_URL.
+forecast service account) and CLICKHOUSE_URL. With MLFLOW_TRACKING_URI each run is logged to MLflow, experiment
+costguard-forecast (ADR 0044).
 """
 
 from __future__ import annotations

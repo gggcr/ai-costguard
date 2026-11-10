@@ -1,5 +1,8 @@
 """On the 1st at 06:00 Moscow time, writes last month's spend report with a forecast, as XLSX and PDF, for every
 tenant whose config has a [report] section. Files go to $COSTGUARD_REPORTS_DIR/<tenant>/<month>.xlsx|pdf.
+With REPORTS_LLM_API_KEY and REPORTS_LLM_MODEL (a virtual key of the platform's agent, ADR 0013) a language model
+writes the explanation of the report through the gateway; without them, or when its numbers are off, a template does
+(ADR 0044).
 """
 
 from __future__ import annotations

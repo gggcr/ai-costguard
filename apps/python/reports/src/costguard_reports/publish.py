@@ -20,7 +20,7 @@ from decimal import ROUND_HALF_EVEN, Decimal
 
 import httpx
 
-from costguard_reports import baseline, reconcile, savings
+from costguard_reports import baseline, reconcile, savings, tracking
 from costguard_reports.forecast import Forecast, forecast
 
 COMPANY = "Компания"
@@ -147,6 +147,10 @@ def main(argv: list[str] | None = None) -> None:
     r = core.put("/api/v1/analytics/forecast", content=_json(body), headers={"Content-Type": "application/json"})
     r.raise_for_status()
     print(f"forecast {r.json()['id']}: company by {body['company']['model']}, {len(body['departments'])} departments")
+    if os.environ.get("MLFLOW_TRACKING_URI"):
+        run = tracking.Tracking(httpx.Client(base_url=os.environ["MLFLOW_TRACKING_URI"], timeout=30)).log(
+            args.tenant, body)
+        print(f"MLflow run {run}" if run else "MLflow run not logged")
 
 
 def _json(body: dict) -> bytes:
