@@ -4,6 +4,8 @@ import ai.costguard.events.AgentOperation;
 import ai.costguard.events.AgentState;
 import ai.costguard.events.BudgetLevel;
 import ai.costguard.events.BudgetLimit;
+import ai.costguard.gateway.answers.Answer;
+import ai.costguard.gateway.answers.AnswerCache;
 import ai.costguard.gateway.budget.BudgetReserve;
 import ai.costguard.gateway.budget.BudgetTree;
 import ai.costguard.gateway.events.OperationLog;
@@ -47,6 +49,36 @@ import reactor.core.publisher.Mono;
 public abstract class InMemoryGatewayTest {
 
     public static final MemoryReserve RESERVE = new MemoryReserve();
+    public static final MemoryAnswers ANSWERS = new MemoryAnswers();
+
+    /** The answers Redis would keep for retries, with a size limit a test may lower. */
+    public static class MemoryAnswers extends AnswerCache {
+        public final Map<String, Answer> kept = new ConcurrentHashMap<>();
+        public volatile int limit = 1024 * 1024;
+
+        MemoryAnswers() {
+            super(null, Duration.ofHours(24), 1024 * 1024);
+        }
+
+        @Override
+        public boolean fits(int bytes) {
+            return bytes <= limit;
+        }
+
+        @Override
+        public Mono<Boolean> keep(UUID tenantId, UUID operationId, Answer answer) {
+            if (!fits(answer.body().length)) {
+                return Mono.just(false);
+            }
+            kept.put(key(tenantId, operationId), answer);
+            return Mono.just(true);
+        }
+
+        @Override
+        public Mono<Answer> find(UUID tenantId, UUID operationId) {
+            return Mono.justOrEmpty(kept.get(key(tenantId, operationId)));
+        }
+    }
     public static final MemoryQuota QUOTA = new MemoryQuota();
 
     /** What quota-take.lua and quota-give-back.lua do, per company and month. */
@@ -153,6 +185,12 @@ public abstract class InMemoryGatewayTest {
 
         @Bean
         @Primary
+        MemoryAnswers memoryAnswers() {
+            return ANSWERS;
+        }
+
+        @Bean
+        @Primary
         RecordingLog recordingLog() {
             return new RecordingLog();
         }
@@ -183,12 +221,16 @@ public abstract class InMemoryGatewayTest {
     LoopFilter loopFilter;
 
     static LoopFilter memoryLoopFilter() {
-        return new LoopFilter(null) {
+        return new LoopFilter(null, null) {
             @Override
             public Mono<StepResult> check(Operation op) {
                 String id = op.operationId().toString();
-                return Mono.just(RESERVE.reserved.containsKey(id) || RESERVE.settled.containsKey(id)
-                        ? new StepResult.Refuse(409, "duplicate_operation") : new StepResult.Pass());
+                if (!RESERVE.reserved.containsKey(id) && !RESERVE.settled.containsKey(id)) {
+                    return Mono.just(new StepResult.Pass());
+                }
+                return ANSWERS.find(op.tenantId(), op.operationId())
+                        .map(answer -> (StepResult) new StepResult.Answered(answer))
+                        .defaultIfEmpty(new StepResult.Refuse(409, "duplicate_operation"));
             }
         };
     }
@@ -214,6 +256,7 @@ public abstract class InMemoryGatewayTest {
         web = WebTestClient.bindToApplicationContext(context).configureClient()
                 .responseTimeout(Duration.ofSeconds(30)).build();
         reserve.left = new BigDecimal("1000");
+        ANSWERS.limit = 1024 * 1024;
         directory.apply(AgentState.newBuilder().setTenantId(tenant).setAgentId(agent)
                 .setVirtualKeyHashes(List.of(AgentDirectory.hash(secret))).setSuspended(false).setMandateVersion(3)
                 .setMandateExpression("cost <= 1000.0").setApprovalThreshold(money(approvalThreshold))

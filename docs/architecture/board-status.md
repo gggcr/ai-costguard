@@ -59,7 +59,7 @@
 | Элемент доски | Где в коде | Статус |
 |---|---|---|
 | Ступени по порядку: 1 ключ и агент, 2 мандат, 3 повторы и петли, 4 риск, 5 резерв, 6 ИИ-оценщик, 7 согласование | `gateway/filters/{Identity,Mandate,Loop,Risk,Budget,TaskFit,Approval}Filter.java`, `ladder/CheckLadder` | сделано |
-| Повтор или петля → ответ из кэша или `409 duplicate_operation` | `LoopFilter.java` | сделано |
+| Повтор или петля → ответ из кэша или `409 duplicate_operation` | `LoopFilter.java`, `answers/AnswerCache.java` | сделано (ADR 0039): повтор прошедшей операции получает первый ответ, 409 — если ответа нет |
 | Риск проверяется до резерва | `RiskFilter` (4) перед `BudgetFilter` (5) | сделано |
 | ИИ-оценщик сам пропускает крупную операцию, если она соответствует цели задачи, иначе решает человек | `approvals/LlmTaskFitAssessor.java`, `HumanOnlyAssessor.java`, заголовок цели задачи в SDK | сделано (ADR 0011) |
 | Согласование человеком; одобренная операция повторяется и снова проходит все проверки, включая резерв | `ApprovalFilter`, `approvals/ApprovalBoard.java` ← `approvals.decisions.v1` из `core/approvals` | сделано иначе, ADR нет: решения идут через топик `approvals.decisions.v1`, которого на доске нет |

@@ -248,8 +248,9 @@ class GatewayFlowIT {
         UUID op = UUID.randomUUID();
 
         authorize(op, "300").expectStatus().isOk().expectBody().jsonPath("$.status").isEqualTo("authorized");
-        authorize(op, "300").expectStatus().isEqualTo(409).expectBody().jsonPath("$.error.type")
-                .isEqualTo("duplicate_operation");
+        // a retry gets the first answer from Redis (AnswerCache) and reserves nothing more
+        authorize(op, "300").expectStatus().isOk().expectHeader().valueEquals("X-CostGuard-Replayed", "true")
+                .expectBody().jsonPath("$.status").isEqualTo("authorized");
         web.post().uri("/v1/spend/settle").header("Authorization", "Bearer " + secret)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("authorizationId", op.toString(), "amount", new BigDecimal("250"))).exchange()

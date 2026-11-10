@@ -14,7 +14,7 @@ class CheckLadderOrderTest {
         List<CheckStep> ladder = List.of(
                 new IdentityFilter(null, null),
                 new MandateFilter(null, null),
-                new LoopFilter(null),
+                new LoopFilter(null, null),
                 new RiskFilter(null),
                 new BudgetFilter(null, null, null, 0),
                 new TaskFitFilter(null),

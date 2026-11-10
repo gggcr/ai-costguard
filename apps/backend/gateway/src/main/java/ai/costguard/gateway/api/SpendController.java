@@ -1,6 +1,8 @@
 package ai.costguard.gateway.api;
 
 import ai.costguard.events.OperationKind;
+import ai.costguard.gateway.answers.Answer;
+import ai.costguard.gateway.answers.AnswerCache;
 import ai.costguard.gateway.approvals.ApprovalBoard;
 import ai.costguard.gateway.budget.BudgetReserve;
 import ai.costguard.gateway.keys.AgentDirectory;
@@ -8,6 +10,8 @@ import ai.costguard.gateway.ladder.Decisions;
 import ai.costguard.gateway.ladder.Operation;
 import ai.costguard.gateway.ladder.StepResult;
 import ai.costguard.gateway.ladder.TaskGoal;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.math.BigDecimal;
@@ -15,6 +19,7 @@ import java.time.Clock;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,7 +33,8 @@ import reactor.core.publisher.Mono;
 /**
  * Spend API for purchases, paid APIs and cloud: the same check ladder as for model calls. The caller reserves,
  * spends, then settles the actual amount or releases the reserve. A reserve nobody settles is released after its
- * hold by the sweeper.
+ * hold by the sweeper. A retry of an authorization that went through gets the same answer again, with the header
+ * X-CostGuard-Replayed, and reserves nothing more (AnswerCache, ADR 0039).
  */
 @RestController
 @RequestMapping("/v1/spend")
@@ -38,16 +44,42 @@ public class SpendController {
     private final Decisions decisions;
     private final BudgetReserve reserve;
     private final AgentDirectory agents;
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private final ApprovalBoard approvals;
+    private final AnswerCache answers;
     private final Clock clock;
 
     public SpendController(Decisions decisions, BudgetReserve reserve, AgentDirectory agents, ApprovalBoard approvals,
-            Clock clock) {
+            AnswerCache answers, Clock clock) {
         this.decisions = decisions;
         this.reserve = reserve;
         this.agents = agents;
         this.approvals = approvals;
+        this.answers = answers;
         this.clock = clock;
+    }
+
+    /** The answer to keep, so a retry of the authorization gets it again. */
+    private Mono<ResponseEntity<Object>> authorized(Operation op) {
+        Authorized body = new Authorized(op.operationId().toString(), "authorized", op.estimatedCost());
+        byte[] json;
+        try {
+            json = JSON.writeValueAsBytes(body);
+        } catch (JsonProcessingException e) {
+            return Mono.just(ResponseEntity.ok(body));
+        }
+        return answers.keep(op.tenantId(), op.operationId(), new Answer(200, MediaType.APPLICATION_JSON_VALUE, json))
+                .onErrorReturn(false)
+                .thenReturn(ResponseEntity.ok(body));
+    }
+
+    private static ResponseEntity<Object> replay(Answer answer) {
+        var builder = ResponseEntity.status(answer.status()).header("X-CostGuard-Replayed", "true");
+        if (answer.contentType() != null) {
+            builder.contentType(MediaType.parseMediaType(answer.contentType()));
+        }
+        return builder.body(answer.body());
     }
 
     static String secret(String authorization) {
@@ -90,13 +122,13 @@ public class SpendController {
         Operation op = new Operation(id.get(), secret(authorization), request.taskId(), kind, request.vendor(),
                 request.product(), request.amount(), clock.instant());
         op.taskGoal(TaskGoal.fromHeader(taskGoal));
-        return decisions.decide(op).map(result -> switch (result) {
-            case StepResult.Pass pass -> ResponseEntity.ok(
-                    new Authorized(op.operationId().toString(), "authorized", op.estimatedCost()));
-            case StepResult.Refuse refuse -> ResponseEntity.status(refuse.status())
-                    .body(ErrorBody.of(refuse.type(), refuse.message()));
-            case StepResult.RequireApproval held -> ResponseEntity.status(403).body(new ErrorBody(
-                    new ErrorBody.Error("approval_required", held.reason(), op.operationId().toString())));
+        return decisions.decide(op).flatMap(result -> switch (result) {
+            case StepResult.Pass pass -> authorized(op);
+            case StepResult.Refuse refuse -> Mono.just(ResponseEntity.status(refuse.status())
+                    .body((Object) ErrorBody.of(refuse.type(), refuse.message())));
+            case StepResult.RequireApproval held -> Mono.just(ResponseEntity.status(403).body((Object) new ErrorBody(
+                    new ErrorBody.Error("approval_required", held.reason(), op.operationId().toString()))));
+            case StepResult.Answered answered -> Mono.just(replay(answered.answer()));
         });
     }
 

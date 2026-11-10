@@ -141,12 +141,13 @@ class EgressProxyTest extends InMemoryGatewayTest {
     }
 
     @Test
-    void aRepeatedOperationIdIsRefused() {
+    void aRepeatedOperationIdGetsTheFirstAnswerAndNothingLeaves() {
         UUID op = UUID.randomUUID();
         call("spark", "/v1/companies/1/report", op).expectStatus().isOk();
         API.received.clear();
 
-        call("spark", "/v1/companies/1/report", op).expectStatus().isEqualTo(409);
+        call("spark", "/v1/companies/1/report", op).expectStatus().isOk().expectHeader()
+                .valueEquals("X-CostGuard-Replayed", "true");
 
         assertThat(API.received).isEmpty();
     }

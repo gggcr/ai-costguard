@@ -1,6 +1,8 @@
 package ai.costguard.gateway.providers;
 
 import ai.costguard.events.OperationKind;
+import ai.costguard.gateway.answers.Answer;
+import ai.costguard.gateway.answers.AnswerCache;
 import ai.costguard.gateway.budget.BudgetReserve;
 import ai.costguard.gateway.egress.EgressPricing;
 import ai.costguard.gateway.egress.EgressProperties;
@@ -63,11 +65,12 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
     private final BudgetReserve reserve;
     private final TokenCounter tokens;
     private final CostEstimator estimator;
+    private final AnswerCache answers;
     private final Clock clock;
 
     MeteredCallFilter(ProviderProperties properties, EgressProperties egress, EgressPricing egressPricing,
             ProviderCredentials credentials, Decisions decisions, BudgetReserve reserve, TokenCounter tokens,
-            CostEstimator estimator, Clock clock) {
+            CostEstimator estimator, AnswerCache answers, Clock clock) {
         this.properties = properties;
         this.egress = egress;
         this.egressPricing = egressPricing;
@@ -76,6 +79,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
         this.reserve = reserve;
         this.tokens = tokens;
         this.estimator = estimator;
+        this.answers = answers;
         this.clock = clock;
     }
 
@@ -206,6 +210,7 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
                         .thenReturn(false);
                 case StepResult.RequireApproval held -> refuse(exchange, 403, "approval_required",
                         op.operationId().toString()).thenReturn(false);
+                case StepResult.Answered answered -> replay(exchange, answered.answer()).thenReturn(false);
             });
         });
     }
@@ -406,12 +411,39 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
             if (!done.compareAndSet(false, true)) {
                 return Mono.empty();
             }
-            return actualCost.apply(captured.toByteArray())
+            byte[] body = captured.toByteArray();
+            return actualCost.apply(body)
                     .flatMap(actual -> reserve.settle(op.tenantId(), op.operationId().toString(), actual)
                             .doOnNext(ok -> decisions.allowed(op, actual, op.inputTokens(), op.maxOutputTokens())))
                     .onErrorResume(e -> Mono.just(false))
-                    .then();
+                    .then(Mono.defer(() -> keep(body)));
         }
+
+        /**
+         * The answer as the agent got it, for a retry with the same key. A stream is kept whole and given back in one
+         * piece; one cut by MAX_CAPTURE is not kept at all.
+         */
+        private Mono<Void> keep(byte[] body) {
+            if (body.length >= MAX_CAPTURE || !answers.fits(body.length) || op.agent() == null) {
+                return Mono.empty();
+            }
+            HttpStatusCode status = getStatusCode();
+            MediaType type = getHeaders().getContentType();
+            return answers.keep(op.tenantId(), op.operationId(), new Answer(status == null ? 200 : status.value(),
+                            type == null ? null : type.toString(), body))
+                    .onErrorReturn(false).then();
+        }
+    }
+
+    /** A retry of an operation that went through: its first answer, checked and charged once. */
+    private static Mono<Void> replay(ServerWebExchange exchange, Answer answer) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(HttpStatusCode.valueOf(answer.status()));
+        if (answer.contentType() != null) {
+            response.getHeaders().setContentType(MediaType.parseMediaType(answer.contentType()));
+        }
+        response.getHeaders().set("X-CostGuard-Replayed", "true");
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(answer.body())));
     }
 
     private static Mono<Void> refuse(ServerWebExchange exchange, int status, String type, String approvalId) {

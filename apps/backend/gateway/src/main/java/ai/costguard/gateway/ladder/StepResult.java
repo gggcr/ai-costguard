@@ -1,5 +1,7 @@
 package ai.costguard.gateway.ladder;
 
+import ai.costguard.gateway.answers.Answer;
+
 public sealed interface StepResult {
     record Pass() implements StepResult {}
     /** {@code message}: what the agent's owner should do; the code alone when there is nothing to add. */
@@ -9,4 +11,6 @@ public sealed interface StepResult {
         }
     }
     record RequireApproval(String reason) implements StepResult {}
+    /** A retry of an operation that went through: the agent gets its first answer again (step 3). */
+    record Answered(Answer answer) implements StepResult {}
 }
