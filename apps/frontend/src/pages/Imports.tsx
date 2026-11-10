@@ -6,10 +6,11 @@ import type { ImportJob, ImportType } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, IMPORT_META, PageHeader, ReadOnlyNote } from '../components/ui';
 import { downloadText, fmtDateTime, fmtRub, toCsv } from '../lib';
 
-const TYPE_LABEL: Record<ImportType, string> = { excel: 'Excel', csv: 'CSV', pdf: 'PDF с текстом', scan: 'Скан или фото', bank: 'Банковская выписка' };
+const TYPE_LABEL: Record<ImportType, string> = { excel: 'Excel', csv: 'CSV', parquet: 'Parquet', pdf: 'PDF с текстом', scan: 'Скан или фото', bank: 'Банковская выписка' };
 const ROUTE: Record<ImportType, string> = {
   excel: 'Шаблон поставщика или поиск заголовков по словарю синонимов',
   csv: 'Шаблон поставщика или поиск заголовков по словарю синонимов',
+  parquet: 'Выгрузка FOCUS: колонки по спецификации',
   pdf: 'pdfplumber: текст и таблицы → LLM-извлечение в JSON-схему счёта',
   scan: 'OCR PaddleOCR и разметка → LLM-извлечение в JSON-схему счёта',
   bank: 'Парсер 1CClientBankExchange или MT940',
@@ -48,7 +49,7 @@ export function Imports() {
                 {state.vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
               <Button variant="primary" icon="imports" onClick={() => input.current?.click()}>Выбрать файл</Button>
-              <input ref={input} type="file" hidden accept=".xlsx,.xls,.csv,.pdf,.jpg,.jpeg,.png,.txt,.sta,.940" onChange={(e) => { upload(e.target.files); e.target.value = ''; }} />
+              <input ref={input} type="file" hidden accept=".xlsx,.xls,.csv,.parquet,.pdf,.jpg,.jpeg,.png,.txt,.sta,.940" onChange={(e) => { upload(e.target.files); e.target.value = ''; }} />
             </div>
             <span className="muted small">Если для поставщика уже сохранён шаблон, Excel разберётся без вопросов</span>
           </div>

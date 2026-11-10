@@ -352,7 +352,7 @@ export type FxRate = {
 export type ImportJob = {
   id?: string;  // uuid
   fileName?: string;
-  type?: "excel" | "csv" | "pdf" | "scan" | "bank";
+  type?: "excel" | "csv" | "parquet" | "pdf" | "scan" | "bank";
   vendorId?: string;  // uuid
   uploadedAt?: string;  // date-time
   uploadedBy?: string;

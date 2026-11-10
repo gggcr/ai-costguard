@@ -18,9 +18,9 @@
 
 ## FOCUS-выгрузки из бакета (ADR 0046)
 
-1. В облаке включите выгрузку в формате FOCUS в CSV, не в Parquet:
-   - AWS — Billing and Cost Management → Data Exports → FOCUS 1.0, формат CSV, сжатие GZIP;
-   - Azure — Cost Management → Exports → FOCUS cost and usage, формат CSV;
+1. В облаке включите выгрузку в формате FOCUS (CSV или Parquet):
+   - AWS — Billing and Cost Management → Data Exports → FOCUS 1.0, CSV с GZIP или Parquet;
+   - Azure — Cost Management → Exports → FOCUS cost and usage, CSV или Parquet;
    - Yandex Cloud — детализация в Object Storage.
 2. Создайте ключ, который может только читать этот бакет.
 3. В Keycloak заведите сервисный аккаунт компании с ролью `importer` (runbook `keycloak.md`).

@@ -155,6 +155,10 @@ class ImportsApiIntegrationTest extends PostgresTestSupport {
         MockMultipartFile file = new MockMultipartFile("file", "focus.csv", "text/csv",
                 ("BilledCost,ChargePeriodStart\n1," + UUID.randomUUID()).getBytes());
         mvc.perform(multipart("/api/v1/imports").file(file).with(as(tenant, "importer"))).andExpect(status().isCreated());
+        MockMultipartFile parquet = new MockMultipartFile("file", "part-0.snappy.parquet", "application/vnd.apache.parquet",
+                ("PAR1" + UUID.randomUUID()).getBytes());
+        mvc.perform(multipart("/api/v1/imports").file(parquet).with(as(tenant, "importer")))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.type").value("parquet"));
         mvc.perform(put("/api/v1/imports/" + UUID.randomUUID() + "/review-tasks/" + UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"value\":\"1\"}").with(as(tenant, "importer")))
                 .andExpect(status().isForbidden());

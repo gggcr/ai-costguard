@@ -11,13 +11,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-enum ImportType { excel, csv, pdf, scan, bank;
+enum ImportType { excel, csv, parquet, pdf, scan, bank;
 
     static Optional<ImportType> of(String fileName) {
         String ext = fileName.contains(".") ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
         return switch (ext) {
             case "xlsx", "xls" -> Optional.of(excel);
             case "csv" -> Optional.of(csv);
+            // FOCUS exports of AWS and Azure (ADR 0046)
+            case "parquet" -> Optional.of(parquet);
             case "pdf" -> Optional.of(pdf);
             // the images the ingest pipeline reads through OCR (costguard_ingest.tables.IMAGES)
             case "jpg", "jpeg", "png", "heic", "tif", "tiff", "webp", "bmp" -> Optional.of(scan);

@@ -3353,6 +3353,7 @@ components:
           enum:
           - excel
           - csv
+          - parquet
           - pdf
           - scan
           - bank

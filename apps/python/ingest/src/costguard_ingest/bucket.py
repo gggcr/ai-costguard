@@ -14,8 +14,8 @@ A FOCUS file needs nobody to map it: its columns are named by the specification 
 no broken rows, no unsure values, an amount column. Anything else waits in «Импорт» for a person, as an upload does.
 
 Which objects were read (key and ETag) is kept in the state file, so an hourly run downloads only what is new or
-changed. .csv, .csv.gz, .xlsx are read; a compressed CSV is unpacked before upload. Parquet needs pyarrow, which is
-not in the workspace: such files are listed in the run's summary and skipped.
+changed. .csv, .csv.gz, .xlsx and .parquet are read; a compressed CSV is unpacked before upload, Parquet goes as it
+is (it is compressed inside).
 """
 
 from __future__ import annotations
@@ -37,8 +37,7 @@ import httpx
 from costguard_ingest import mapping
 
 log = logging.getLogger(__name__)
-READ = (".csv", ".csv.gz", ".xlsx")
-SKIPPED = (".parquet", ".snappy.parquet", ".gz.parquet")
+READ = (".csv", ".csv.gz", ".xlsx", ".parquet")
 MAX_BYTES = 50 * 1024 * 1024  # what the core takes in one upload (nginx client_max_body_size)
 
 
@@ -124,10 +123,7 @@ def new_objects(bucket: Bucket, prefix: str, state: State, since: datetime, summ
             continue
         if o.modified < since:
             continue  # older than the window: the first run does not load years of exports
-        if lower.endswith(SKIPPED):
-            summary.skipped.append((o.key, "Parquet is not read: export FOCUS as CSV"))
-            state.seen[o.key] = o.etag
-        elif not lower.endswith(READ):
+        if not lower.endswith(READ):
             continue  # manifests, checksums, other files of the export
         elif o.size > MAX_BYTES * 20:  # even compressed, too much for one import
             summary.skipped.append((o.key, f"{o.size} bytes is too big for one import"))
@@ -139,8 +135,9 @@ def new_objects(bucket: Bucket, prefix: str, state: State, since: datetime, summ
 
 def upload(core: httpx.Client, name: str, content: bytes) -> tuple[str, bool]:
     """Import id, and whether the core had this file already (200 instead of 201)."""
-    kind = ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if name.lower().endswith(".xlsx")
-            else "text/csv")
+    lower = name.lower()
+    kind = ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if lower.endswith(".xlsx")
+            else "application/vnd.apache.parquet" if lower.endswith(".parquet") else "text/csv")
     r = core.post("/api/v1/imports", files={"file": (name, content, kind)})
     r.raise_for_status()
     return r.json()["id"], r.status_code == 200

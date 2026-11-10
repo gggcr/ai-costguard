@@ -51,6 +51,7 @@ def test_new_exports_go_up_once_and_a_changed_one_again(tmp_path):
         "focus/2026-11/part-1.csv.gz": (gzip.compress(FOCUS), "e1", yesterday),
         "focus/2026-11/manifest.json": (b"{}", "m1", yesterday),
         "focus/2026-11/part-2.parquet": (b"PAR1", "p1", yesterday),
+        "focus/2026-11/checksum.sha256": (b"x", "c1", yesterday),
         "focus/2025-01/old.csv": (FOCUS, "o1", NOW - timedelta(days=300)),
         "other/x.csv": (FOCUS, "x1", yesterday),
     })
@@ -59,10 +60,10 @@ def test_new_exports_go_up_once_and_a_changed_one_again(tmp_path):
     state = bucket.State.load(path)
     s = bucket.pull(store, core.client(), "focus/", state, NOW - timedelta(days=7))
     state.save(path)
-    assert s.uploaded == ["focus/2026-11/part-1.csv.gz"]
-    assert core.files == {"part-1.csv": FOCUS}  # unpacked, named without .gz
-    assert s.skipped == [("focus/2026-11/part-2.parquet", "Parquet is not read: export FOCUS as CSV")]
-    assert s.imports == {"focus/2026-11/part-1.csv.gz": "imp-1"}
+    assert sorted(s.uploaded) == ["focus/2026-11/part-1.csv.gz", "focus/2026-11/part-2.parquet"]
+    assert core.files == {"part-1.csv": FOCUS, "part-2.parquet": b"PAR1"}  # CSV unpacked, Parquet as it is
+    assert s.skipped == []
+    assert s.imports["focus/2026-11/part-1.csv.gz"].startswith("imp-")
 
     # the next run reads nothing it has seen
     store.reads.clear()

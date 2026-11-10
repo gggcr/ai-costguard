@@ -3,7 +3,7 @@ name = "costguard-reports"
 version = "0.1.0"
 description = "Spend forecasts and XLSX/PDF reports"
 requires-python = ">=3.12"
-dependencies = ["costguard-common", "httpx>=0.27", "openpyxl>=3.1", "fpdf2>=2.8"]
+dependencies = ["costguard-common", "httpx>=0.27", "openpyxl>=3.1", "fpdf2>=2.8", "lightgbm>=4.5"]
 
 [project.scripts]
 costguard-report = "costguard_reports.cli:main"

@@ -224,7 +224,7 @@ export interface Finding {
   history: FindingEvent[];
 }
 
-export type ImportType = 'excel' | 'csv' | 'pdf' | 'scan' | 'bank';
+export type ImportType = 'excel' | 'csv' | 'parquet' | 'pdf' | 'scan' | 'bank';
 export type ImportStatus = 'uploaded' | 'mapping' | 'review' | 'done' | 'failed';
 
 export interface ReviewTask {

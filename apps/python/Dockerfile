@@ -12,8 +12,8 @@ COPY schemas/clickhouse schemas/clickhouse
 RUN uv sync --frozen --no-dev --all-packages --no-editable
 
 FROM python:3.12-slim
-# OCR of scans for costguard-ingest (ADR 0012); the other services do not use it.
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng     && rm -rf /var/lib/apt/lists/*
+# OCR of scans for costguard-ingest (ADR 0012); libgomp1 for LightGBM of costguard-forecast (ADR 0045).
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng libgomp1     && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --no-create-home costguard
 COPY --from=build /src/.venv /app/.venv
 COPY --from=build /src/schemas /app/schemas

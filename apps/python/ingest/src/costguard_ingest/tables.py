@@ -50,6 +50,8 @@ def read(file_name: str, content: bytes) -> Table:
         return _csv(content)
     if name.endswith((".xlsx", ".xlsm")):
         return _xlsx(content)
+    if name.endswith(".parquet"):
+        return _parquet(content)
     if name.endswith(".xls"):
         raise Unsupported("Old .xls files are not read yet; save the file as .xlsx")
     if name.endswith(".pdf"):
@@ -88,6 +90,21 @@ def _xlsx(content: bytes) -> Table:
         return _table([list(r) for r in book.worksheets[0].iter_rows(values_only=True)])
     finally:
         book.close()
+
+
+def _parquet(content: bytes) -> Table:
+    """A Parquet file, as AWS and Azure write FOCUS exports. Decimals, dates and timestamps come typed, as from
+    Excel; a missing value is None."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    try:
+        table = pq.read_table(pa.BufferReader(content))
+    except (pa.ArrowException, OSError) as e:
+        raise Unsupported(f"Not a readable Parquet file: {e}") from e
+    columns = table.column_names
+    data = [table.column(c).to_pylist() for c in columns]
+    return _table([columns, *[list(row) for row in zip(*data, strict=True)]])
 
 
 def _pdf(content: bytes) -> Table:

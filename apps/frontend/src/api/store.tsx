@@ -408,7 +408,7 @@ function useActions(
         const fileName = file.name;
         const id = newId('imp');
         const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
-        const type: ImportType = ['xlsx', 'xls'].includes(ext) ? 'excel' : ext === 'csv' ? 'csv' : ext === 'pdf' ? 'pdf' : ['jpg', 'jpeg', 'png', 'heic'].includes(ext) ? 'scan' : 'bank';
+        const type: ImportType = ['xlsx', 'xls'].includes(ext) ? 'excel' : ext === 'csv' ? 'csv' : ext === 'parquet' ? 'parquet' : ext === 'pdf' ? 'pdf' : ['jpg', 'jpeg', 'png', 'heic'].includes(ext) ? 'scan' : 'bank';
         setState((s) => {
           const job: ImportJob = { id, fileName, type, vendorId, uploadedAt: new Date().toISOString(), uploadedBy: by, status: 'mapping', rows: 0, total: 0, columns: [], mapping: {}, errors: [], reviewTasks: [], templateSaved: false };
           const knownTemplate = vendorId && s.imports.some((i) => i.vendorId === vendorId && i.templateSaved && (i.type === 'excel' || i.type === 'csv'));
