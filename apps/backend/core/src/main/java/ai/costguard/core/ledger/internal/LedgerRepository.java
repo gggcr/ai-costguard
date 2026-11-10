@@ -44,6 +44,19 @@ class LedgerRepository {
         return jdbc.sql(SELECT + " where b.id = ?").param(id).query(BUDGET).optional();
     }
 
+    /** Budget id -> what its entries charged before {@code asOf}: reversals count against their charges. */
+    java.util.Map<UUID, BigDecimal> spentBefore(Instant asOf) {
+        java.util.Map<UUID, BigDecimal> out = new java.util.HashMap<>();
+        jdbc.sql("""
+                select b.id, coalesce(sum(e.amount), 0) as spent from budget b
+                left join ledger_entry e on e.budget_id = b.id and e.occurred_at < ?
+                group by b.id
+                """).param(Timestamp.from(asOf))
+                .query((rs, n) -> out.put(rs.getObject("id", UUID.class), rs.getBigDecimal("spent")))
+                .list();
+        return out;
+    }
+
     Optional<Budget> budgetOfAgent(UUID agentId) {
         return jdbc.sql(SELECT + " where b.level = 'agent' and b.ref_id = ?").param(agentId).query(BUDGET).optional();
     }

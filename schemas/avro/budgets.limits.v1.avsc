@@ -93,6 +93,32 @@
     {
       "name": "version",
       "type": "long"
+    },
+    {
+      "name": "ledger_spent",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 6
+        }
+      ],
+      "default": null,
+      "doc": "What the ledger of postings charged to the budget up to ledger_as_of (ADR 0040). The gateway sets its counter to this plus what it charged itself after ledger_as_of, so counters lost with Redis come back. Null on a change of the limit."
+    },
+    {
+      "name": "ledger_as_of",
+      "type": [
+        "null",
+        {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        }
+      ],
+      "default": null,
+      "doc": "The moment ledger_spent counts up to."
     }
   ]
 }

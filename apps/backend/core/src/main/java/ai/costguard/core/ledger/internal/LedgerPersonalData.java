@@ -20,7 +20,7 @@ class LedgerPersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("budget", "ledger_entry");
+        return List.of("budget", "ledger_entry", "ledger_tenant");
     }
 
     @Override
@@ -28,6 +28,6 @@ class LedgerPersonalData implements DataHolder {
         for (UUID budget : jdbc.sql("select id from budget").query(UUID.class).list()) {
             report.tombstone("budgets.limits.v1", budget.toString());
         }
-        TenantRows.delete(jdbc, tenantId, report, "ledger", "ledger_entry", "budget");
+        TenantRows.delete(jdbc, tenantId, report, "ledger", "ledger_entry", "budget", "ledger_tenant");
     }
 }

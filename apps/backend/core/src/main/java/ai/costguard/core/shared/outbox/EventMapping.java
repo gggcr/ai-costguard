@@ -85,7 +85,9 @@ final class EventMapping {
                 .setLevel(BudgetLevel.valueOf(e.level().toUpperCase(java.util.Locale.ROOT))).setRefId(e.refId())
                 .setLimitAmount(money(e.limitAmount())).setCurrency(e.currency()).setCorrection(money(BigDecimal.ZERO))
                 .setPeriodStart(java.time.LocalDate.of(1970, 1, 1)).setPeriodEnd(java.time.LocalDate.of(9999, 12, 31))
-                .setVersion(e.version()).build());
+                .setVersion(e.version())
+                .setLedgerSpent(e.ledgerSpent() == null ? null : money(e.ledgerSpent()))
+                .setLedgerAsOf(e.ledgerAsOf()).build());
     }
 
     static Message of(TenantPlanChanged e) {
