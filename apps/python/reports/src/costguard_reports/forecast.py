@@ -1,20 +1,24 @@
-"""Monthly spend forecast: Holt's linear exponential smoothing (level and trend).
+"""Monthly spend forecast by the model that forecast this series best (ADR 0034).
 
-alpha and beta are chosen on a grid by the smallest one-step-ahead squared error over the history. The interval
-is ±1.96 standard deviations of those errors, widening with the horizon as sqrt(h). With fewer than MIN_MONTHS
-months there is no trend to trust: the forecast is the mean of what is there, flat, and says so.
+With MIN_MONTHS to backtest.MIN_MONTHS months there is too little to test models on, and Holt's level and trend
+forecasts, as before. From backtest.MIN_MONTHS months every model of models.MODELS is backtested and the champion
+forecasts; the challenger is kept beside it, so a report can say what came second and by how much. With fewer than
+MIN_MONTHS months there is no trend to trust: the forecast is the mean of what is there, flat, and says so.
 
+The interval is ±1.96 standard deviations of the champion's one-step errors, widening with the horizon as sqrt(h).
 Spend cannot be negative, so forecasts and lower bounds stop at zero.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
 
+from costguard_reports.backtest import Score, backtest
+from costguard_reports.models import MODELS, holt
+
 MIN_MONTHS = 4
-_GRID = [x / 10 for x in range(1, 10)]
 
 
 @dataclass(frozen=True)
@@ -29,24 +33,23 @@ class Point:
 class Forecast:
     method: str
     points: list[Point]
-    alpha: float | None = None
-    beta: float | None = None
+    scores: list[Score] = field(default_factory=list)
+
+    @property
+    def champion(self) -> Score | None:
+        return next((s for s in self.scores if s.model == self.method), None)
+
+    @property
+    def challenger(self) -> Score | None:
+        return next((s for s in self.scores if s.model != self.method), None)
 
 
 def _money(x: float) -> Decimal:
     return Decimal(str(max(x, 0.0))).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
 
 
-def _errors(series: list[float], alpha: float, beta: float) -> tuple[float, float, list[float]]:
-    level, trend = series[0], series[1] - series[0]
-    errors = []
-    for x in series[1:]:
-        predicted = level + trend
-        errors.append(x - predicted)
-        new_level = alpha * x + (1 - alpha) * predicted
-        trend = beta * (new_level - level) + (1 - beta) * trend
-        level = new_level
-    return level, trend, errors
+def sigma(errors: list[float]) -> float:
+    return math.sqrt(sum(e * e for e in errors) / len(errors)) if errors else 0.0
 
 
 def forecast(history: list[Decimal], horizon: int = 3) -> Forecast:
@@ -61,18 +64,11 @@ def forecast(history: list[Decimal], horizon: int = 3) -> Forecast:
         spread = max(series) - min(series)
         return Forecast("mean", [Point(h, _money(mean), _money(mean - spread), _money(mean + spread))
                                  for h in range(1, horizon + 1)])
-    best = None
-    for alpha in _GRID:
-        for beta in _GRID:
-            level, trend, errors = _errors(series, alpha, beta)
-            sse = sum(e * e for e in errors)
-            if best is None or sse < best[0]:
-                best = (sse, alpha, beta, level, trend, errors)
-    _, alpha, beta, level, trend, errors = best
-    sigma = math.sqrt(sum(e * e for e in errors) / len(errors))
+    scores = backtest(series, horizon)
+    fit = MODELS[scores[0].model](series, horizon) if scores else holt(series, horizon)
+    s = sigma(fit.errors)
     points = []
-    for h in range(1, horizon + 1):
-        value = level + h * trend
-        width = 1.96 * sigma * math.sqrt(h)
+    for h, value in enumerate(fit.points, start=1):
+        width = 1.96 * s * math.sqrt(h)
         points.append(Point(h, _money(value), _money(value - width), _money(value + width)))
-    return Forecast("holt", points, alpha, beta)
+    return Forecast(fit.name, points, scores)

@@ -35,7 +35,7 @@
 | Конвейер приёма: Excel, CSV, PDF, выписки, проверки, ручная проверка, нормализация в FOCUS | `apps/python/ingest`, `core/imports` | сделано (ADR 0012, 0013) |
 | Коннекторы и агент у клиента: единые API и свои для 1С, Яндекс 360 | `apps/python/connectors` | сделано (ADR 0014, 0015, 0019) |
 | Движок аудита (Python): правила, находки, оценка экономии | `core/findings` + `AuditRules` в `software` и `assets` | сделано иначе (ADR 0005): в ядре, а не отдельным Python-сервисом |
-| Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` | не сделано: есть месячный прогноз по Холту и отчёт XLSX/PDF. Нет прогноза экономии и сценариев |
+| Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` (`models`, `backtest`, `baseline`, `reconcile`, `savings`, `report`) | сделано иначе (ADR 0034): модели на чистом Python вместо statsforecast; сценариев пока нет |
 | MLflow: модели прогнозов | `deploy/mlflow`, Helm `mlflow.yaml` | сделано иначе (ADR 0016, 0017): в MLflow лежат модели детектора аномалий, моделей прогноза там нет |
 | ClickHouse: единый реестр затрат, витрины | `schemas/clickhouse/migrations` 001–003 | сделано (ADR 0007) |
 | S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано иначе, ADR нет: локально SeaweedFS вместо MinIO. В ядре файлы импорта пишутся на локальный диск (`FileStore`) |
@@ -108,7 +108,7 @@
 | Сопоставление: счёт, подписка, договор, сотрудник | `core/imports` (`EntityStaging`, лицензии и подписки) | сделано иначе, ADR нет: сопоставление идёт в PostgreSQL ядра, а не между Silver и Gold в ClickHouse |
 | Gold: витрины | `003_spend_views.sql` | сделано |
 | Движок аудита → находки и экономия | `core/findings` | сделано иначе (ADR 0005) |
-| Прогнозы; отчёты XLSX и PDF | `apps/python/reports` | не сделано: только прогноз расходов (Холт) и отчёт, без прогноза экономии |
+| Прогнозы; отчёты XLSX и PDF | `apps/python/reports` | сделано иначе (ADR 0034): прогноз расходов моделью-чемпионом бэктеста, прогноз экономии по находкам, отчёт |
 
 ## 7. Парсинг отчётов
 
@@ -223,7 +223,7 @@
 | Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано иначе (ADR 0006, 0009) |
 | Ingest: `bronze`, `parsers/` (excel_template, excel_freeform, pdf_text, ocr, bank_1c, mt940), `extract/`, `validate/`, `normalize/`, `review/`, `sinks/`, `tests/fixtures` | `apps/python/ingest/src/costguard_ingest/*` плоско | сделано иначе (ADR 0012, 0013): плоская раскладка, Tesseract, без FastStream и pandera |
 | Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано иначе (ADR 0005); все 10 правил есть (ADR 0032, см. фрейм 8) |
-| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports` (Холт, XLSX/PDF) | не сделано: есть только прогноз Холта и отчёт |
+| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `report.py` | не сделано (частично, ADR 0034): нет LightGBM, сценариев, пояснений LLM и MLflow; statsforecast заменён своими моделями |
 | У каждого сервиса свой Dockerfile | Java-сервисы — свой; Python — общий `apps/python/Dockerfile` | сделано иначе, ADR нет |
 
 ## 14. Интеграции с системами компании

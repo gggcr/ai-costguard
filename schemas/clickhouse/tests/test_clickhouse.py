@@ -47,7 +47,7 @@ def db():
 def test_migrations_apply_once(db):
     client, name, q = db
     assert apply.apply(client, name, ENV) == ["001_cost_records.sql", "002_agent_operations.sql",
-                                              "003_spend_views.sql"]
+                                              "003_spend_views.sql", "004_spend_by_department.sql"]
     assert apply.apply(client, name, ENV) == []
     assert "cost_records_queue" in q("SHOW TABLES")
 
@@ -66,6 +66,20 @@ def test_newest_version_wins_and_months_add_up(db):
     rows = q(f"SELECT month, source, billed FROM spend_by_month WHERE tenant_id = '{TENANT}' "
              "ORDER BY source FORMAT TSV").splitlines()
     assert rows == ["2026-10-01\tINVOICE_LINE\t120", "2026-10-01\tOPERATION\t30.5"]
+
+
+def test_departments_add_up_to_the_company(db):
+    _, _, q = db
+    tenant = uuid.uuid4()
+    department = uuid.uuid4()
+    q(f"""INSERT INTO cost_records (id, tenant_id, source, source_id, billed_cost, effective_cost, billing_currency,
+          charge_period_start, charge_period_end, service_provider_name, department_id) VALUES
+          ('{uuid.uuid4()}', '{tenant}', 'INVOICE_LINE', 'a', 100, 100, 'RUB', '2026-10-05', '2026-10-05', 'x',
+           '{department}'),
+          ('{uuid.uuid4()}', '{tenant}', 'INVOICE_LINE', 'b', 40, 40, 'RUB', '2026-10-09', '2026-10-09', 'y', NULL)""")
+    rows = q(f"SELECT department, billed FROM spend_by_department_month WHERE tenant_id = '{tenant}' "
+             "ORDER BY department FORMAT TSV").splitlines()
+    assert rows == ["	40", f"{department}	100"]
 
 
 def test_avro_of_the_contract_fits_the_queue_columns(db):

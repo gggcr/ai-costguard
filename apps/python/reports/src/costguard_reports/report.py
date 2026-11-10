@@ -14,6 +14,9 @@ from pathlib import Path
 from costguard_reports.forecast import Forecast, forecast
 
 FONT = Path(__file__).parent / "fonts" / "DejaVuSans.ttf"
+METHODS = {"holt": "метод Хольта (уровень и тренд)", "ets_damped": "ETS с затухающим трендом",
+           "theta": "метод Theta", "naive": "повтор последнего месяца", "seasonal_naive": "тот же месяц год назад",
+           "mean": "среднее", "empty": "нет данных"}
 MONTHS_RU = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 
 
@@ -95,7 +98,12 @@ def xlsx(r: Report) -> bytes:
     summary.append(["Открытых находок", r.open_findings])
     summary.append(["Ожидаемая экономия", float(r.expected_savings)])
     summary.append(["Подтверждённая экономия", float(r.confirmed_savings)])
-    summary.append(["Метод прогноза", r.forecast.method])
+    summary.append(["Метод прогноза", METHODS[r.forecast.method]])
+    if r.forecast.champion:
+        summary.append(["Ошибка прогноза на истории (WAPE)", r.forecast.champion.wape])
+    if r.forecast.challenger:
+        summary.append(["Следующая модель", METHODS[r.forecast.challenger.model]])
+        summary.append(["Её ошибка (WAPE)", r.forecast.challenger.wape])
     summary.column_dimensions["A"].width = 28
     summary.column_dimensions["B"].width = 18
     out = io.BytesIO()
@@ -139,8 +147,19 @@ def pdf(r: Report) -> bytes:
         doc.ln()
     doc.ln(3)
     doc.set_font_size(9)
-    note = {"holt": "Прогноз методом Хольта (уровень и тренд), интервал 95%.",
-            "mean": "Истории меньше четырёх месяцев: прогноз равен среднему.",
-            "empty": "Расходов пока нет."}[r.forecast.method]
-    doc.multi_cell(0, 5, note)
+    doc.multi_cell(0, 5, note(r.forecast))
     return bytes(doc.output())
+
+
+def note(f: Forecast) -> str:
+    if f.method == "empty":
+        return "Расходов пока нет."
+    if f.method == "mean":
+        return "Истории меньше четырёх месяцев: прогноз равен среднему."
+    text = f"Прогноз: {METHODS[f.method]}, интервал 95%."
+    if f.champion:
+        text += (f" Модель выбрана проверкой на истории: ошибка {f.champion.wape:.0%} от суммы расходов"
+                 f" (WAPE), MASE {f.champion.mase:.2f}.")
+    if f.challenger:
+        text += f" Следующая — {METHODS[f.challenger.model]}, ошибка {f.challenger.wape:.0%}."
+    return text
