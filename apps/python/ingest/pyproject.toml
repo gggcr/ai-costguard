@@ -13,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 costguard-ingest = "costguard_ingest.service:main"
+costguard-focus-pull = "costguard_ingest.bucket:main"
 
 [tool.uv.sources]
 costguard-common = { workspace = true }
