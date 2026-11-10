@@ -12,6 +12,9 @@ const MODEL: Record<string, string> = {
   holt: 'Хольт', ets_damped: 'ETS с затухающим трендом', theta: 'Theta', naive: 'повтор месяца',
   seasonal_naive: 'тот же месяц год назад', mean: 'среднее', empty: 'нет данных',
 };
+const AGENT_MODEL: Record<string, string> = {
+  gbm: 'градиентный бустинг', weekly: 'повтор прошлой недели', mean7: 'среднее за неделю', naive: 'вчерашний день',
+};
 const pct = (v?: number) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 
 function points(series: ForecastSeries): LinePoint[] {
@@ -93,6 +96,29 @@ export function ForecastPanel() {
                 </>
               )}
       </Card>
+
+      {(f?.agents?.length ?? 0) > 0 && (
+        <Card title={`Агенты: прогноз на ${f!.agents![0].days?.length ?? 30} дней`}>
+          <p className="muted">
+            Для каждого агента модель выбрана проверкой на последних неделях: градиентный бустинг, повтор прошлой недели,
+            среднее за неделю или вчерашний день.
+          </p>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Агент</th><th>Модель</th><th className="num">WAPE</th><th className="num">Прогноз</th><th className="num">Интервал 95%</th></tr></thead>
+              <tbody>
+                {f!.agents!.map((a) => (
+                  <tr key={a.agentId}>
+                    <td>{state.agents.find((x) => x.id === a.agentId)?.name ?? a.agentId.slice(0, 8)}</td>
+                    <td>{AGENT_MODEL[a.model] ?? a.model}</td><td className="num">{pct(a.wape)}</td>
+                    <td className="num">{fmtRub(a.total)}</td><td className="num">{fmtRub(a.low)} – {fmtRub(a.high)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <Card title="Сценарий «что если»">
         <div className="form">

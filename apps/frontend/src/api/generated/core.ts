@@ -59,6 +59,18 @@ export type AgentDetails = {
   mandateId: string;  // uuid
 };
 
+export type AgentForecast = {
+  agentId: string;  // uuid
+  model: string;
+  wape?: number;
+  challenger?: string;
+  challengerWape?: number;
+  total: number;
+  low: number;
+  high: number;
+  days: Array<DayAmount>;
+};
+
 export type AgentSecrets = {
   tenantId?: string;  // uuid
   secrets?: Record<string, Record<string, string>>;
@@ -224,6 +236,11 @@ export type CurrentPlan = {
   limits?: PlanLimitsView;
 };
 
+export type DayAmount = {
+  day: string;
+  value: number;
+};
+
 export type Decision = {
   verdict: "approve" | "reject";
   comment?: string;
@@ -303,6 +320,7 @@ export type ForecastDocument = {
   departments: Array<ForecastSeries>;
   savings: Array<SavingsMonth>;
   generatedBy: string;
+  agents?: Array<AgentForecast>;
 };
 
 export type ForecastPoint = {

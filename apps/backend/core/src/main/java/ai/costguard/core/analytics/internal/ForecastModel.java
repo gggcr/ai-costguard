@@ -17,6 +17,7 @@ import java.util.UUID;
  * the company. The departments add up to the company: they are reconciled.
  *
  * @param generatedBy the job and its version, for the history
+ * @param agents the spend of each AI agent over the next days (ADR 0045); null in a document from before it
  */
 record ForecastDocument(
         @NotNull @Pattern(regexp = "[A-Z]{3}") String currency,
@@ -24,7 +25,27 @@ record ForecastDocument(
         @NotNull @Valid ForecastSeries company,
         @NotNull @Size(max = 500) List<@Valid ForecastSeries> departments,
         @NotNull @Size(max = 36) List<@Valid SavingsMonth> savings,
-        @NotBlank @Size(max = 200) String generatedBy) {
+        @NotBlank @Size(max = 200) String generatedBy,
+        @Size(max = 1000) List<@Valid AgentForecast> agents) {
+}
+
+/**
+ * The spend of one agent over the next {@code days}, from yesterday on. {@code model} won the daily backtest (gbm,
+ * weekly, mean7, naive); {@code total} is the sum of the days, {@code low} and {@code high} its 95% interval.
+ */
+record AgentForecast(
+        @NotNull UUID agentId,
+        @NotBlank @Size(max = 40) String model,
+        BigDecimal wape,
+        @Size(max = 40) String challenger,
+        BigDecimal challengerWape,
+        @NotNull BigDecimal total,
+        @NotNull BigDecimal low,
+        @NotNull BigDecimal high,
+        @NotNull @Size(max = 92) List<@Valid DayAmount> days) {
+}
+
+record DayAmount(@NotNull @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}") String day, @NotNull BigDecimal value) {
 }
 
 /**

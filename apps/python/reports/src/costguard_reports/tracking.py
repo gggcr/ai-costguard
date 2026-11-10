@@ -44,6 +44,16 @@ def entries(document: dict) -> tuple[list[dict], list[dict]]:
             wapes.append(float(d["wape"]))
     if wapes:
         metrics += _metric("departments.mean_wape", sum(wapes) / len(wapes), at)
+    agent_list = document.get("agents") or []
+    metrics += _metric("agents", len(agent_list), at)
+    won: dict[str, int] = {}
+    for a in agent_list:
+        won[a["model"]] = won.get(a["model"], 0) + 1
+    for model, n in sorted(won.items()):
+        metrics += _metric(f"agents.won.{model}", n, at)
+    agent_wapes = [float(a["wape"]) for a in agent_list if a.get("wape") is not None]
+    if agent_wapes:
+        metrics += _metric("agents.mean_wape", sum(agent_wapes) / len(agent_wapes), at)
     # log-batch takes at most 100 params and 1000 metrics
     return params[:100], metrics[:1000]
 

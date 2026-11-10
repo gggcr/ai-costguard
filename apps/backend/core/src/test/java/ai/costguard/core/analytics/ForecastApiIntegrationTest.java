@@ -74,7 +74,23 @@ class ForecastApiIntegrationTest extends PostgresTestSupport {
                 .andExpect(jsonPath("$.forecast.company.points[1].value").value(180.0))
                 .andExpect(jsonPath("$.forecast.departments[0].departmentId").value(it))
                 .andExpect(jsonPath("$.forecast.departments[0].challengerWape").value(0.09))
-                .andExpect(jsonPath("$.forecast.savings[1].confirmed").value(300));
+                .andExpect(jsonPath("$.forecast.savings[1].confirmed").value(300))
+                .andExpect(jsonPath("$.forecast.agents").doesNotExist());
+
+        // with the agents of the company (ADR 0045)
+        String agent = UUID.randomUUID().toString();
+        String third = second.substring(0, second.lastIndexOf('}')) + """
+                ,"agents":[{"agentId":"%s","model":"gbm","wape":0.11,"challenger":"weekly","challengerWape":0.12,
+                 "total":3000,"low":2500,"high":3500,"days":[{"day":"2026-11-10","value":100}]}]}""".formatted(agent);
+        mvc.perform(put("/api/v1/analytics/forecast").contentType(MediaType.APPLICATION_JSON).content(third)
+                .with(as("forecast"))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/analytics/forecast").with(as("owner")))
+                .andExpect(jsonPath("$.forecast.agents[0].agentId").value(agent))
+                .andExpect(jsonPath("$.forecast.agents[0].model").value("gbm"))
+                .andExpect(jsonPath("$.forecast.agents[0].days[0].day").value("2026-11-10"));
+        mvc.perform(put("/api/v1/analytics/forecast").contentType(MediaType.APPLICATION_JSON)
+                .content(third.replace("2026-11-10", "10.11.2026")).with(as("forecast")))
+                .andExpect(status().isBadRequest());
 
         // another company sees nothing
         mvc.perform(get("/api/v1/analytics/forecast").with(jwt().jwt(j -> j.claim("tenant_id",

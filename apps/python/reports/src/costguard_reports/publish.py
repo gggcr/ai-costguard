@@ -7,7 +7,9 @@ Spend by month comes from ClickHouse (spend_by_month for the company, spend_by_d
 in the currency of the company; months before the current one, which is not over. The registry, the findings and
 the names of departments come from the core. Every series is forecast by its own champion (forecast.py), the
 departments are reconciled with the company (reconcile.py), each point gets the registry baseline (baseline.py),
-and the expected savings go beside (savings.py). The document goes to PUT /api/v1/analytics/forecast. Airflow runs
+and the expected savings go beside (savings.py). The spend of each AI agent over the next days comes from
+agent_spend_by_day and is forecast by the winner of a daily backtest, gradient boosting among the candidates
+(agents.py, ADR 0045). The document goes to PUT /api/v1/analytics/forecast. Airflow runs
 this every week (infra/airflow/dags/forecast_weekly.py) with the token of the forecast service account.
 """
 
@@ -20,7 +22,7 @@ from decimal import ROUND_HALF_EVEN, Decimal
 
 import httpx
 
-from costguard_reports import baseline, reconcile, savings, tracking
+from costguard_reports import agents, baseline, reconcile, savings, tracking
 from costguard_reports.forecast import Forecast, forecast
 
 COMPANY = "Компания"
@@ -52,9 +54,23 @@ def _series(name: str, department: str | None, history: list[tuple[date, Decimal
             "history": [{"month": _month(m), "amount": v} for m, v in history], "points": points}
 
 
+def agent_section(spend: dict[str, list[tuple[date, float]]], today: date, days: int = 30) -> list[dict]:
+    """The forecasts of the agents, the most expensive first; agents that spent nothing are left out."""
+    out = []
+    for agent, history in spend.items():
+        f = agents.forecast(history, today, days)
+        if f is None:
+            continue
+        out.append({"agentId": agent, "model": f.model, "wape": f.wape, "challenger": f.challenger,
+                    "challengerWape": f.challenger_wape, "total": _cents(f.total), "low": _cents(f.low),
+                    "high": _cents(f.high),
+                    "days": [{"day": d.isoformat(), "value": _cents(v)} for d, v in f.days]})
+    return sorted(out, key=lambda a: (-a["total"], a["agentId"]))[:1000]
+
+
 def document(currency: str, company: list[tuple[date, Decimal]], departments: dict[str, list[tuple[date, Decimal]]],
              names: dict[str, str], subscriptions: list[baseline.Subscription], findings: list[dict], today: date,
-             horizon: int) -> dict:
+             horizon: int, agent_spend: dict[str, list[tuple[date, float]]] | None = None) -> dict:
     """The forecast document; departments are keyed by id, "" for spend with no department."""
     axis = sorted({m for m, _ in company} | {m for h in departments.values() for m, _ in h})
     if axis:
@@ -90,6 +106,7 @@ def document(currency: str, company: list[tuple[date, Decimal]], departments: di
             for d in sorted(part_f, key=lambda k: (k == "", names.get(k, k)))],
         "savings": [{"month": _month(s.month), "expected": s.expected, "confirmed": s.confirmed}
                     for s in savings.savings(findings, months, today)],
+        "agents": agent_section(agent_spend or {}, today),
     }
 
 
@@ -120,6 +137,21 @@ def fetch_spend(clickhouse: httpx.Client, tenant: str, currency: str, months: in
     return company, departments
 
 
+def fetch_agent_spend(clickhouse: httpx.Client, tenant: str, currency: str, tenant_setting: bool = False
+                      ) -> dict[str, list[tuple[date, float]]]:
+    """Spend of every agent by day, the last half year before today, in the currency of the company."""
+    params = {"tenant": tenant, "currency": currency, "back": agents.HISTORY_DAYS}
+    settings = {"SQL_tenant_id": tenant} if tenant_setting else None
+    out: dict[str, list[tuple[date, float]]] = {}
+    for agent, day, spent in _tsv(
+            clickhouse, "SELECT toString(agent_id), toString(day), toString(sum(spent)) FROM agent_spend_by_day "
+                        "WHERE tenant_id = {tenant:UUID} AND currency = {currency:String} AND day < today() "
+                        "AND day >= today() - {back:UInt32} GROUP BY agent_id, day ORDER BY agent_id, day FORMAT TSV",
+            params, settings):
+        out.setdefault(agent, []).append((date.fromisoformat(day), float(spent)))
+    return out
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="costguard-forecast")
     parser.add_argument("--tenant", required=True, help="tenant id: whose spend to read from ClickHouse")
@@ -142,11 +174,14 @@ def main(argv: list[str] | None = None) -> None:
                                        os.environ.get("CLICKHOUSE_TENANT_SETTING") == "1")
     names = {d["id"]: d["name"] for d in get("/api/v1/departments")}
     subscriptions = [baseline.Subscription.of(s) for s in get("/api/v1/subscriptions")]
+    agent_spend = fetch_agent_spend(clickhouse, args.tenant, currency,
+                                    os.environ.get("CLICKHOUSE_TENANT_SETTING") == "1")
     body = document(currency, company, departments, names, subscriptions, get("/api/v1/findings"), date.today(),
-                    args.horizon)
+                    args.horizon, agent_spend)
     r = core.put("/api/v1/analytics/forecast", content=_json(body), headers={"Content-Type": "application/json"})
     r.raise_for_status()
-    print(f"forecast {r.json()['id']}: company by {body['company']['model']}, {len(body['departments'])} departments")
+    print(f"forecast {r.json()['id']}: company by {body['company']['model']}, {len(body['departments'])} departments, "
+          f"{len(body['agents'])} agents")
     if os.environ.get("MLFLOW_TRACKING_URI"):
         run = tracking.Tracking(httpx.Client(base_url=os.environ["MLFLOW_TRACKING_URI"], timeout=30)).log(
             args.tenant, body)
