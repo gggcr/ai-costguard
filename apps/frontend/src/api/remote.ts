@@ -1,5 +1,6 @@
 // Данные из REST API ядра (schemas/openapi/core.yaml → generated/core.ts) в форме AppState, которую рисуют страницы.
 // Каждое действие — запрос к ядру и перечитывание затронутых разделов: источник истины всегда ядро.
+import { focusLabels } from './focus';
 import type * as Api from './generated/core';
 import { api, upload } from './http';
 import type {
@@ -75,7 +76,7 @@ const toFinding = (f: Api.Finding): Finding => ({
 });
 const toImport = (j: Api.ImportJob): ImportJob => ({
   id: s(j.id), fileName: s(j.fileName), type: j.type ?? 'excel', vendorId: j.vendorId, uploadedAt: s(j.uploadedAt), uploadedBy: s(j.uploadedBy),
-  status: j.status ?? 'uploaded', rows: n(j.rows), total: n(j.total), columns: j.columns ?? [], mapping: j.mapping ?? {},
+  status: j.status ?? 'uploaded', rows: n(j.rows), total: n(j.total), columns: j.columns ?? [], mapping: focusLabels(j.mapping ?? {}),
   errors: (j.errors ?? []).map((e) => ({ row: n(e.row), message: s(e.message) })),
   reviewTasks: (j.reviewTasks ?? []).map((t) => ({ id: s(t.id), row: n(t.row), field: s(t.field), value: t.resolvedValue ?? s(t.value), confidence: n(t.confidence), resolved: t.resolved ?? false })),
   templateSaved: j.templateSaved ?? false, failure: j.failure,

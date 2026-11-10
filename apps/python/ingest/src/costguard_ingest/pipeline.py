@@ -60,7 +60,8 @@ def parse(file_name: str, content: bytes, read: Read = tables.read) -> Parsed:
     table = read(file_name, content)
     suggested = mapping.suggest(table.columns)
     result = Parsed(table.columns, suggested, len(table.rows), Decimal(0))
-    if "amount" not in suggested.values():
+    equipment = bool({"inventory_number", "serial_number"} & set(suggested.values()))
+    if "amount" not in suggested.values() and not equipment:  # a list of equipment may have no cost
         result.errors.append((1, "No column looks like an amount; choose it in the mapping"))
     for number, row in table.rows:
         cells = _by_field(row, suggested)
@@ -131,9 +132,15 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
     invoice_day: date | None = None
     invoice_currency: str | None = None
     invoice_lines: list[dict] = []
+    # A list of equipment (board frame 15): with an inventory or serial number column every row is a device for the
+    # assets module, held by the person of the row; its amount is what the device cost, not spending.
+    equipment = not payments and bool({"inventory_number", "serial_number"} & set(columns_to_fields.values()))
     for number, row in table.rows:
         cells = _by_field(row, columns_to_fields)
         cells.update(corrections.get(str(number), {}))
+        if equipment:
+            _device(tenant, file_id, file_name, cells, now, once, skipped, number)
+            continue
         vendor = values.text(cells.get("vendor"))
         product = values.text(cells.get("product"))
         email = values.text(cells.get("email")).lower()
@@ -216,6 +223,31 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                           "date": invoice_day.isoformat() if invoice_day else None,
                           "currency": invoice_currency or DEFAULT_CURRENCY, "lines": invoice_lines}, now))
     return messages, skipped
+
+
+def _device(tenant: uuid.UUID, file_id: uuid.UUID, file_name: str, cells: dict[str, object], now: datetime,
+            once: Callable[[Message], None], skipped: list[tuple[int, str]], number: int) -> None:
+    """One row of a list of equipment: the ASSET entity, keyed as the connectors key it, and the person who holds it."""
+    serial = values.text(cells.get("serial_number")) or None
+    inventory = values.text(cells.get("inventory_number")) or None
+    if serial is None and inventory is None:
+        skipped.append((number, "no inventory or serial number"))
+        return
+    model = values.text(cells.get("asset_model")) or values.text(cells.get("product")) or None
+    cost = None
+    if amount_text(cells):
+        cost, _ = values.amount(cells["amount"])
+    email = values.text(cells.get("email")).lower() or None
+    employee = values.text(cells.get("employee")) or None
+    if email or employee:
+        once(_normalized(tenant, file_id, "EMPLOYEE", normalized.person_key(tenant, email, employee or ""),
+                         {"name": employee, "email": email,
+                          "department": values.text(cells.get("department")) or None}, now))
+    once(_normalized(tenant, file_id, "ASSET", normalized.key(tenant, "asset", serial or inventory),
+                     {"serial_number": serial, "inventory_number": inventory, "model": model,
+                      "type": normalized.asset_kind(cells.get("asset_type"), model),
+                      "cost": None if cost is None else str(cost), "holder_email": normalized.clean_email(email),
+                      "holder_name": employee, "source": "excel", "file_name": file_name}, now))
 
 
 def _suffix(part: paying.Part) -> tuple[str, ...]:

@@ -21,7 +21,10 @@ import org.springframework.stereotype.Component;
  * the monthly savings of software; and they do not show in invoices (board gap 3).
  *
  * <ul>
- *   <li>{@code asset.not-returned}: the holder was dismissed, or the return date passed.
+ *   <li>{@code asset.not-returned}: the holder was dismissed and still holds it (board frame 15, «уволенный не сдал
+ *       технику»).
+ *   <li>{@code asset.overdue}: the return date of the issue passed and the holder still works here (frame 15, «срок
+ *       возврата прошёл»). A dismissed holder is the rule above, so a device is not found twice.
  *   <li>{@code asset.idle}: back in stock for {@code costguard.audit.idle-days} (90) days; hand it out before
  *       buying a new one.
  *   <li>{@code asset.duplicate}: an employee holds two or more laptops, or two or more phones. Returning all but
@@ -32,6 +35,7 @@ import org.springframework.stereotype.Component;
 class AssetAuditRules implements AuditRules {
 
     static final String NOT_RETURNED = "asset.not-returned";
+    static final String OVERDUE = "asset.overdue";
     static final String IDLE = "asset.idle";
     static final String DUPLICATE = "asset.duplicate";
 
@@ -47,7 +51,7 @@ class AssetAuditRules implements AuditRules {
 
     @Override
     public Set<String> rules() {
-        return Set.of(NOT_RETURNED, IDLE, DUPLICATE);
+        return Set.of(NOT_RETURNED, OVERDUE, IDLE, DUPLICATE);
     }
 
     record Held(UUID assignmentId, String inventory, String model, BigDecimal cost, UUID employeeId,
@@ -78,8 +82,8 @@ class AssetAuditRules implements AuditRules {
                         "Сотрудник уволен " + left + ", а " + what + " числится за ним. Верните технику.",
                         h.cost(), null));
             } else if (h.returnDue() != null && h.returnDue().isBefore(today)) {
-                found.add(new Detection(NOT_RETURNED, NOT_RETURNED + ":" + h.assignmentId(),
-                        "Техника не возвращена в срок: " + what,
+                found.add(new Detection(OVERDUE, OVERDUE + ":" + h.assignmentId(),
+                        "Срок возврата техники прошёл: " + what,
                         "Срок возврата " + h.returnDue() + " прошёл. Верните технику или продлите выдачу.",
                         h.cost(), null));
             }

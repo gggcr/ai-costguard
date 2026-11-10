@@ -28,6 +28,7 @@ class ReturnedEquipment {
     void returned(UUID tenantId, Asset asset, Assignment closed) {
         String what = "Техника возвращена: " + asset.model() + " (инв. № " + asset.inventoryNumber() + ")";
         findings.settled(tenantId, AssetAuditRules.NOT_RETURNED + ":" + closed.id(), what);
+        findings.settled(tenantId, AssetAuditRules.OVERDUE + ":" + closed.id(), what);
         if (COUNTED.contains(asset.type())) {
             long left = assets.heldBy(closed.employeeId()).stream().filter(a -> a.type() == asset.type()).count();
             if (left < 2) {

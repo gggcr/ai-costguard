@@ -29,7 +29,7 @@ export interface Toast {
   level: Notification['level'];
 }
 
-export const FOCUS_FIELDS = ['Поставщик', 'Продукт', 'Сотрудник', 'Email', 'Сумма', 'Валюта', 'Период начала', 'Период окончания', 'Последняя активность', 'Отдел', '— не импортировать —'];
+export { FOCUS_FIELDS } from './focus';
 
 export const FINDING_ACTIONS = {
   assign: 'Назначить владельца',

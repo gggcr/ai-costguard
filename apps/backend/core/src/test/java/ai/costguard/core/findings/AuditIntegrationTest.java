@@ -173,4 +173,34 @@ class AuditIntegrationTest extends PostgresTestSupport {
         audit.run(tenant);
         assertThat(statuses("asset.duplicate")).containsExactly("auto_closed");
     }
+
+    /** Frame 15: a return date that passed is a finding of its own; the return settles it. */
+    @Test
+    void aReturnDateThatPassedIsAFindingOfItsOwn() throws Exception {
+        String department = send(post("/api/v1/departments"), "{\"name\":\"Дизайн\"}");
+        String erin = send(post("/api/v1/employees"), """
+                {"name":"Эрин","email":"erin-%s@corp.ru","departmentId":"%s","position":"Design"}"""
+                .formatted(UUID.randomUUID(), department));
+        String tablet = send(post("/api/v1/assets"), """
+                {"inventoryNumber":"INV-%s","model":"iPad Pro","type":"OTHER","cost":90000.00}"""
+                .formatted(UUID.randomUUID()));
+        send(put("/api/v1/assets/" + tablet + "/assignment"), "{\"employeeId\":\"%s\",\"returnDue\":\"%s\"}"
+                .formatted(erin, today.plusDays(10)));
+        audit.run(tenant);
+        assertThat(statuses("asset.overdue")).isEmpty();
+
+        // ten days later
+        org.springframework.jdbc.core.simple.JdbcClient.create(superuserAppDataSource())
+                .sql("update asset_assignment set return_due = ? where tenant_id = ?")
+                .params(today.minusDays(1), tenant).update();
+        audit.run(tenant);
+        assertThat(statuses("asset.overdue")).containsExactly("new");
+        assertThat(statuses("asset.not-returned")).isEmpty(); // Erin still works here
+        assertThat(findings().stream().filter(f -> "asset.overdue".equals(f.get("rule"))).findFirst().orElseThrow()
+                .get("title").toString()).startsWith("Срок возврата техники прошёл: iPad Pro");
+
+        mvc.perform(delete("/api/v1/assets/" + tablet + "/assignment").with(owner()))
+                .andExpect(status().isNoContent());
+        assertThat(statuses("asset.overdue")).containsExactly("auto_closed"); // settled by the return
+    }
 }

@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 
 FIELDS = ("vendor", "product", "employee", "email", "amount", "currency", "period_start", "period_end",
-          "last_active", "department", "skip")
+          "last_active", "department", "inventory_number", "serial_number", "asset_model", "asset_type", "skip")
 
 _SYNONYMS: dict[str, tuple[str, ...]] = {
     "vendor": ("vendor", "supplier", "provider", "serviceprovidername", "поставщик", "контрагент", "вендор",
@@ -26,11 +26,17 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     "last_active": ("lastactive", "lastlogin", "lastseen", "lastactivity", "последняяактивность",
                     "последнийвход", "активность"),
     "department": ("department", "costcenter", "dept", "team", "отдел", "подразделение", "цфо", "департамент"),
+    # a list of equipment (board frame 15): its rows are devices, not spending
+    "inventory_number": ("inventorynumber", "inventory", "assettag", "инвентарныйномер", "инвномер", "инв",
+                         "инвентарный"),
+    "serial_number": ("serialnumber", "serial", "sn", "серийныйномер", "заводскойномер", "серийный", "серийник"),
+    "asset_model": ("model", "devicemodel", "модель", "моделькомпьютера"),
+    "asset_type": ("assettype", "devicetype", "типтехники", "видтехники", "типустройства", "видустройства"),
 }
 
 # Checked before the loose match, so "Дата окончания" is not taken for a start date.
-_ORDER = ("last_active", "period_end", "period_start", "email", "currency", "amount", "department", "vendor",
-          "employee", "product")
+_ORDER = ("inventory_number", "serial_number", "asset_type", "asset_model", "last_active", "period_end",
+          "period_start", "email", "currency", "amount", "department", "vendor", "employee", "product")
 
 
 def _norm(column: str) -> str:

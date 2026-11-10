@@ -110,6 +110,37 @@ def test_onec_pages():
     assert len(of(batch, normalized.EntityType.VENDOR)) == 5
 
 
+def test_onec_fixed_assets_become_devices_held_by_their_mol():
+    """Board frame 15: equipment from 1C, the holder from the latest place of the asset."""
+    routes = dict(ONEC)
+    routes["Catalog_ОсновныеСредства"] = {"value": [
+        {"Ref_Key": "a1", "Description": "Ноутбук Lenovo ThinkPad T14", "Code": "БП-000101", "ЗаводскойНомер": "PF3X9",
+         "DeletionMark": False},
+        {"Ref_Key": "a2", "Description": "Монитор Dell", "Code": "БП-000102", "DeletionMark": False},
+        {"Ref_Key": "a3", "Description": "Списанный", "Code": "БП-000103", "DeletionMark": True},
+    ]}
+    routes["InformationRegister_МестонахождениеОСБухгалтерскийУчет"] = {"value": [
+        {"Period": "2026-01-10T00:00:00", "ОсновноеСредство_Key": "a1", "МОЛ_Key": "p1"},
+        {"Period": "2026-06-01T00:00:00", "ОсновноеСредство_Key": "a1", "МОЛ_Key": "p2"},
+    ]}
+    routes["Catalog_ФизическиеЛица"] = {"value": [{"Ref_Key": "p1", "Description": "Иванов Иван Иванович"},
+                                                 {"Ref_Key": "p2", "Description": "Петрова Анна Сергеевна"}]}
+    batch = onec.OneC(client(routes)).pull(TENANT, None)
+    devices = {d.payload["inventory_number"]: d.payload for d in of(batch, normalized.EntityType.ASSET)}
+    assert set(devices) == {"БП-000101", "БП-000102"}
+    laptop = devices["БП-000101"]
+    assert (laptop["serial_number"], laptop["type"], laptop["holder_name"], laptop["source"]) == (
+        "PF3X9", "LAPTOP", "Петрова Анна Сергеевна", "1c")
+    assert devices["БП-000102"]["type"] == "MONITOR" and devices["БП-000102"]["holder_name"] is None
+    # the same device from Jamf lands on the same key
+    assert of(batch, normalized.EntityType.ASSET)[0].key == entities.asset(TENANT, "jamf", "PF3X9").key
+
+
+def test_onec_without_fixed_assets_reads_only_invoices():
+    batch = onec.OneC(client(ONEC)).pull(TENANT, None)  # 1С:УТ: no Catalog_ОсновныеСредства, 404
+    assert of(batch, normalized.EntityType.ASSET) == [] and of(batch, normalized.EntityType.INVOICE)
+
+
 # МойСклад
 
 

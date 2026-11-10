@@ -93,8 +93,14 @@ def test_mapping_gives_each_field_once():
 
 
 def test_mapping_fields_match_the_core():
-    assert set(mapping.FIELDS) == {"vendor", "product", "employee", "email", "amount", "currency", "period_start",
-                                   "period_end", "last_active", "department", "skip"}
+    """The core refuses a mapping to a field it does not know (FocusFields.ALL of the imports module)."""
+    import re
+    from pathlib import Path
+
+    java = (Path(__file__).resolve().parents[4] / "apps/backend/core/src/main/java/ai/costguard/core/imports/internal"
+            / "ImportModel.java").read_text("utf-8")
+    block = re.search(r"Set<String> ALL = Set\.of\((.*?)\);", java, re.S).group(1)
+    assert set(mapping.FIELDS) == set(re.findall(r'"([a-z_]+)"', block))
 
 
 # tables
@@ -397,3 +403,34 @@ def test_an_accepted_file_that_cannot_be_read_writes_nothing_instead_of_failing(
                 "file_name": "a.bin", "vendor_id": None, "mapping": {}, "corrections": {}}
     assert handler.on_accepted(accepted) == []
     assert handler.on_accepted({**accepted, "s3_key": "t/missing.csv", "file_name": "missing.csv"}) == []
+
+
+EQUIPMENT = ("Инв. номер;Серийный номер;Модель;Сотрудник;E-mail;Стоимость\n"
+             "INV-0101;C02XK1;MacBook Air M3;Иванов И.И.;ivanov@corp.ru;120000\n"
+             "INV-0102;;Монитор Dell P2422H;;;18000\n"
+             ";;Без номера;;;5\n").encode("cp1251")
+
+
+def test_a_list_of_equipment_becomes_devices_not_spending():
+    """Board frame 15: equipment from Excel goes to the assets module, held by the person of the row."""
+    parsed = pipeline.parse("техника.csv", EQUIPMENT)
+    assert parsed.suggested_mapping["Инв. номер"] == "inventory_number"
+    assert parsed.suggested_mapping["Серийный номер"] == "serial_number"
+    assert parsed.suggested_mapping["Модель"] == "asset_model"
+    assert not [e for e in parsed.errors if "amount" in e[1]]
+    messages, skipped = pipeline.accept(TENANT, FILE, f"{TENANT}/t.csv", "техника.csv", None,
+                                        parsed.suggested_mapping, {}, EQUIPMENT, now=NOW)
+    assert not [m for m in messages if m.topic == "cost.records.v1"]
+    kinds = [m.value["entity_type"] for m in messages if m.topic == "ingest.normalized.v1"]
+    assert sorted(kinds) == ["ASSET", "ASSET", "EMPLOYEE"]
+    devices = [json.loads(m.value["payload"]) for m in messages if m.value.get("entity_type") == "ASSET"]
+    mac = next(d for d in devices if d["inventory_number"] == "INV-0101")
+    assert (mac["serial_number"], mac["type"], mac["cost"], mac["holder_email"]) == \
+        ("C02XK1", "LAPTOP", "120000", "ivanov@corp.ru")
+    monitor = next(d for d in devices if d["inventory_number"] == "INV-0102")
+    assert monitor["type"] == "MONITOR" and monitor["holder_email"] is None
+    assert skipped == [(4, "no inventory or serial number")]
+    # the key is the one the connectors use, so 1C, Jamf and Excel land on one device
+    key = next(m.value["entity_key"] for m in messages if m.value.get("entity_type") == "ASSET"
+               and "C02XK1" in m.value["payload"])
+    assert key == f"{TENANT}:asset:c02xk1"

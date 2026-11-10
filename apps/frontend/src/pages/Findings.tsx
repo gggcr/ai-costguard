@@ -16,7 +16,7 @@ const RULE_LABEL: Record<string, string> = {
   'subscription.oversized-plan': 'Избыточный тариф', 'subscription.monthly-billing': 'Помесячно вместо годового',
   'invoice.duplicate': 'Ошибки в счетах: дубль', 'invoice.overcharge': 'Ошибки в счетах: сумма больше подписок',
   'vendor.shadow': 'Теневые подписки', 'ai.bypass': 'ИИ-расходы мимо шлюза', 'anomaly.spike': 'Всплеск трат',
-  'asset.not-returned': 'Техника не возвращена', 'asset.idle': 'Техника простаивает', 'asset.duplicate': 'Лишняя техника у сотрудника',
+  'asset.not-returned': 'Уволенный не сдал технику', 'asset.overdue': 'Срок возврата техники прошёл', 'asset.idle': 'Техника простаивает', 'asset.duplicate': 'Лишняя техника у сотрудника',
 };
 // Экономия по технике разовая (стоимость устройства), а не ежемесячная, и в счетах её не видно; дубль счёта — тоже разово
 const oneOff = (rule: string) => rule.startsWith('asset.') || rule === 'invoice.duplicate';

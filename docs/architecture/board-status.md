@@ -249,8 +249,8 @@
 | Таблицы оборудования и выдачи | `core/assets`, `V2__assets.sql` | сделано |
 | Увольнение показывает всё, что числится за сотрудником | `GET /api/v1/employees/{employeeId}/assets`, `EmployeeDismissed` | сделано |
 | Находка по технике закрывается возвратом (`assets.assignments.v1`), а не счётом | `assets/internal/ReturnedEquipment`, `FindingsIntake.settled` | сделано (ADR 0020): закрытие в той же транзакции, что и событие |
-| Находки: не сдал технику, срок возврата прошёл, техника лежит на складе, два ноутбука у сотрудника | правила `asset.duplicate`, `asset.idle` | не сделано (частично): «не сдал уволенный» и «срок возврата прошёл» отдельными правилами не сделаны |
-| Загрузка из Excel, 1С, Jamf, Intune | `jamf.py`, `intune.py`; `POST /api/v1/assets` | не сделано (частично): из 1С и Excel техника не загружается |
+| Находки: не сдал технику, срок возврата прошёл, техника лежит на складе, два ноутбука у сотрудника | правила `asset.not-returned`, `asset.overdue`, `asset.idle`, `asset.duplicate` | сделано (ADR 0041) |
+| Загрузка из Excel, 1С, Jamf, Intune | `jamf.py`, `intune.py`, `onec.py` (основные средства и МОЛ), разбор Excel (`inventory_number`, `serial_number`, `asset_model`, `asset_type`); `POST /api/v1/assets` | сделано (ADR 0041) |
 | Не склад и не учёт ОС; удержания решают кадры; командировочные не входят | — | сделано (ничего лишнего нет) |
 
 Подробности — в [assets-vs-board.md](assets-vs-board.md).
@@ -289,7 +289,6 @@
 - в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
 - Prometheus и Grafana в репозитории (ставятся kube-prometheus-stack), OpenTelemetry Collector, `infra/observability`;
 - FOCUS и SCIM на уровне 1 интеграций;
-- техника из 1С и Excel, правила «уволенный не сдал технику» и «срок возврата прошёл»;
 - загрузка Excel в e2e-сценарии; ранбуки по Redis и провайдеру;
 - README и Dockerfile у каждого Python-сервиса, владельцы сервисов в CODEOWNERS.
 

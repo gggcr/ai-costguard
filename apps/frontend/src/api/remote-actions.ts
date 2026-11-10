@@ -1,5 +1,6 @@
 // Действия кнопок поверх REST API ядра. Сигнатуры как у демо-хранилища (store.tsx), чтобы страницы не знали,
 // откуда данные. Ошибка запроса показывается всплывающим сообщением, действие возвращает null/undefined.
+import { focusIds } from './focus';
 import type * as Api from './generated/core';
 import { ApiError, api, download } from './http';
 import { AFTER, remote, type Slice } from './remote';
@@ -187,7 +188,7 @@ export function remoteActions({ getState, currency, reload, patch, toast }: Remo
       return r ?? '';
     },
     async confirmMapping(id: string, mapping: Record<string, string>, saveTemplate: boolean) {
-      await run(AFTER.imports, () => api('PUT', `/api/v1/imports/${id}/mapping`, { mapping, saveTemplate }),
+      await run(AFTER.imports, () => api('PUT', `/api/v1/imports/${id}/mapping`, { mapping: focusIds(mapping), saveTemplate }),
         saveTemplate ? 'Колонки сопоставлены, шаблон поставщика сохранён' : 'Колонки сопоставлены');
     },
     async resolveTask(importId: string, taskId: string, value: string) {

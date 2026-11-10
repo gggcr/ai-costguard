@@ -81,3 +81,25 @@ class Entity:
             "payload": json.dumps(self.payload, ensure_ascii=False, default=str, sort_keys=True),
             "confidence": self.confidence, "normalized_at": at,
         }
+
+
+ASSET_TYPES = ("LAPTOP", "PHONE", "MONITOR", "OTHER")
+_ASSET_WORDS = (
+    ("LAPTOP", ("laptop", "notebook", "ноутбук", "macbook", "thinkpad", "ultrabook", "лэптоп")),
+    ("PHONE", ("phone", "iphone", "smartphone", "телефон", "смартфон", "galaxy", "pixel")),
+    ("MONITOR", ("monitor", "монитор", "display", "дисплей")),
+)
+
+
+def asset_kind(*texts: object) -> str:
+    """The kind of a device from its type, name or model as people write them; OTHER when nothing says."""
+    text = " ".join(str(t) for t in texts if t).lower().replace("ё", "е")
+    if not text:
+        return "OTHER"
+    for kind in ASSET_TYPES:
+        if text.strip().upper() == kind:
+            return kind
+    for kind, words in _ASSET_WORDS:
+        if any(w in text for w in words):
+            return kind
+    return "OTHER"

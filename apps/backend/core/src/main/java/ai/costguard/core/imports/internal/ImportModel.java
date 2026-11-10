@@ -34,7 +34,8 @@ enum ImportStatus { uploaded, mapping, review, done, failed }
 final class FocusFields {
 
     static final Set<String> ALL = Set.of("vendor", "product", "employee", "email", "amount", "currency",
-            "period_start", "period_end", "last_active", "department", "skip");
+            "period_start", "period_end", "last_active", "department", "inventory_number", "serial_number",
+            "asset_model", "asset_type", "skip");
 
     private FocusFields() {
     }
