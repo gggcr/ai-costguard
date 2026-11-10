@@ -10,11 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class SoftwareService {
 
+    /** The newest invoices and payments a list shows. */
+    static final int LIST_LIMIT = 500;
+
     private final SoftwareRepository software;
+    private final InvoiceRepository invoiceRepository;
     private final TenantSession session;
 
-    SoftwareService(SoftwareRepository software, TenantSession session) {
+    SoftwareService(SoftwareRepository software, InvoiceRepository invoiceRepository, TenantSession session) {
         this.software = software;
+        this.invoiceRepository = invoiceRepository;
         this.session = session;
     }
 
@@ -180,6 +185,18 @@ class SoftwareService {
             throw SoftwareProblem.LICENSE_NOT_FOUND.failure();
         }
         return software.license(licenseId).orElseThrow();
+    }
+
+    @Transactional(readOnly = true)
+    List<Invoice> invoices(UUID tenantId, UUID vendorId, UUID subscriptionId) {
+        session.bind(tenantId);
+        return invoiceRepository.invoices(vendorId, subscriptionId, LIST_LIMIT);
+    }
+
+    @Transactional(readOnly = true)
+    List<Payment> payments(UUID tenantId, UUID vendorId) {
+        session.bind(tenantId);
+        return invoiceRepository.payments(vendorId, LIST_LIMIT);
     }
 
     @Transactional(readOnly = true)

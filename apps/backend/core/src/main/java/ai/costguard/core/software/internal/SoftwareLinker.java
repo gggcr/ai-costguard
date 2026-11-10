@@ -2,6 +2,8 @@ package ai.costguard.core.software.internal;
 
 import ai.costguard.core.shared.names.Names;
 import ai.costguard.core.software.SoftwareLinks;
+import ai.costguard.core.software.SoftwareLinks.ReportedInvoice;
+import ai.costguard.core.software.SoftwareLinks.ReportedPayment;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,9 +13,21 @@ import org.springframework.stereotype.Component;
 class SoftwareLinker implements SoftwareLinks {
 
     private final SoftwareRepository software;
+    private final InvoiceBook invoices;
 
-    SoftwareLinker(SoftwareRepository software) {
+    SoftwareLinker(SoftwareRepository software, InvoiceBook invoices) {
         this.software = software;
+        this.invoices = invoices;
+    }
+
+    @Override
+    public UUID invoiceSeen(UUID tenantId, ReportedInvoice invoice) {
+        return invoices.invoiceSeen(tenantId, invoice);
+    }
+
+    @Override
+    public UUID paymentSeen(UUID tenantId, ReportedPayment payment) {
+        return invoices.paymentSeen(tenantId, payment);
     }
 
     @Override

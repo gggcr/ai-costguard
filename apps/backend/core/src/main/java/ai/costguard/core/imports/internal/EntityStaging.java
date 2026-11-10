@@ -13,6 +13,10 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -61,6 +65,11 @@ class EntityStaging implements NormalizedEntities {
         }
         JsonNode p = parse(payload);
         UUID linked = link(tenantId, entityType, p);
+        if (linked != null && entityType.equals("INVOICE")) {
+            invoice(tenantId, entityKey, linked, p, at);
+        } else if (linked != null && entityType.equals("PAYMENT")) {
+            payment(tenantId, entityKey, linked, p, at);
+        }
         jdbc.sql("""
                 insert into ingest_entity (tenant_id, entity_key, entity_type, source_id, payload, confidence,
                                            linked_id, first_seen, last_seen)
@@ -87,6 +96,50 @@ class EntityStaging implements NormalizedEntities {
             case "LICENSE_ASSIGNMENT" -> license(tenantId, p).orElse(null);
             default -> null;
         };
+    }
+
+    /**
+     * An invoice goes to the software module (ADR 0033). One without a total is no invoice; one without a date gets
+     * the day it arrived, and says so.
+     */
+    private void invoice(UUID tenantId, String entityKey, UUID vendorId, JsonNode p, Instant at) {
+        BigDecimal total = text(p, "total").flatMap(EntityStaging::decimal).orElse(null);
+        if (total == null) {
+            return;
+        }
+        Optional<LocalDate> stated = text(p, "date").flatMap(EntityStaging::day);
+        List<SoftwareLinks.ReportedInvoice.Line> lines = new ArrayList<>();
+        for (JsonNode line : p.path("lines")) {
+            var amount = text(line, "amount").flatMap(EntityStaging::decimal);
+            if (amount.isPresent()) {
+                lines.add(new SoftwareLinks.ReportedInvoice.Line(text(line, "description").orElse(""), amount.get()));
+            }
+        }
+        software.invoiceSeen(tenantId, new SoftwareLinks.ReportedInvoice(entityKey, vendorId,
+                text(p, "number").orElse(""), stated.orElse(day(at)), stated.isPresent(), currency(p), total,
+                text(p, "source").or(() -> text(p, "file_name")).orElse(""), lines, at));
+    }
+
+    private void payment(UUID tenantId, String entityKey, UUID vendorId, JsonNode p, Instant at) {
+        BigDecimal amount = text(p, "amount").flatMap(EntityStaging::decimal).orElse(null);
+        if (amount == null) {
+            return;
+        }
+        Optional<LocalDate> stated = text(p, "date").flatMap(EntityStaging::day);
+        software.paymentSeen(tenantId, new SoftwareLinks.ReportedPayment(entityKey, vendorId, amount, currency(p),
+                stated.orElse(day(at)), stated.isPresent(), text(p, "purpose").orElse(""),
+                text(p, "kind").orElse(""), text(p, "card").orElse(""), text(p, "mcc").orElse(""),
+                text(p, "role").orElse("payment"), text(p, "intermediary").orElse(""),
+                text(p, "source").orElse(""), at));
+    }
+
+    private static String currency(JsonNode p) {
+        String code = text(p, "currency").map(c -> c.toUpperCase(Locale.ROOT)).orElse("RUB");
+        return code.length() == 3 ? code : "RUB";
+    }
+
+    private static LocalDate day(Instant at) {
+        return at.atZone(ZoneOffset.UTC).toLocalDate();
     }
 
     /**

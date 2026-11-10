@@ -130,6 +130,7 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
     invoice_number = ""
     invoice_day: date | None = None
     invoice_currency: str | None = None
+    invoice_lines: list[dict] = []
     for number, row in table.rows:
         cells = _by_field(row, columns_to_fields)
         cells.update(corrections.get(str(number), {}))
@@ -206,13 +207,14 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                 service_provider_name=provider, department_id=_uuid_or_none(department))
             messages.append(Message("cost.records.v1", str(tenant), record.avro()))
         invoice_total += amount
+        invoice_lines.append({"description": product or vendor or "", "amount": str(amount)})
 
     if invoice_total and not payments:
         once(_normalized(tenant, file_id, "INVOICE", _entity_key(tenant, "invoice", storage_key),
                          {"file_name": file_name, "vendor": invoice_vendor, "vendor_id": vendor_id,
                           "total": str(invoice_total), "number": invoice_number or None,
                           "date": invoice_day.isoformat() if invoice_day else None,
-                          "currency": invoice_currency or DEFAULT_CURRENCY}, now))
+                          "currency": invoice_currency or DEFAULT_CURRENCY, "lines": invoice_lines}, now))
     return messages, skipped
 
 

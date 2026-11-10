@@ -215,6 +215,9 @@ def test_an_extracted_invoice_keeps_its_number_and_date():
     messages, _ = pipeline.accept(TENANT, FILE, f"{TENANT}/a17.csv", "a17.csv", None, columns, {}, content, now=NOW)
     invoice = invoice_of(messages)
     assert (invoice["number"], invoice["date"], invoice["total"]) == ("A-17", "2026-11-05", "4000")
+    # the core tells the vendor's subscriptions apart by the products in the lines (ADR 0033)
+    assert invoice["lines"] == [{"description": "Jira, 3 места", "amount": "3000"},
+                                {"description": "Confluence", "amount": "1000"}]
 
 
 def test_every_output_fits_its_schema():

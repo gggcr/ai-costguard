@@ -132,6 +132,21 @@ class SoftwareController {
         return service.recordActivity(TenantClaim.of(jwt), id, activity);
     }
 
+    @GetMapping("/invoices")
+    @Operation(summary = "List invoices, newest first",
+            description = "From the ingest pipeline and the connectors; at most 500. paymentId is the payment that "
+                    + "settled the invoice.")
+    List<Invoice> invoices(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) UUID vendorId,
+            @RequestParam(required = false) UUID subscriptionId) {
+        return service.invoices(TenantClaim.of(jwt), vendorId, subscriptionId);
+    }
+
+    @GetMapping("/payments")
+    @Operation(summary = "List payments, newest first", description = "From bank statements and banks; at most 500.")
+    List<Payment> payments(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) UUID vendorId) {
+        return service.payments(TenantClaim.of(jwt), vendorId);
+    }
+
     @GetMapping("/plans")
     @Operation(summary = "List the plans products are sold on",
             description = "The audit compares a subscription's plan with the other plans of its product.")

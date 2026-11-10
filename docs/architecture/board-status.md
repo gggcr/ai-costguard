@@ -132,7 +132,7 @@
 | Состояния: новая, на проверке, принята, выполняется, отклонена, отложена, закрыта автоматически, подтверждена | `core/findings/internal/FindingModel.java` (`FindingStatus`) | сделано |
 | Переходы: назначен владелец, принять, отклонить с причиной, отложить до даты, создана задача | `FindingAction`, `FindingTimer` (наступила дата) | сделано |
 | Условие исчезло → закрыта автоматически | `AuditEngine` (`AUTO_CLOSABLE`) | сделано |
-| Экономия засчитывается, когда видна в следующих счетах; не видна два счёта подряд → обратно на проверку | `FindingAction.confirm`, `missInvoice` | сделано иначе (ADR 0020): «видна в счёте» и «не видна» отмечает человек; счета в ядре не хранятся, автоматической сверки нет. Два «не видна» подряд возвращают на проверку |
+| Экономия засчитывается, когда видна в следующих счетах; не видна два счёта подряд → обратно на проверку | `FindingAction.confirm`, `missInvoice` | сделано иначе (ADR 0020): «видна в счёте» и «не видна» отмечает человек; счета в ядре теперь есть (ADR 0033), автоматической сверки пока нет. Два «не видна» подряд возвращают на проверку |
 | Отпечаток находки: правило и сущности | `fingerprint` в `finding` | сделано |
 | Правила: неиспользуемые лицензии, лицензии уволенных, дубли подписок, скорое автопродление | `license.unused`, `license.dismissed`, `subscription.duplicate`, `contract.renewal` | сделано |
 | Правила: пересекающиеся инструменты, избыточный тариф, ошибки в счетах, теневые подписки, ИИ-расходы мимо шлюза, помесячно вместо годового | `subscription.overlap`, `subscription.oversized-plan`, `subscription.monthly-billing` (`software`); `invoice.duplicate`, `invoice.overcharge`, `vendor.shadow`, `ai.bypass` (`imports`, `SpendAuditRules`) | сделано (ADR 0032): условия выбраны нами, на доске только названия; «ошибки в счетах» — два правила; избыточный тариф и годовая цена — по каталогу тарифов `product_plan` |
@@ -148,7 +148,7 @@
 | APPROVAL_REQUEST | `core/approvals` | сделано |
 | RECEIPT, ANCHOR_BATCH | `core/journal` | сделано |
 | VENDOR, PRODUCT, CONTRACT, PRICE, SUBSCRIPTION, LICENSE_ASSIGNMENT, ACTIVITY_EVENT | `core/software` | сделано |
-| INVOICE, INVOICE_LINE, PAYMENT | `core/software`, `ingest.normalized.v1` | сделано |
+| INVOICE, INVOICE_LINE, PAYMENT | `core/software` (`invoice`, `invoice_line`, `payment`, V25), `ingest.normalized.v1` | сделано (ADR 0033): счёт привязан к подписке, платёж — к счёту |
 | FX_RATE | `core/catalog` (курсы ЦБ) | сделано |
 | IMPORT_FILE, SOURCE_TEMPLATE | `core/imports` | сделано |
 | FINDING, SAVINGS_RECORD | `core/findings` | сделано |

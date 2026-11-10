@@ -1,20 +1,14 @@
-package ai.costguard.core.imports.internal;
+package ai.costguard.core.software.internal;
 
 import ai.costguard.core.agents.GatewayVendors;
 import ai.costguard.core.catalog.ExchangeRates;
 import ai.costguard.core.findings.AuditRules;
 import ai.costguard.core.shared.names.KnownServices;
 import ai.costguard.core.shared.names.Names;
-import ai.costguard.core.software.SoftwareInventory;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -23,18 +17,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 /**
- * Rules over the invoices and payments the pipeline and the connectors reported (ingest_entity), for the last
- * {@code costguard.audit.spend-days} (90) days. Only entities tied to a vendor count. Amounts are converted to
- * roubles at the Bank of Russia rate of their day; one without a rate is left out of the sums.
+ * Rules over the invoices and payments (ADR 0033) of the last {@code costguard.audit.spend-days} (90) days. Amounts
+ * are converted to roubles at the Bank of Russia rate of their day; one without a rate is left out of the sums.
  *
  * <ul>
  *   <li>{@code invoice.duplicate}: a vendor's invoice that came twice: the same number, or with no number the same
@@ -49,7 +42,8 @@ import org.springframework.stereotype.Component;
  *       mandate names. The gateway's own provider account is paid by transfer, and its spend is in the ledger.
  *       The saving is not known: the finding is about control, so it is zero.
  * </ul>
- * ADR 0032 has the reasons.
+ * ADR 0032 has the reasons. Fingerprints name an invoice by its entity key in ingest.normalized.v1, as they did when
+ * these rules read ingest_entity.
  */
 @Component
 class SpendAuditRules implements AuditRules {
@@ -62,21 +56,20 @@ class SpendAuditRules implements AuditRules {
     /** Merchant codes of software: telecom and information services, software, digital goods, data processing. */
     static final Set<String> SOFTWARE_MCC = Set.of("4816", "5734", "5817", "5818", "7372");
 
-    private static final ObjectMapper JSON = new ObjectMapper();
     private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
 
-    private final JdbcClient jdbc;
-    private final SoftwareInventory software;
+    private final SoftwareRepository software;
+    private final InvoiceRepository invoices;
     private final GatewayVendors gateway;
     private final ExchangeRates rates;
     private final int days;
     private final BigDecimal tolerance;
 
-    SpendAuditRules(JdbcClient jdbc, SoftwareInventory software, GatewayVendors gateway, ExchangeRates rates,
-            @Value("${costguard.audit.spend-days:90}") int days,
+    SpendAuditRules(SoftwareRepository software, InvoiceRepository invoices, GatewayVendors gateway,
+            ExchangeRates rates, @Value("${costguard.audit.spend-days:90}") int days,
             @Value("${costguard.audit.invoice-tolerance:0.02}") BigDecimal tolerance) {
-        this.jdbc = jdbc;
         this.software = software;
+        this.invoices = invoices;
         this.gateway = gateway;
         this.rates = rates;
         this.days = days;
@@ -91,21 +84,27 @@ class SpendAuditRules implements AuditRules {
     /** An invoice or a payment as the source saw it; {@code rub} is null when the currency has no rate. */
     record Spend(String key, String type, UUID vendorId, BigDecimal amount, String currency, BigDecimal rub,
             LocalDate day, boolean dated, String number, String purpose, boolean card, String mcc, String role,
-            String source, Timestamp firstSeen) {
+            String source, Instant firstSeen) {
     }
 
     @Override
     public List<Detection> detect(UUID tenantId, LocalDate today) {
         LocalDate since = today.minusDays(days);
-        List<Spend> spends = jdbc.sql("""
-                select entity_key, entity_type, linked_id, payload::text as payload, first_seen from ingest_entity
-                where entity_type in ('INVOICE', 'PAYMENT') and linked_id is not null
-                """).query((rs, n) -> spend(rs.getString("entity_key"), rs.getString("entity_type"),
-                        rs.getObject("linked_id", UUID.class), rs.getString("payload"),
-                        rs.getTimestamp("first_seen")))
-                .list().stream().filter(s -> s != null && !s.day().isBefore(since) && !s.day().isAfter(today))
-                .toList();
-        Map<UUID, String> names = software.vendorNames();
+        List<Spend> spends = new ArrayList<>();
+        for (InvoiceRepository.Keyed k : invoices.invoicesBetween(since, today)) {
+            Invoice i = k.invoice();
+            spends.add(new Spend(k.entityKey(), "INVOICE", i.vendorId(), i.total(), i.currency(),
+                    rub(i.total(), i.currency(), i.issuedOn()), i.issuedOn(), i.dated(), i.number(), "", false, "",
+                    "payment", i.source(), i.receivedAt()));
+        }
+        for (Payment p : invoices.paymentsBetween(since, today)) {
+            boolean card = !p.card().isBlank() || "CARD".equalsIgnoreCase(p.kind());
+            spends.add(new Spend(p.id().toString(), "PAYMENT", p.vendorId(), p.amount(), p.currency(),
+                    rub(p.amount(), p.currency(), p.paidOn()), p.paidOn(), p.dated(), "", p.purpose(), card,
+                    p.mcc(), p.role(), p.source(), p.receivedAt()));
+        }
+        Map<UUID, String> names = new HashMap<>();
+        software.vendors().forEach(v -> names.put(v.id(), v.name()));
         List<Detection> found = new ArrayList<>();
         List<Spend> invoices = spends.stream().filter(s -> s.type().equals("INVOICE"))
                 .sorted(Comparator.comparing(Spend::firstSeen).thenComparing(Spend::key)).toList();
@@ -118,27 +117,8 @@ class SpendAuditRules implements AuditRules {
         return found;
     }
 
-    private Spend spend(String key, String type, UUID vendorId, String payload, Timestamp firstSeen) {
-        JsonNode p;
-        try {
-            p = JSON.readTree(payload);
-        } catch (IOException e) {
-            return null;
-        }
-        BigDecimal amount = decimal(text(p, type.equals("INVOICE") ? "total" : "amount")).orElse(null);
-        if (amount == null) {
-            return null;
-        }
-        Optional<LocalDate> stated = text(p, "date").flatMap(SpendAuditRules::day);
-        LocalDate day = stated.orElse(firstSeen.toInstant().atOffset(ZoneOffset.UTC).toLocalDate());
-        String currency = text(p, "currency").map(c -> c.toUpperCase(Locale.ROOT)).orElse("RUB");
-        BigDecimal rub = currency.equals("RUB") || currency.equals("RUR") ? amount
-                : rates.toRub(amount, currency, day).orElse(null);
-        boolean card = text(p, "card").isPresent() || "CARD".equalsIgnoreCase(text(p, "kind").orElse(""));
-        String source = text(p, "source").or(() -> text(p, "file_name")).orElse("");
-        return new Spend(key, type, vendorId, amount, currency, rub, day, stated.isPresent(),
-                text(p, "number").orElse(""), text(p, "purpose").orElse(""), card, text(p, "mcc").orElse(""),
-                text(p, "role").orElse("payment"), source, firstSeen);
+    private BigDecimal rub(BigDecimal amount, String currency, LocalDate day) {
+        return currency.equals("RUB") || currency.equals("RUR") ? amount : rates.toRub(amount, currency, day).orElse(null);
     }
 
     private static String number(String number) {
@@ -185,16 +165,16 @@ class SpendAuditRules implements AuditRules {
     }
 
     private void overcharges(List<Spend> invoices, Map<UUID, String> names, List<Detection> found) {
-        Map<UUID, List<SoftwareInventory.Billing>> byVendor = software.billing().stream()
-                .collect(Collectors.groupingBy(SoftwareInventory.Billing::vendorId));
+        Map<UUID, List<Subscription>> byVendor = software.subscriptions().stream()
+                .collect(Collectors.groupingBy(Subscription::vendorId));
         for (Spend invoice : invoices) {
-            List<SoftwareInventory.Billing> billing = byVendor.getOrDefault(invoice.vendorId(), List.of());
-            Set<Boolean> periods = billing.stream().map(SoftwareInventory.Billing::yearly).collect(Collectors.toSet());
+            List<Subscription> billing = byVendor.getOrDefault(invoice.vendorId(), List.of());
+            Set<BillingPeriod> periods = billing.stream().map(Subscription::billingPeriod).collect(Collectors.toSet());
             if (invoice.rub() == null || periods.size() != 1) {
                 continue;
             }
-            boolean yearly = periods.iterator().next();
-            BigDecimal expected = billing.stream().map(SoftwareInventory.Billing::amount)
+            boolean yearly = periods.iterator().next() == BillingPeriod.year;
+            BigDecimal expected = billing.stream().map(b -> b.pricePerSeat().multiply(BigDecimal.valueOf(b.seats())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             if (expected.signum() <= 0 || !above(invoice.rub(), expected, 1) || prepaid(invoice.rub(), expected)) {
                 continue;
@@ -208,7 +188,7 @@ class SpendAuditRules implements AuditRules {
                             + money(expected, "RUB") + (yearly ? " в год" : " в месяц")
                             + ". Сверьте счёт с договором и числом мест.",
                     yearly ? over.divide(TWELVE, 2, RoundingMode.HALF_EVEN) : over,
-                    billing.size() == 1 ? billing.getFirst().subscriptionId() : null));
+                    billing.size() == 1 ? billing.getFirst().id() : null));
         }
     }
 
@@ -229,7 +209,7 @@ class SpendAuditRules implements AuditRules {
     }
 
     private void shadow(List<Spend> payments, Map<UUID, String> names, List<Detection> found) {
-        Set<UUID> registered = software.registeredVendors();
+        Set<UUID> registered = new HashSet<>(software.registeredVendors());
         Map<UUID, List<Spend>> byVendor = new LinkedHashMap<>();
         for (Spend p : payments) {
             String vendor = names.getOrDefault(p.vendorId(), "");
@@ -302,26 +282,5 @@ class SpendAuditRules implements AuditRules {
 
     private static String money(BigDecimal amount, String currency) {
         return amount.setScale(2, RoundingMode.HALF_EVEN).toPlainString() + " " + currency;
-    }
-
-    private static Optional<String> text(JsonNode p, String field) {
-        JsonNode v = p.get(field);
-        return v == null || v.isNull() || v.asText().isBlank() ? Optional.empty() : Optional.of(v.asText().strip());
-    }
-
-    private static Optional<BigDecimal> decimal(Optional<String> text) {
-        try {
-            return text.map(t -> new BigDecimal(t.replace(" ", "").replace(',', '.')));
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<LocalDate> day(String text) {
-        try {
-            return Optional.of(LocalDate.parse(text.length() > 10 ? text.substring(0, 10) : text));
-        } catch (DateTimeParseException e) {
-            return Optional.empty();
-        }
     }
 }

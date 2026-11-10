@@ -1703,6 +1703,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IssuedKey"
+  /api/v1/payments:
+    get:
+      tags:
+      - Software
+      summary: "List payments, newest first"
+      description: From bank statements and banks; at most 500.
+      operationId: payments
+      parameters:
+      - name: vendorId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
   /api/v1/operations:
     get:
       tags:
@@ -1836,6 +1859,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SigningKey"
+  /api/v1/invoices:
+    get:
+      tags:
+      - Software
+      summary: "List invoices, newest first"
+      description: From the ingest pipeline and the connectors; at most 500. paymentId
+        is the payment that settled the invoice.
+      operationId: invoices
+      parameters:
+      - name: vendorId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: subscriptionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
   /api/v1/imports/{id}:
     get:
       tags:
@@ -3803,6 +3856,44 @@ components:
           enum:
           - active
           - revoked
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorId:
+          type: string
+          format: uuid
+        invoiceId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        paidOn:
+          type: string
+          format: date
+        dated:
+          type: boolean
+        purpose:
+          type: string
+        kind:
+          type: string
+        card:
+          type: string
+        mcc:
+          type: string
+        role:
+          type: string
+        intermediary:
+          type: string
+        source:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
     OperationView:
       type: object
       properties:
@@ -3940,6 +4031,51 @@ components:
           type: string
         publicKey:
           type: string
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorId:
+          type: string
+          format: uuid
+        subscriptionId:
+          type: string
+          format: uuid
+        number:
+          type: string
+        issuedOn:
+          type: string
+          format: date
+        dated:
+          type: boolean
+        currency:
+          type: string
+        total:
+          type: number
+        source:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        paymentId:
+          type: string
+          format: uuid
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceLine"
+    InvoiceLine:
+      type: object
+      properties:
+        lineNo:
+          type: integer
+          format: int32
+        description:
+          type: string
+        amount:
+          type: number
     FindingTotals:
       type: object
       properties:

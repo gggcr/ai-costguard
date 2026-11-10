@@ -286,6 +286,27 @@ export type ImportJob = {
   sha256?: string;
 };
 
+export type Invoice = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  subscriptionId?: string;  // uuid
+  number?: string;
+  issuedOn?: string;  // date
+  dated?: boolean;
+  currency?: string;
+  total?: number;
+  source?: string;
+  receivedAt?: string;  // date-time
+  paymentId?: string;  // uuid
+  lines?: Array<InvoiceLine>;
+};
+
+export type InvoiceLine = {
+  lineNo?: number;
+  description?: string;
+  amount?: number;
+};
+
 export type IssuedKey = {
   key?: VirtualKey;
   secret?: string;
@@ -432,6 +453,24 @@ export type OperationView = {
   inputTokens?: number;
   outputTokens?: number;
   receipt?: "pending" | "anchored";
+};
+
+export type Payment = {
+  id?: string;  // uuid
+  vendorId?: string;  // uuid
+  invoiceId?: string;  // uuid
+  amount?: number;
+  currency?: string;
+  paidOn?: string;  // date
+  dated?: boolean;
+  purpose?: string;
+  kind?: string;
+  card?: string;
+  mcc?: string;
+  role?: string;
+  intermediary?: string;
+  source?: string;
+  receivedAt?: string;  // date-time
 };
 
 export type Plan = {
@@ -746,6 +785,7 @@ export const operations = {
   importsGet: { method: "GET", path: "/api/v1/imports/{id}" },
   importsMapping: { method: "PUT", path: "/api/v1/imports/{id}/mapping" },
   importsResolve: { method: "PUT", path: "/api/v1/imports/{id}/review-tasks/{taskId}" },
+  softwareInvoices: { method: "GET", path: "/api/v1/invoices" },
   journalKey: { method: "GET", path: "/api/v1/journal/signing-key" },
   journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
@@ -768,6 +808,7 @@ export const operations = {
   notificationsRead: { method: "PUT", path: "/api/v1/notifications/{id}/read" },
   journalOperations: { method: "GET", path: "/api/v1/operations" },
   journalReceipt: { method: "GET", path: "/api/v1/operations/{operationId}/receipt" },
+  softwarePayments: { method: "GET", path: "/api/v1/payments" },
   softwarePlans: { method: "GET", path: "/api/v1/plans" },
   softwareCreatePlan: { method: "POST", path: "/api/v1/plans" },
   softwareDeletePlan: { method: "DELETE", path: "/api/v1/plans/{id}" },

@@ -5,8 +5,9 @@ import { useAuth } from '../auth/auth';
 import type { Contract, Subscription } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, FindingBadge, Modal, PageHeader, Progress, ReadOnlyNote, Stat, Tabs } from '../components/ui';
 import { daysUntil, fmtDate, fmtRelative, fmtRub } from '../lib';
+import { InvoicesTab } from './Invoices';
 
-type Tab = 'subscriptions' | 'contracts' | 'vendors';
+type Tab = 'subscriptions' | 'contracts' | 'vendors' | 'invoices';
 const ACTIVE_DAYS = 30;
 
 export function Software() {
@@ -42,7 +43,7 @@ export function Software() {
         <Stat label="Неиспользуемые места" value={idleSeats} hint={`нет входа больше ${ACTIVE_DAYS} дней`} to="/findings" />
         <Stat label="Скоро продление" value={soon.length} hint="договоры, где пора уведомить поставщика" />
       </div>
-      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={[{ id: 'subscriptions', label: 'Подписки' }, { id: 'contracts', label: 'Договоры' }, { id: 'vendors', label: 'Поставщики' }]} />
+      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={[{ id: 'subscriptions', label: 'Подписки' }, { id: 'contracts', label: 'Договоры' }, { id: 'vendors', label: 'Поставщики' }, { id: 'invoices', label: 'Счета и платежи' }]} />
 
       {tab === 'subscriptions' && (
         <Card>
@@ -119,6 +120,8 @@ export function Software() {
           </div>
         </Card>
       )}
+
+      {tab === 'invoices' && <InvoicesTab />}
 
       {modal === 'sub' && <SubscriptionForm onClose={() => setModal(null)} />}
       {modal === 'contract' && <ContractForm contract={editContract} onClose={() => setModal(null)} />}
