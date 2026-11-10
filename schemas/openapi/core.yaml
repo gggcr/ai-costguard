@@ -751,6 +751,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Approval"
+  /api/v1/analytics/forecast:
+    get:
+      tags:
+      - Analytics
+      summary: "The newest forecast: the company, its departments, the registry baseline\
+        \ and savings"
+      description: Published by the forecast job (costguard-forecast); 404 forecast_not_found
+        before the first.
+      operationId: forecast
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishedForecast"
+    put:
+      tags:
+      - Analytics
+      summary: Publish a forecast
+      description: "The departments must add up to the company within a kopeck each,\
+        \ every series must have horizon points: else 400 forecast_does_not_add_up.\
+        \ Older forecasts are kept."
+      operationId: publish
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForecastDocument"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishedForecast"
   /api/v1/agents/{id}:
     get:
       tags:
@@ -1071,7 +1108,7 @@ paths:
       tags:
       - Policies
       summary: Publish the enabled rules to the gateway
-      operationId: publish
+      operationId: publish_1
       responses:
         "200":
           description: OK
@@ -1628,6 +1665,28 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemBody"
+  /api/v1/analytics/scenarios:
+    post:
+      tags:
+      - Analytics
+      summary: "What if: seats, plans, yearly billing, dropping a subscription"
+      description: "Computes, changes nothing. Monthly costs of the registry before\
+        \ and after, a yearly price as a twelfth; over the months of the newest forecast,\
+        \ with the difference taken off it."
+      operationId: scenario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScenarioRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioResult"
   /api/v1/agents:
     get:
       tags:
@@ -3285,6 +3344,137 @@ components:
           type: string
         nearTxHash:
           type: string
+    ForecastDocument:
+      type: object
+      properties:
+        currency:
+          type: string
+          pattern: "[A-Z]{3}"
+        horizon:
+          type: integer
+          format: int32
+          maximum: 36
+          minimum: 1
+        company:
+          $ref: "#/components/schemas/ForecastSeries"
+        departments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastSeries"
+          maxItems: 500
+          minItems: 0
+        savings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavingsMonth"
+          maxItems: 36
+          minItems: 0
+        generatedBy:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - company
+      - currency
+      - departments
+      - generatedBy
+      - savings
+    ForecastPoint:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: "\\d{4}-\\d{2}"
+        value:
+          type: number
+        low:
+          type: number
+        high:
+          type: number
+        baseline:
+          type: number
+      required:
+      - high
+      - low
+      - month
+      - value
+    ForecastSeries:
+      type: object
+      properties:
+        departmentId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+          minLength: 0
+        model:
+          type: string
+          maxLength: 40
+          minLength: 0
+        wape:
+          type: number
+        mase:
+          type: number
+        challenger:
+          type: string
+          maxLength: 40
+          minLength: 0
+        challengerWape:
+          type: number
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthAmount"
+          maxItems: 120
+          minItems: 0
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastPoint"
+          maxItems: 36
+          minItems: 0
+      required:
+      - history
+      - model
+      - name
+      - points
+    MonthAmount:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: "\\d{4}-\\d{2}"
+        amount:
+          type: number
+      required:
+      - amount
+      - month
+    SavingsMonth:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: "\\d{4}-\\d{2}"
+        expected:
+          type: number
+        confirmed:
+          type: number
+      required:
+      - confirmed
+      - expected
+      - month
+    PublishedForecast:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        publishedAt:
+          type: string
+          format: date-time
+        forecast:
+          $ref: "#/components/schemas/ForecastDocument"
     AgentDetails:
       type: object
       properties:
@@ -3830,6 +4020,102 @@ components:
       - cost
       - inventoryNumber
       - model
+    ScenarioChange:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - freeSeats
+          - seats
+          - cancel
+          - yearly
+          - price
+        subscriptionId:
+          type: string
+          format: uuid
+        seats:
+          type: integer
+          format: int32
+          minimum: 0
+        pricePerSeat:
+          type: number
+          minimum: 0
+        discount:
+          type: number
+          maximum: 0.9
+          minimum: 0
+        from:
+          type: string
+          pattern: "\\d{4}-\\d{2}"
+      required:
+      - kind
+    ScenarioRequest:
+      type: object
+      properties:
+        horizon:
+          type: integer
+          format: int32
+          maximum: 36
+          minimum: 1
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScenarioChange"
+          maxItems: 200
+          minItems: 0
+      required:
+      - changes
+    ChangeEffect:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+        subscription:
+          type: string
+        kind:
+          type: string
+          enum:
+          - freeSeats
+          - seats
+          - cancel
+          - yearly
+          - price
+        description:
+          type: string
+        monthlySavings:
+          type: number
+    ScenarioMonth:
+      type: object
+      properties:
+        month:
+          type: string
+        registry:
+          type: number
+        registryAfter:
+          type: number
+        forecast:
+          type: number
+        forecastAfter:
+          type: number
+    ScenarioResult:
+      type: object
+      properties:
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScenarioMonth"
+        effects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeEffect"
+        monthlySavings:
+          type: number
+        totalSavings:
+          type: number
+        onForecast:
+          type: boolean
     IssuedKey:
       type: object
       properties:

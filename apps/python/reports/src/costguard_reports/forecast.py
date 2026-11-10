@@ -34,6 +34,7 @@ class Forecast:
     method: str
     points: list[Point]
     scores: list[Score] = field(default_factory=list)
+    sigma: float = 0.0  # of the one-step errors: the reconciliation weighs series by it
 
     @property
     def champion(self) -> Score | None:
@@ -63,7 +64,7 @@ def forecast(history: list[Decimal], horizon: int = 3) -> Forecast:
         mean = sum(series) / len(series)
         spread = max(series) - min(series)
         return Forecast("mean", [Point(h, _money(mean), _money(mean - spread), _money(mean + spread))
-                                 for h in range(1, horizon + 1)])
+                                 for h in range(1, horizon + 1)], sigma=spread / 1.96)
     scores = backtest(series, horizon)
     fit = MODELS[scores[0].model](series, horizon) if scores else holt(series, horizon)
     s = sigma(fit.errors)
@@ -71,4 +72,4 @@ def forecast(history: list[Decimal], horizon: int = 3) -> Forecast:
     for h, value in enumerate(fit.points, start=1):
         width = 1.96 * s * math.sqrt(h)
         points.append(Point(h, _money(value), _money(value - width), _money(value + width)))
-    return Forecast(fit.name, points, scores)
+    return Forecast(fit.name, points, scores, s)

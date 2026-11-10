@@ -35,7 +35,7 @@
 | Конвейер приёма: Excel, CSV, PDF, выписки, проверки, ручная проверка, нормализация в FOCUS | `apps/python/ingest`, `core/imports` | сделано (ADR 0012, 0013) |
 | Коннекторы и агент у клиента: единые API и свои для 1С, Яндекс 360 | `apps/python/connectors` | сделано (ADR 0014, 0015, 0019) |
 | Движок аудита (Python): правила, находки, оценка экономии | `core/findings` + `AuditRules` в `software` и `assets` | сделано иначе (ADR 0005): в ядре, а не отдельным Python-сервисом |
-| Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` (`models`, `backtest`, `baseline`, `reconcile`, `savings`, `report`) | сделано иначе (ADR 0034): модели на чистом Python вместо statsforecast; сценариев пока нет |
+| Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` (`models`, `backtest`, `baseline`, `reconcile`, `savings`, `publish`, `report`), сценарии в `core/analytics` | сделано иначе (ADR 0034): модели на чистом Python вместо statsforecast; сценарии считает ядро |
 | MLflow: модели прогнозов | `deploy/mlflow`, Helm `mlflow.yaml` | сделано иначе (ADR 0016, 0017): в MLflow лежат модели детектора аномалий, моделей прогноза там нет |
 | ClickHouse: единый реестр затрат, витрины | `schemas/clickhouse/migrations` 001–003 | сделано (ADR 0007) |
 | S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано иначе, ADR нет: локально SeaweedFS вместо MinIO. В ядре файлы импорта пишутся на локальный диск (`FileStore`) |
@@ -216,14 +216,14 @@
 |---|---|---|
 | Шлюз: `api/`, `providers/` (OpenAI, Anthropic, GigaChat, YandexGPT), `egress/`, `ladder/`, `filters/` (7 ступеней), `rules/` (CEL), `budget/`, `metering/` (jtokkit), `risk/`, `keys/` (Vault), `events/` (Kafka и буфер на диске) | `apps/backend/gateway/src/main/java/ai/costguard/gateway/*` | сделано; дополнительно `approvals/` (ADR 0011) |
 | Ядро: `org`, `agents`, `policies`, `ledger`, `catalog`, `approvals` (эскалация по таймеру), `journal` (Ed25519, ключ из Vault), `software`, `assets`, `imports`, `findings`, `analytics`, `notifications`, `shared` | `apps/backend/core/src/main/java/ai/costguard/core/*` | сделано; дополнительно модуль `connections` (ADR 0019) |
-| Ядро `analytics/`: прогнозы, сценарии, отчёты | `core/analytics` — только `GET /api/v1/analytics/summary` | не сделано |
+| Ядро `analytics/`: прогнозы, сценарии, отчёты | `core/analytics`: `GET/PUT /api/v1/analytics/forecast`, `POST /api/v1/analytics/scenarios`, `summary` | сделано (ADR 0034); отчёты XLSX/PDF по-прежнему строит `costguard-report` |
 | Ядро `notifications/`: Telegram, почта, поток SSE | `core/notifications` | сделано (ADR 0031): лента и SSE; почта (SMTP) и Telegram-бот через очередь доставки в PostgreSQL с повторами; у каждого пользователя свои уровни, Telegram привязывается одноразовой ссылкой |
 | Flyway V1 tenant и RLS; тест границ модулей | `V1__org_tenant.sql`, `ModuleBoundariesTest` | сделано |
 | Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано иначе (ADR 0016): другая раскладка файлов; `batch/` двойных списаний нет |
 | Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано иначе (ADR 0006, 0009) |
 | Ingest: `bronze`, `parsers/` (excel_template, excel_freeform, pdf_text, ocr, bank_1c, mt940), `extract/`, `validate/`, `normalize/`, `review/`, `sinks/`, `tests/fixtures` | `apps/python/ingest/src/costguard_ingest/*` плоско | сделано иначе (ADR 0012, 0013): плоская раскладка, Tesseract, без FastStream и pandera |
 | Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано иначе (ADR 0005); все 10 правил есть (ADR 0032, см. фрейм 8) |
-| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `report.py` | не сделано (частично, ADR 0034): нет LightGBM, сценариев, пояснений LLM и MLflow; statsforecast заменён своими моделями |
+| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `publish.py`; сценарии в ядре; `forecast_weekly` в Airflow | сделано иначе (ADR 0034): свои модели вместо statsforecast, без LightGBM и пояснений LLM; переобучение — еженедельный запуск, модели в MLflow не хранятся |
 | У каждого сервиса свой Dockerfile | Java-сервисы — свой; Python — общий `apps/python/Dockerfile` | сделано иначе, ADR нет |
 
 ## 14. Интеграции с системами компании
@@ -286,8 +286,7 @@
 
 Не сделано:
 - двойные списания за ПО в детекторе (`batch/`);
-- сервис прогнозов в объёме доски (statsforecast, LightGBM, MinT, сценарии, бэктест, переобучение в MLflow) и
-  `analytics` ядра (прогнозы, сценарии, отчёты);
+- в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
 - восстановление счётчиков Redis из журнала проводок;
 - Ingress и Keycloak в кластере; Prometheus, Grafana, Loki, OpenTelemetry Collector, `infra/observability`;
 - row policies в ClickHouse;

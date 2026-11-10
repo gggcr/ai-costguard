@@ -26,6 +26,10 @@
       {
         "name": "connector",
         "description": "Service account of a company's connector agent: reads the secrets kept in the core (ADR 0030)"
+      },
+      {
+        "name": "forecast",
+        "description": "Service account of a company's forecast job: publishes forecasts to the core (ADR 0034)"
       }
     ]
   },
