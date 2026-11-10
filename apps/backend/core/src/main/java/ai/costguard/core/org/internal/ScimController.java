@@ -5,11 +5,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,8 +35,10 @@ class ScimController {
     static final String ERROR = "urn:ietf:params:scim:api:messages:2.0:Error";
 
     private final ScimService scim;
+    private final ScimWrites writes;
 
-    ScimController(ScimService scim) {
+    ScimController(ScimService scim, ScimWrites writes) {
+        this.writes = writes;
         this.scim = scim;
     }
 
@@ -112,5 +121,47 @@ class ScimController {
     Map<String, Object> user(@RequestAttribute(ScimSecurity.AUTH_ATTRIBUTE) ScimTokens.Auth auth,
             @PathVariable String id, HttpServletRequest request) {
         return scim.get(auth, id, base(request));
+    }
+
+    @PostMapping(value = "/Users", consumes = {SCIM_JSON, "application/json"})
+    ResponseEntity<Map<String, Object>> create(@RequestAttribute(ScimSecurity.AUTH_ATTRIBUTE) ScimTokens.Auth auth,
+            @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        Map<String, Object> user = writes.create(auth, body, base(request));
+        @SuppressWarnings("unchecked")
+        String location = String.valueOf(((Map<String, Object>) user.get("meta")).get("location"));
+        return ResponseEntity.status(HttpStatus.CREATED).header("Location", location)
+                .header("Content-Type", SCIM_JSON).body(user);
+    }
+
+    @PutMapping(value = "/Users/{id}", consumes = {SCIM_JSON, "application/json"})
+    Map<String, Object> replace(@RequestAttribute(ScimSecurity.AUTH_ATTRIBUTE) ScimTokens.Auth auth,
+            @PathVariable String id, @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return writes.replace(auth, id, body, base(request));
+    }
+
+    @PatchMapping(value = "/Users/{id}", consumes = {SCIM_JSON, "application/json"})
+    Map<String, Object> patch(@RequestAttribute(ScimSecurity.AUTH_ATTRIBUTE) ScimTokens.Auth auth,
+            @PathVariable String id, @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return writes.patch(auth, id, body, base(request));
+    }
+
+    @DeleteMapping("/Users/{id}")
+    ResponseEntity<Void> delete(@RequestAttribute(ScimSecurity.AUTH_ATTRIBUTE) ScimTokens.Auth auth,
+            @PathVariable String id) {
+        writes.delete(auth, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** A body that is not JSON. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<Map<String, Object>> unreadable(HttpMessageNotReadableException e) {
+        return error(new ScimService.ScimError(400, "invalidSyntax", "The body is not a JSON object"));
+    }
+
+    @GetMapping("/Groups")
+    ResponseEntity<Map<String, Object>> groups() {
+        // providers probe Groups; an empty list says "none" more gently than 404
+        return ResponseEntity.ok().header("Content-Type", SCIM_JSON).body(Map.of("schemas", List.of(ScimService.LIST),
+                "totalResults", 0, "startIndex", 1, "itemsPerPage", 0, "Resources", List.of()));
     }
 }

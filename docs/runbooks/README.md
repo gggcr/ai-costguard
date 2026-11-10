@@ -9,6 +9,7 @@
 | [kafka-lag.md](kafka-lag.md) | `ConsumerLagGrowing`, масштабирование воркеров KEDA |
 | [notary.md](notary.md) | `NotaryNotAnchoring`, ошибка NEAR |
 | [core.md](core.md) | `CoreDown`, `DatabasePoolExhausted` |
+| [scim.md](scim.md) | Подключить Okta, Entra ID и другие провайдеры по SCIM, токены, что во что превращается |
 | [secrets.md](secrets.md) | Создать или сменить секреты |
 | [clickhouse-access.md](clickhouse-access.md) | Включить row policies в ClickHouse, читатель одной компании |
 | [keycloak.md](keycloak.md) | Включить Ingress и Keycloak в кластере, секрет Keycloak, сервисные аккаунты компаний |

@@ -31,6 +31,15 @@ server {
         client_max_body_size 50m;
     }
 
+    # SCIM 2.0 for identity providers (ADR 0043): the core checks the SCIM token itself
+    location /scim/v2/ {
+        proxy_pass $core;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 1m;
+    }
+
     # Hashed bundles never change; index.html always revalidates
     location /assets/ {
         expires 1y;
