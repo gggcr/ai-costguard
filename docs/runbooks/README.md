@@ -10,6 +10,7 @@
 | [notary.md](notary.md) | `NotaryNotAnchoring`, ошибка NEAR |
 | [core.md](core.md) | `CoreDown`, `DatabasePoolExhausted` |
 | [secrets.md](secrets.md) | Создать или сменить секреты |
+| [keycloak.md](keycloak.md) | Включить Ingress и Keycloak в кластере, секрет Keycloak, сервисные аккаунты компаний |
 | [terraform.md](terraform.md) | Поднять или изменить окружение в Yandex Cloud |
 | [deploy.md](deploy.md) | Выкатить релиз, откатить |
 | [mlflow.md](mlflow.md) | Модели детектора в MLflow: включить, посмотреть, откатить |

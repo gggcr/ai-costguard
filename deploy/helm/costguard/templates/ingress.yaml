@@ -1,0 +1,62 @@
+{{- /*
+Ingress (ADR 0035). Three hosts, four with Keycloak: the web client (whose nginx proxies /api to the core), the
+core's API for connectors, Airflow and scripts, the agent gateway, and Keycloak. The gateway streams answers of
+models, so it is not buffered and may take long. With a ClusterIssuer every host gets its own certificate from
+cert-manager; without one, all of them share tlsSecret.
+*/}}
+{{- if .Values.ingress.enabled }}
+{{- $ing := .Values.ingress }}
+{{- $timeout := toString $ing.gatewayReadTimeoutSeconds }}
+{{- $routes := list
+      (dict "name" "web" "host" $ing.hosts.web "service" "costguard-frontend"
+            "enabled" .Values.services.frontend.enabled
+            "annotations" (dict "nginx.ingress.kubernetes.io/proxy-body-size" $ing.maxBodySize
+                                "nginx.ingress.kubernetes.io/proxy-buffering" "off"
+                                "nginx.ingress.kubernetes.io/proxy-read-timeout" "3600"))
+      (dict "name" "api" "host" $ing.hosts.api "service" "costguard-core"
+            "enabled" .Values.services.core.enabled
+            "annotations" (dict "nginx.ingress.kubernetes.io/proxy-body-size" $ing.maxBodySize))
+      (dict "name" "gateway" "host" $ing.hosts.gateway "service" "costguard-gateway"
+            "enabled" .Values.services.gateway.enabled
+            "annotations" (dict "nginx.ingress.kubernetes.io/proxy-buffering" "off"
+                                "nginx.ingress.kubernetes.io/proxy-request-buffering" "off"
+                                "nginx.ingress.kubernetes.io/proxy-read-timeout" $timeout
+                                "nginx.ingress.kubernetes.io/proxy-send-timeout" $timeout))
+      (dict "name" "keycloak" "host" $ing.hosts.keycloak "service" "costguard-keycloak"
+            "enabled" .Values.keycloak.enabled
+            "annotations" (dict "nginx.ingress.kubernetes.io/proxy-buffer-size" "128k")) }}
+{{- range $routes }}
+{{- if .enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: costguard-{{ .name }}
+  labels:
+    {{- include "costguard.labels" $ | nindent 4 }}
+  annotations:
+    {{- with $ing.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ . | quote }}
+    {{- end }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    {{- range $k, $v := .annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ $ing.className }}
+  tls:
+    - hosts: [{{ .host | quote }}]
+      secretName: {{ if $ing.clusterIssuer }}costguard-{{ .name }}-tls{{ else }}{{ $ing.tlsSecret }}{{ end }}
+  rules:
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}
+                port: { name: http }
+{{- end }}
+{{- end }}
+{{- end }}

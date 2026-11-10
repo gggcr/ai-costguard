@@ -25,7 +25,7 @@
 |---|---|---|
 | Шлюз агентов (Java, Spring Cloud Gateway): проверки и резерв до оплаты, LLM-прокси, `/v1/spend/authorize` | `apps/backend/gateway` (`api/`, `ladder/`, `providers/`) | сделано |
 | Redis: счётчики бюджетов | `gateway/budget/BudgetReserve.java`, `src/main/resources/lua/` | сделано |
-| Ingress и Keycloak | `infra/keycloak/costguard-realm.json`, Keycloak в `infra/local`; в Helm только `keycloakIssuerUri` | не сделано (частично): локально есть, в кластере Ingress и Keycloak чарт не ставит |
+| Ingress и Keycloak | Helm: `templates/ingress.yaml`, `templates/keycloak.yaml`, `files/keycloak-realm.json`; локально `infra/keycloak`, `infra/local` | сделано (ADR 0035): чарт ставит Ingress (веб, API, шлюз, Keycloak) и Keycloak; включается в values окружения |
 | Ядро на Spring Modulith: пользователи, роли, оргструктура, правила, бюджеты, мандаты, согласования, подписки, договоры, оборудование, импорт, журнал, находки | `apps/backend/core/src/main/java/ai/costguard/core/*` | сделано (ADR 0001) |
 | PostgreSQL: справочники, журнал, состояния | Flyway `core/src/main/resources/db/migration` V1–V19, RLS | сделано (ADR 0002) |
 | Kafka: операции агентов, риск-сигналы, правила; outbox ядра, квитанции; импорт, записи затрат, находки | `schemas/avro` (20 топиков), `core/shared/outbox`, `core/shared/inbox` | сделано (ADR 0003) |
@@ -178,7 +178,7 @@
 | Элемент доски | Где в коде | Статус |
 |---|---|---|
 | Kubernetes, 3 зоны доступности | `deploy/terraform/yandex/main.tf` (`var.zones`, группы узлов по зонам) | сделано |
-| edge: Ingress, Keycloak ×2 | — (в `values.yaml` только адрес внешнего Keycloak) | не сделано |
+| edge: Ingress, Keycloak ×2 | `ingress.*`, `keycloak.*` в `values.yaml` (две реплики Keycloak с общими сессиями) | сделано (ADR 0035), в staging и prod пока выключено: нужны DNS, сертификаты и секрет |
 | core: ядро ×2+, проверяет токены Keycloak | Helm `workloads.yaml`, `core/shared/security` | сделано |
 | data-plane: шлюз ×3+, автомасштабирование | Helm, HPA в `workloads.yaml` | сделано |
 | analytics: Airflow → Python-воркеры с KEDA → MLflow | `keda.yaml`, `mlflow.yaml`, `infra/airflow` | сделано (ADR 0017) |
@@ -288,7 +288,7 @@
 - двойные списания за ПО в детекторе (`batch/`);
 - в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
 - восстановление счётчиков Redis из журнала проводок;
-- Ingress и Keycloak в кластере; Prometheus, Grafana, Loki, OpenTelemetry Collector, `infra/observability`;
+- Prometheus, Grafana, Loki, OpenTelemetry Collector, `infra/observability`;
 - row policies в ClickHouse;
 - FOCUS и SCIM на уровне 1 интеграций;
 - техника из 1С и Excel, правила «уволенный не сдал технику» и «срок возврата прошёл»;

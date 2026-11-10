@@ -2,10 +2,10 @@ name: deploy-manifests
 on:
   push:
     paths: ['deploy/**', 'tools/tests/test_helm.py', 'tools/tests/test_alerts.py', 'tools/tests/test_residency.py',
-            'tests/smoke/**', 'docs/runbooks/**']
+            'tools/tests/test_ingress_keycloak.py', 'infra/keycloak/**', 'tests/smoke/**', 'docs/runbooks/**']
   pull_request:
     paths: ['deploy/**', 'tools/tests/test_helm.py', 'tools/tests/test_alerts.py', 'tools/tests/test_residency.py',
-            'tests/smoke/**', 'docs/runbooks/**']
+            'tools/tests/test_ingress_keycloak.py', 'infra/keycloak/**', 'tests/smoke/**', 'docs/runbooks/**']
   # Staging follows goidochka through Argo CD (deploy/argocd/staging.yaml): once a build of goidochka succeeds, Argo CD rolls it
   # out, and the smoke job checks it there (ADR 0029).
   workflow_run:
@@ -27,14 +27,17 @@ jobs:
             helm lint deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml
             helm template cg deploy/helm/costguard -f deploy/helm/costguard/values-$env.yaml > /tmp/$env.yaml
           done
-      - name: KEDA, MLflow, alerts, their delivery, backups and the region render as the values say
+          # what staging and prod switch on later: the ingress and Keycloak of the chart (ADR 0035)
+          helm template cg deploy/helm/costguard -f deploy/helm/costguard/values-prod.yaml \
+            --set ingress.enabled=true --set keycloak.enabled=true > /tmp/edge.yaml
+      - name: KEDA, MLflow, alerts, their delivery, backups, the region, ingress and Keycloak render as the values say
         run: |
           pip install --quiet pyyaml pytest
           python -m pytest tools/tests/test_helm.py tools/tests/test_alerts.py tools/tests/test_residency.py \
-            -p no:cacheprovider
+            tools/tests/test_ingress_keycloak.py -p no:cacheprovider
       - run: |
           docker run --rm -v /tmp:/w ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -ignore-missing-schemas \
-            -kubernetes-version 1.30.0 /w/staging.yaml /w/prod.yaml
+            -kubernetes-version 1.30.0 /w/staging.yaml /w/prod.yaml /w/edge.yaml
           docker run --rm -v "$PWD/deploy/argocd:/w" ghcr.io/yannh/kubeconform:v0.6.7 -summary -ignore-missing-schemas /w
   terraform:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
