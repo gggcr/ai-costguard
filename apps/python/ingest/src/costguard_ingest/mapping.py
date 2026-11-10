@@ -63,6 +63,11 @@ def field_of(column: str) -> str | None:
     return None
 
 
+def is_focus(columns: list[str]) -> bool:
+    """A FOCUS export: it has the columns the specification requires of every row of costs."""
+    return {"billedcost", "chargeperiodstart"} <= {_norm(c) for c in columns}
+
+
 def suggest(columns: list[str]) -> dict[str, str]:
     """Column to field. A column named exactly goes first, then the first column whose name contains a synonym, so
     ServiceName beats ServiceCategory and BilledCost beats ListCost; the other columns are skipped."""
@@ -75,7 +80,7 @@ def suggest(columns: list[str]) -> dict[str, str]:
             result[column] = field
     # A FOCUS export names its columns by the specification: a loose match would only take InvoiceIssuerName for a
     # person or ListCost for the amount.
-    if {"billedcost", "chargeperiodstart"} <= {_norm(c) for c in columns}:
+    if is_focus(columns):
         return result
     for column in columns:
         if result[column] != "skip":

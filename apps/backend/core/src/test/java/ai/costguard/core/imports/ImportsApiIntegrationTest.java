@@ -148,4 +148,15 @@ class ImportsApiIntegrationTest extends PostgresTestSupport {
         MockMultipartFile file = new MockMultipartFile("file", "d.csv", "text/csv", "q".getBytes());
         mvc.perform(multipart("/api/v1/imports").file(file).with(as(tenant, "auditor"))).andExpect(status().isForbidden());
     }
+
+    @Test
+    void theBucketJobUploadsButDoesNotResolveValues() throws Exception {
+        // the service account of costguard-focus-pull (ADR 0046)
+        MockMultipartFile file = new MockMultipartFile("file", "focus.csv", "text/csv",
+                ("BilledCost,ChargePeriodStart\n1," + UUID.randomUUID()).getBytes());
+        mvc.perform(multipart("/api/v1/imports").file(file).with(as(tenant, "importer"))).andExpect(status().isCreated());
+        mvc.perform(put("/api/v1/imports/" + UUID.randomUUID() + "/review-tasks/" + UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"value\":\"1\"}").with(as(tenant, "importer")))
+                .andExpect(status().isForbidden());
+    }
 }

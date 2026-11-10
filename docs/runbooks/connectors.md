@@ -15,3 +15,30 @@
 - Таймауты — агент в сети клиента не видит систему: связаться с клиентом.
 
 Падают все типы сразу — проблема у нас: Kafka (агент не может отчитаться) или ядро.
+
+## FOCUS-выгрузки из бакета (ADR 0046)
+
+1. В облаке включите выгрузку в формате FOCUS в CSV, не в Parquet:
+   - AWS — Billing and Cost Management → Data Exports → FOCUS 1.0, формат CSV, сжатие GZIP;
+   - Azure — Cost Management → Exports → FOCUS cost and usage, формат CSV;
+   - Yandex Cloud — детализация в Object Storage.
+2. Создайте ключ, который может только читать этот бакет.
+3. В Keycloak заведите сервисный аккаунт компании с ролью `importer` (runbook `keycloak.md`).
+4. В конфиг компании добавьте раздел:
+
+   ```toml
+   [focus_bucket]
+   endpoint = "https://storage.yandexcloud.net"  # для AWS не нужен
+   bucket = "billing-exports"
+   prefix = "focus/"
+   days = 7        # объекты старше не читаются
+   accept = true   # FOCUS-файлы без вопросов подтверждаются сами
+   ```
+
+   В окружение воркера положите `<TENANT>_IMPORTER_TOKEN`, `<TENANT>_FOCUS_BUCKET_ACCESS_KEY` и
+   `<TENANT>_FOCUS_BUCKET_SECRET_KEY`.
+5. DAG `costguard_focus_bucket` срабатывает каждый час в :20. Итог запуска — JSON в логе задачи. В нём перечислено,
+   что загружено, что подтверждено, что ждёт человека (с причиной), что пропущено и что упало.
+
+Если надо прочитать бакет заново, удалите `$COSTGUARD_STATE_DIR/<tenant>/focus-bucket.json`. Файлы из окна `days`
+загрузятся снова, но ядро узнает их по sha256, и дублей не будет.

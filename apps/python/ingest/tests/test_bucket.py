@@ -122,3 +122,53 @@ def test_the_s3_store_lists_pages_and_reads_objects():
     with stub:
         assert [(o.key, o.etag) for o in store.objects("focus/")] == [("focus/a.csv", "e1"), ("focus/b.csv", "e2")]
         assert store.read("focus/a.csv") == b"abc"
+
+
+def job(**over):
+    base = {"id": "imp-1", "status": "mapping", "columns": ["BilledCost", "ChargePeriodStart", "ServiceName"],
+            "mapping": {"BilledCost": "amount", "ChargePeriodStart": "period_start", "ServiceName": "product"},
+            "errors": [], "reviewTasks": [], "failure": None}
+    return {**base, **over}
+
+
+def test_a_focus_file_that_needs_nobody_is_confirmed_and_the_rest_waits_for_a_person():
+    jobs = {"imp-1": [job(status="uploaded"), job()],
+            "imp-2": [job(id="imp-2", errors=[{"row": 3, "message": "x"}])],
+            "imp-3": [job(id="imp-3", columns=["Сумма", "Дата"], mapping={"Сумма": "amount", "Дата": "period_start"})],
+            "imp-4": [job(id="imp-4", reviewTasks=[{"id": "t", "resolved": False}])],
+            "imp-5": [job(id="imp-5", status="failed", failure="Unknown file type")]}
+    confirmed = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import_id = request.url.path.split("/")[4]
+        if request.method == "PUT":
+            confirmed.append((import_id, json.loads(request.content)))
+            return httpx.Response(200, json=job(id=import_id, status="done"))
+        queue = jobs[import_id]
+        return httpx.Response(200, json=queue.pop(0) if len(queue) > 1 else queue[0])
+
+    core = httpx.Client(base_url="http://core", transport=httpx.MockTransport(handler))
+    keys = [f"k{i}" for i in range(1, 6)]
+    summary = bucket.Summary(uploaded=keys, imports={k: f"imp-{k[1:]}" for k in keys})
+    pauses = []
+    bucket.confirm(core, summary, sleep=pauses.append)
+    assert summary.accepted == ["k1"] and pauses == [2.0]
+    assert confirmed == [("imp-1", {"mapping": job()["mapping"], "saveTemplate": False})]
+    assert dict(summary.waiting) == {"k2": "1 rows with errors", "k3": "not a FOCUS file: the columns need a person",
+                                     "k4": "values the pipeline was unsure about",
+                                     "k5": "status failed: Unknown file type"}
+
+
+def test_the_job_stops_waiting_for_the_pipeline_in_time():
+    clock = iter(range(0, 1000, 100))
+    core = httpx.Client(base_url="http://core", transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, json=job(status="uploaded"))))
+    import time as real
+
+    original = real.monotonic
+    real.monotonic = lambda: next(clock)
+    try:
+        assert bucket.parsed(core, "imp-1", timeout=300, sleep=lambda s: None)["status"] == "uploaded"
+    finally:
+        real.monotonic = original
+    assert bucket.why_not(job(status="uploaded")) == "status uploaded"

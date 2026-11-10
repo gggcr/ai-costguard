@@ -53,7 +53,9 @@ def load(monkeypatch, tmp_path):
         monkeypatch.setitem(sys.modules, name, module)
     (tmp_path / "romashka.toml").write_text('tenant_id = "11111111-1111-1111-1111-111111111111"\n'
                                             '[onec]\nurl = "http://1c"\nuser = "u"\n[report]\nmonths = 6\n'
-                                            '[forecast]\nhorizon = 3\n',
+                                            '[forecast]\nhorizon = 3\n'
+                                            '[focus_bucket]\nendpoint = "https://storage.yandexcloud.net"\n'
+                                            'bucket = "exports"\nprefix = "focus; rm/"\n',
                                             "utf-8")
     (tmp_path / "Лютик-2.toml").write_text('tenant_id = "22222222-2222-2222-2222-222222222222"\n', "utf-8")
     (tmp_path / "broken.toml").write_text("tenant_id = ", "utf-8")
@@ -110,6 +112,20 @@ def test_the_forecast_runs_weekly_for_tenants_that_asked(load):
     assert task.task_id == "forecast_romashka"
     assert task.bash_command == ('CORE_URL="$ROMASHKA_CORE_URL" CORE_TOKEN="$ROMASHKA_CORE_TOKEN" costguard-forecast '
                                  "--tenant 11111111-1111-1111-1111-111111111111 --months 24 --horizon 3")
+
+
+def test_focus_exports_are_pulled_hourly_for_tenants_with_a_bucket(load):
+    dag = load("focus_bucket_hourly")
+    assert dag.dag_id == "costguard_focus_bucket" and dag.kw["schedule"] == "20 * * * *"
+    assert dag.kw["max_active_runs"] == 1
+    [task] = dag.tasks
+    assert task.task_id == "focus_bucket_romashka"
+    command = task.bash_command
+    assert command.startswith('CORE_URL="$ROMASHKA_CORE_URL" CORE_TOKEN="$ROMASHKA_IMPORTER_TOKEN" '
+                              'FOCUS_BUCKET_ACCESS_KEY="$ROMASHKA_FOCUS_BUCKET_ACCESS_KEY" ')
+    assert "costguard-focus-pull --bucket exports --prefix 'focus; rm/' --region ru-central1 --days 7" in command
+    assert command.endswith("--endpoint https://storage.yandexcloud.net --accept")
+    assert "/romashka/focus-bucket.json" in command
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="bash on Windows is WSL, which may have no distribution")

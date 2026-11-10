@@ -9,6 +9,10 @@ would, through POST /api/v1/imports: the core keeps the file, sends it to the in
         costguard-focus-pull --endpoint https://storage.yandexcloud.net --bucket exports --prefix focus/ \\
         --state /var/lib/costguard/acme/focus-bucket.json
 
+A FOCUS file needs nobody to map it: its columns are named by the specification and map exactly (mapping.py). With
+--accept such a file is confirmed by the job itself, once the pipeline has read it, when nothing in it needs a person:
+no broken rows, no unsure values, an amount column. Anything else waits in «Импорт» for a person, as an upload does.
+
 Which objects were read (key and ETag) is kept in the state file, so an hourly run downloads only what is new or
 changed. .csv, .csv.gz, .xlsx are read; a compressed CSV is unpacked before upload. Parquet needs pyarrow, which is
 not in the workspace: such files are listed in the run's summary and skipped.
@@ -29,6 +33,8 @@ from pathlib import Path
 from typing import Protocol
 
 import httpx
+
+from costguard_ingest import mapping
 
 log = logging.getLogger(__name__)
 READ = (".csv", ".csv.gz", ".xlsx")
@@ -96,6 +102,8 @@ class Summary:
     skipped: list[tuple[str, str]] = field(default_factory=list)
     failed: list[tuple[str, str]] = field(default_factory=list)
     imports: dict[str, str] = field(default_factory=dict)  # key to import id
+    accepted: list[str] = field(default_factory=list)
+    waiting: list[tuple[str, str]] = field(default_factory=list)  # left to a person, and why
 
 
 def file_name(key: str) -> str:
@@ -138,6 +146,55 @@ def upload(core: httpx.Client, name: str, content: bytes) -> tuple[str, bool]:
     return r.json()["id"], r.status_code == 200
 
 
+def parsed(core: httpx.Client, import_id: str, timeout: float = 300, pause: float = 2.0,
+           sleep=time.sleep) -> dict:
+    """The import once the pipeline has read it (status past uploaded), or as it is when the time is up."""
+    deadline = time.monotonic() + timeout
+    while True:
+        r = core.get(f"/api/v1/imports/{import_id}")
+        r.raise_for_status()
+        job = r.json()
+        if job.get("status") != "uploaded" or time.monotonic() >= deadline:
+            return job
+        sleep(pause)
+
+
+def why_not(job: dict) -> str | None:
+    """Why the job may not confirm this import itself; None when it may."""
+    if job.get("status") != "mapping":
+        return f"status {job.get('status')}" + (f": {job['failure']}" if job.get("failure") else "")
+    if not mapping.is_focus(job.get("columns") or []):
+        return "not a FOCUS file: the columns need a person"
+    if job.get("errors"):
+        return f"{len(job['errors'])} rows with errors"
+    if any(not t.get("resolved") for t in job.get("reviewTasks") or []):
+        return "values the pipeline was unsure about"
+    if "amount" not in (job.get("mapping") or {}).values():
+        return "no amount column"
+    return None
+
+
+def accept(core: httpx.Client, job: dict) -> dict:
+    r = core.put(f"/api/v1/imports/{job['id']}/mapping", json={"mapping": job["mapping"], "saveTemplate": False})
+    r.raise_for_status()
+    return r.json()
+
+
+def confirm(core: httpx.Client, summary: Summary, wait: float = 300, sleep=time.sleep) -> None:
+    """Confirms the FOCUS files that went up in this run and need nobody."""
+    for key in summary.uploaded:
+        try:
+            job = parsed(core, summary.imports[key], wait, sleep=sleep)
+            reason = why_not(job)
+            if reason is None:
+                accept(core, job)
+                summary.accepted.append(key)
+            else:
+                summary.waiting.append((key, reason))
+        except httpx.HTTPError as e:
+            summary.waiting.append((key, f"not confirmed: {e}"))
+
+
 def pull(bucket: Bucket, core: httpx.Client, prefix: str, state: State, since: datetime) -> Summary:
     summary = Summary()
     for o in new_objects(bucket, prefix, state, since, summary):
@@ -173,6 +230,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--prefix", default="")
     parser.add_argument("--state", type=Path, required=True, help="file with the objects already read")
     parser.add_argument("--days", type=int, default=7, help="objects older than this are not read")
+    parser.add_argument("--accept", action="store_true", help="confirm FOCUS files that need nobody")
     args = parser.parse_args(argv)
     bucket = S3Bucket(args.endpoint, args.bucket, os.environ["FOCUS_BUCKET_ACCESS_KEY"],
                       os.environ["FOCUS_BUCKET_SECRET_KEY"], args.region)
@@ -182,7 +240,10 @@ def main(argv: list[str] | None = None) -> None:
     started = time.monotonic()
     summary = pull(bucket, core, args.prefix, state, datetime.now(UTC) - timedelta(days=args.days))
     state.save(args.state)
-    print(json.dumps({"uploaded": summary.uploaded, "known": summary.known, "skipped": summary.skipped,
+    if args.accept:
+        confirm(core, summary)
+    print(json.dumps({"uploaded": summary.uploaded, "accepted": summary.accepted, "waiting": summary.waiting,
+                      "known": summary.known, "skipped": summary.skipped,
                       "failed": summary.failed, "seconds": round(time.monotonic() - started, 1)},
                      ensure_ascii=False))
     if summary.failed:

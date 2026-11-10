@@ -35,7 +35,7 @@ class ImportController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @ManagesImports
+    @UploadsImports
     @Operation(summary = "Upload a file", description = "201 for a new file, 200 if this file was uploaded before.")
     ResponseEntity<ImportJob> upload(@AuthenticationPrincipal Jwt jwt, @RequestPart("file") MultipartFile file,
             @RequestParam(required = false) UUID vendorId) throws IOException {
@@ -61,7 +61,7 @@ class ImportController {
     }
 
     @PutMapping("/{id}/mapping")
-    @ManagesImports
+    @UploadsImports
     @Operation(summary = "Confirm how columns map to FOCUS fields")
     ImportJob mapping(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
             @Valid @RequestBody MappingRequest request) {

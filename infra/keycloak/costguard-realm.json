@@ -30,6 +30,10 @@
       {
         "name": "forecast",
         "description": "Service account of a company's forecast job: publishes forecasts to the core (ADR 0034)"
+      },
+      {
+        "name": "importer",
+        "description": "Service account of a company's job that brings FOCUS exports from its bucket (ADR 0046)"
       }
     ]
   },
