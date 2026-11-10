@@ -171,6 +171,11 @@ connectorsCronJob:
 
 clickhouseMigrations:
   enabled: true
+  # Row policies of schemas/clickhouse/access (ADR 0035): a reader of one company sees that company only. The job's
+  # user must manage access, which a managed ClickHouse allows only with SQL user management, a switch that cannot be
+  # undone; CLICKHOUSE_READER_PASSWORD must be in the secret. The reports and forecast jobs then connect as
+  # costguard_reader with CLICKHOUSE_TENANT_SETTING=1 (docs/runbooks/clickhouse-access.md).
+  rowPolicies: false
 
 monitoring:
   serviceMonitor: true
@@ -184,6 +189,13 @@ monitoring:
   outboxOldestSeconds: 900
   diskFreeRatio: 0.15
   connectorFailureRatio: 0.5
+
+# Logs (ADR 0035): Loki and Grafana Alloy run in the namespace observability (deploy/argocd/observability.yaml).
+# With logging.enabled the chart adds Loki as a data source of the Grafana of kube-prometheus-stack, whose sidecar
+# picks up ConfigMaps labelled grafana_datasource.
+logging:
+  enabled: false
+  lokiUrl: http://loki-gateway.observability.svc.cluster.local
 
 # Delivery of alerts (ADR 0026): an AlertmanagerConfig for the Alertmanager of kube-prometheus-stack. Warnings go
 # to Telegram, critical alerts to Telegram and e-mail. The secret `secretName` holds TELEGRAM_BOT_TOKEN and

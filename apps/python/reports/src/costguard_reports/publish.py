@@ -93,24 +93,29 @@ def document(currency: str, company: list[tuple[date, Decimal]], departments: di
     }
 
 
-def _tsv(clickhouse: httpx.Client, query: str, params: dict) -> list[list[str]]:
-    r = clickhouse.post("/", params={f"param_{k}": v for k, v in params.items()}, content=query.encode())
+def _tsv(clickhouse: httpx.Client, query: str, params: dict, settings: dict | None = None) -> list[list[str]]:
+    r = clickhouse.post("/", params={**{f"param_{k}": v for k, v in params.items()}, **(settings or {})},
+                        content=query.encode())
     r.raise_for_status()
     return [line.split("\t") for line in r.text.splitlines() if line]
 
 
-def fetch_spend(clickhouse: httpx.Client, tenant: str, currency: str, months: int
+def fetch_spend(clickhouse: httpx.Client, tenant: str, currency: str, months: int, tenant_setting: bool = False
                 ) -> tuple[list[tuple[date, Decimal]], dict[str, list[tuple[date, Decimal]]]]:
+    """With tenant_setting every query names the company in SQL_tenant_id, as the row policies of a reader ask
+    (ADR 0035); the WHERE still says it too."""
     window = ("tenant_id = {tenant:UUID} AND currency = {currency:String} AND month < toStartOfMonth(today()) "
               "AND month >= addMonths(toStartOfMonth(today()), -{back:UInt32})")
     params = {"tenant": tenant, "currency": currency, "back": months}
+    settings = {"SQL_tenant_id": tenant} if tenant_setting else None
     company = [(date.fromisoformat(m), Decimal(v)) for m, v in _tsv(
         clickhouse, f"SELECT toString(month), toString(sum(billed)) FROM spend_by_month WHERE {window} "
-                    "GROUP BY month ORDER BY month FORMAT TSV", params)]
+                    "GROUP BY month ORDER BY month FORMAT TSV", params, settings)]
     departments: dict[str, list[tuple[date, Decimal]]] = {}
     for d, m, v in _tsv(clickhouse, "SELECT department, toString(month), toString(sum(billed)) "
                                     f"FROM spend_by_department_month WHERE {window} "
-                                    "GROUP BY department, month ORDER BY department, month FORMAT TSV", params):
+                                    "GROUP BY department, month ORDER BY department, month FORMAT TSV", params,
+                            settings):
         departments.setdefault(d, []).append((date.fromisoformat(m), Decimal(v)))
     return company, departments
 
@@ -133,7 +138,8 @@ def main(argv: list[str] | None = None) -> None:
         return r.json()
 
     currency = get("/api/v1/company").get("currency", "RUB")
-    company, departments = fetch_spend(clickhouse, args.tenant, currency, args.months)
+    company, departments = fetch_spend(clickhouse, args.tenant, currency, args.months,
+                                       os.environ.get("CLICKHOUSE_TENANT_SETTING") == "1")
     names = {d["id"]: d["name"] for d in get("/api/v1/departments")}
     subscriptions = [baseline.Subscription.of(s) for s in get("/api/v1/subscriptions")]
     body = document(currency, company, departments, names, subscriptions, get("/api/v1/findings"), date.today(),

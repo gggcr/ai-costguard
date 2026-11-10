@@ -1,0 +1,22 @@
+{{- /* Loki as a data source of Grafana (ADR 0035): CostGuard logs by namespace, app and level. */}}
+{{- if .Values.logging.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: costguard-loki-datasource
+  labels:
+    {{- include "costguard.labels" . | nindent 4 }}
+    grafana_datasource: "1"
+data:
+  costguard-loki.yaml: |-
+    apiVersion: 1
+    datasources:
+      - name: Loki CostGuard
+        uid: costguard-loki
+        type: loki
+        access: proxy
+        url: {{ .Values.logging.lokiUrl }}
+        jsonData:
+          maxLines: 1000
+{{- end }}

@@ -7,17 +7,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      # schemas/clickhouse/tests run against it; without CLICKHOUSE_TEST_URL they are skipped.
-      clickhouse:
-        image: clickhouse/clickhouse-server:24.8
-        env: { CLICKHOUSE_SKIP_USER_SETUP: '1' }
-        ports: ['8123:8123']
-        options: --health-cmd "wget -qO- localhost:8123/ping" --health-interval 5s --health-retries 30
     env:
       CLICKHOUSE_TEST_URL: http://127.0.0.1:8123
+      # the row policies test must not skip here (ADR 0035)
+      CLICKHOUSE_ACCESS_TEST: '1'
     steps:
       - uses: actions/checkout@v4
+      # schemas/clickhouse/tests run against it; without CLICKHOUSE_TEST_URL they are skipped. Started here and not as
+      # a service: it needs the config of the checkout that lets the default user manage access (row policies).
+      - name: ClickHouse
+        run: |
+          docker run -d --name clickhouse -p 8123:8123 -e CLICKHOUSE_SKIP_USER_SETUP=1 \
+            -v "$PWD/schemas/clickhouse/tests/users.d/access-management.xml:/etc/clickhouse-server/users.d/access-management.xml:ro" \
+            clickhouse/clickhouse-server:24.8
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8123/ping && exit 0
+            sleep 2
+          done
+          docker logs clickhouse
+          exit 1
       - uses: astral-sh/setup-uv@v5
         with: { version: '0.5.11' }
       - run: uv python install 3.12

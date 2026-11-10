@@ -448,6 +448,36 @@ resource "yandex_storage_bucket" "backups" {
 
 # --- Object Storage: MLflow artifacts (models of the detector and the forecasts) -----------------------------
 
+# --- Object Storage: logs (ADR 0035) -------------------------------------------------------------------------------
+
+# Logs of the services, kept by Loki. Services mask personal data before they log (ADR 0023); what still slips in
+# goes with the logs after var.log_retention_days.
+resource "yandex_storage_bucket" "logs" {
+  bucket     = "${local.name}-logs"
+  access_key = yandex_iam_service_account_static_access_key.storage.access_key
+  secret_key = yandex_iam_service_account_static_access_key.storage.secret_key
+  anonymous_access_flags {
+    read = false
+    list = false
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = yandex_kms_symmetric_key.storage.id
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+  lifecycle_rule {
+    id      = "expire"
+    enabled = true
+    expiration {
+      days = var.log_retention_days
+    }
+  }
+  depends_on = [yandex_resourcemanager_folder_iam_member.storage, yandex_kms_symmetric_key_iam_binding.storage]
+}
+
 resource "yandex_storage_bucket" "mlflow" {
   bucket     = "${local.name}-mlflow"
   access_key = yandex_iam_service_account_static_access_key.storage.access_key

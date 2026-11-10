@@ -87,3 +87,17 @@ def test_spend_comes_from_clickhouse_without_the_month_that_is_not_over():
 def test_the_document_is_valid_json_for_the_core():
     body = json.loads(publish._json(sample()))
     assert isinstance(body["company"]["points"][0]["value"], float)
+
+
+def test_a_reader_under_row_policies_names_the_company_in_every_query():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(dict(request.url.params))
+        return httpx.Response(200, text="")
+
+    client = httpx.Client(base_url="http://ch", transport=httpx.MockTransport(handler))
+    publish.fetch_spend(client, "t-1", "RUB", 24, tenant_setting=True)
+    assert len(seen) == 2 and all(p["SQL_tenant_id"] == "t-1" for p in seen)
+    publish.fetch_spend(client, "t-1", "RUB", 24)
+    assert all("SQL_tenant_id" not in p for p in seen[2:])

@@ -29,6 +29,10 @@ spec:
             {{- include "costguard.env" . | nindent 12 }}
             - name: KAFKA_BROKERS
               value: {{ .Values.external.kafkaBootstrapServers | quote }}
+            {{- if .Values.clickhouseMigrations.rowPolicies }}
+            - name: CLICKHOUSE_ACCESS_MANAGEMENT
+              value: "1"
+            {{- end }}
 {{- end }}
 {{- if .Values.connectorsCronJob.enabled }}
 ---

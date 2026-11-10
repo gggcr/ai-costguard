@@ -26,7 +26,7 @@ codegen:
 
 # Tables of ClickHouse (schemas/clickhouse/migrations); in a cluster the Helm job applies them.
 clickhouse:
-	CLICKHOUSE_URL=http://localhost:8123 CLICKHOUSE_USER=$${CLICKHOUSE_USER:-costguard} CLICKHOUSE_PASSWORD=$${CLICKHOUSE_PASSWORD:-costguard} \
+	CLICKHOUSE_URL=http://localhost:8123 CLICKHOUSE_USER=$${CLICKHOUSE_USER:-costguard} CLICKHOUSE_PASSWORD=$${CLICKHOUSE_PASSWORD:-costguard} 		CLICKHOUSE_ACCESS_MANAGEMENT=1 CLICKHOUSE_READER_PASSWORD=$${CLICKHOUSE_READER_PASSWORD:-costguard-reader} \
 		KAFKA_BROKERS=kafka:29092 SCHEMA_REGISTRY_URL=http://schema-registry:8081 python -m uv run python schemas/clickhouse/apply.py
 
 seed:

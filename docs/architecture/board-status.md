@@ -182,7 +182,7 @@
 | core: ядро ×2+, проверяет токены Keycloak | Helm `workloads.yaml`, `core/shared/security` | сделано |
 | data-plane: шлюз ×3+, автомасштабирование | Helm, HPA в `workloads.yaml` | сделано |
 | analytics: Airflow → Python-воркеры с KEDA → MLflow | `keda.yaml`, `mlflow.yaml`, `infra/airflow` | сделано (ADR 0017) |
-| observability: Prometheus, Grafana, Loki | `monitoring.yaml` (PrometheusRule, ConfigMap с дашбордом Grafana), `/actuator/prometheus` | не сделано (частично): алерты и дашборд есть, сами Prometheus, Grafana и Loki чарт не ставит, OpenTelemetry Collector нет |
+| observability: Prometheus, Grafana, Loki | `monitoring.yaml` (PrometheusRule, дашборд Grafana), `deploy/argocd/observability.yaml` (Loki, Grafana Alloy), `logging.yaml` (источник данных Loki) | не сделано (частично, ADR 0035): Loki и сбор логов есть; Prometheus и Grafana ставит kube-prometheus-stack вне репозитория, OpenTelemetry Collector нет |
 | Kafka 3 брокера, Redis Cluster, PostgreSQL лидер + 2 реплики, ClickHouse 2 реплики, S3 | Terraform: `yandex_mdb_kafka_cluster`, `yandex_mdb_redis_cluster`, `yandex_mdb_postgresql_cluster`, `yandex_mdb_clickhouse_cluster`, `yandex_storage_bucket` | сделано (управляемые сервисы; число хостов в prod задаётся по зонам) |
 | Vault | `infra/local` (vault), ключи провайдеров `gateway/keys`, ключ подписи квитанций `core/journal/ReceiptSigner` | сделано |
 | Внешние: провайдеры ИИ, NEAR RPC | `gateway/providers`, `apps/python/notary/near.py` | сделано |
@@ -199,7 +199,7 @@
 | `libs/java`: platform-starter (tenant и RLS, RFC 9457, трассировка), events | `libs/java/platform-starter`, `libs/java/events` | сделано |
 | `libs/python`: costguard-common, costguard-events, costguard-storage, costguard-llm | `libs/python/costguard-common` (схемы, wire, normalized, payments) | сделано иначе, ADR нет: одна библиотека вместо четырёх |
 | `sdk/python` (costguard-sdk), `sdk/js` (@costguard/sdk) | `libs/python/costguard-sdk`, `libs/js/costguard-sdk` | сделано иначе, ADR нет: в `libs/`, а не в `sdk/` |
-| `schemas/avro` («9 топиков»), `schemas/openapi`, `schemas/clickhouse` (row policies по tenant_id) | `schemas/*`, 20 топиков | сделано; row policies в ClickHouse — не сделано (запросы фильтруют по `tenant_id`) |
+| `schemas/avro` («9 топиков»), `schemas/openapi`, `schemas/clickhouse` (row policies по tenant_id) | `schemas/*`, 20 топиков; `schemas/clickhouse/access/001_row_policies.sql` | сделано (ADR 0035): row policies для читателя одной компании; в staging и prod включаются вместе с SQL-управлением пользователями ClickHouse |
 | `infra/local`: docker-compose с PostgreSQL, Redis, Kafka, ClickHouse, MinIO, Keycloak, Vault | `infra/local/docker-compose.yml` | сделано иначе, ADR нет: SeaweedFS вместо MinIO |
 | `infra/helm`, `infra/argocd`, `infra/terraform` | `deploy/helm`, `deploy/argocd`, `deploy/terraform` | сделано иначе, ADR нет: папка `deploy/` |
 | `infra/keycloak`: realm и роли owner, finance, it_admin, agent_owner, auditor | `infra/keycloak/costguard-realm.json` | сделано |
@@ -288,8 +288,7 @@
 - двойные списания за ПО в детекторе (`batch/`);
 - в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
 - восстановление счётчиков Redis из журнала проводок;
-- Prometheus, Grafana, Loki, OpenTelemetry Collector, `infra/observability`;
-- row policies в ClickHouse;
+- Prometheus и Grafana в репозитории (ставятся kube-prometheus-stack), OpenTelemetry Collector, `infra/observability`;
 - FOCUS и SCIM на уровне 1 интеграций;
 - техника из 1С и Excel, правила «уволенный не сдал технику» и «срок возврата прошёл»;
 - загрузка Excel в e2e-сценарии; ранбуки по Redis и провайдеру;

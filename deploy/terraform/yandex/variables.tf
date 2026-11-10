@@ -105,6 +105,12 @@ variable "backup_retention_days" {
   default = 30
 }
 
+# How long Loki keeps logs (ADR 0035); the bucket deletes them a day later.
+variable "log_retention_days" {
+  type    = number
+  default = 31
+}
+
 # Bump to regenerate every database and cache password at the next apply (ADR 0028, docs/runbooks/secrets.md).
 variable "secret_generation" {
   type    = number

@@ -45,6 +45,10 @@ output "mlflow_bucket" {
   value = yandex_storage_bucket.mlflow.bucket
 }
 
+output "logs_bucket" {
+  value = yandex_storage_bucket.logs.bucket
+}
+
 output "secrets" {
   sensitive = true
   value = {

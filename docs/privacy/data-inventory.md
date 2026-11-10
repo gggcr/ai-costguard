@@ -38,7 +38,7 @@ Kafka. Новая таблица без строки в этом реестре 
 | Отсрочка удаления компании | `PRIVACY_COMPANY_GRACE` | 30 дней | Удаляет компанию целиком |
 | Сообщения Kafka (не compacted) | `log_retention_hours` в Terraform | 7 дней | Kafka удаляет сама |
 | Ошибки разбора Kafka в ClickHouse | TTL таблицы `kafka_errors` | 30 дней | ClickHouse удаляет сам |
-| Логи сервисов | Сборщик логов платформы | 30 дней (требование, см. «Логи») | Вне репозитория |
+| Логи сервисов | Loki (`deploy/argocd/observability.yaml`), бакет `costguard-<env>-logs` | 30 дней в Loki, бакет удаляет через `log_retention_days` (31) | Loki (compactor) и lifecycle бакета, ADR 0035 |
 | Резервные копии PostgreSQL (Managed) | `backup_retain_period_days` в Terraform | 14 дней | Yandex Cloud удаляет сам |
 | Ночные копии PostgreSQL, ClickHouse и файлов ([ADR 0025](../adr/0025-backups.md)) | `backup_retention_days` в Terraform | 30 дней | Lifecycle бакета удаляет копии и прежние версии; удалённое уходит из копий не позже чем через 30 дней |
 

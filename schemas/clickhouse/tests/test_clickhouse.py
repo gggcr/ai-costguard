@@ -117,3 +117,38 @@ def test_avro_of_operations_fits(db):
 def test_missing_variable_stops(db):
     with pytest.raises(SystemExit, match="KAFKA_BROKERS"):
         apply.render("x '${KAFKA_BROKERS}'", {})
+
+
+def test_a_reader_sees_only_the_company_it_names(db):
+    """Row policies (ADR 0035). CI runs ClickHouse with access management for the default user
+    (tests/users.d/access-management.xml); a server without it cannot hold them, and the test says so."""
+    client, name, q = db
+    probe = client.post("/", content=b"CREATE ROLE IF NOT EXISTS costguard_tenant_reader")
+    if probe.status_code != 200:
+        # CI mounts the config, so there a refusal is a failure, not a reason to skip
+        assert not os.environ.get("CLICKHOUSE_ACCESS_TEST"), probe.text
+        pytest.skip("the test user may not manage access")
+    assert apply.apply_access(client, name, {"CLICKHOUSE_READER_PASSWORD": "reader-test"}) == ["001_row_policies.sql"]
+    assert apply.apply_access(client, name, {"CLICKHOUSE_READER_PASSWORD": "reader-test"}) == []
+    mine, theirs = uuid.uuid4(), uuid.uuid4()
+    q(f"""INSERT INTO cost_records (id, tenant_id, source, source_id, billed_cost, effective_cost, billing_currency,
+          charge_period_start, charge_period_end, service_provider_name) VALUES
+          ('{uuid.uuid4()}', '{mine}', 'INVOICE_LINE', 'm', 10, 10, 'RUB', '2026-10-05', '2026-10-05', 'x'),
+          ('{uuid.uuid4()}', '{theirs}', 'INVOICE_LINE', 't', 20, 20, 'RUB', '2026-10-05', '2026-10-05', 'y')""")
+
+    def as_reader(sql: str, **settings) -> httpx.Response:
+        return client.post("/", params={"database": name, **settings}, content=sql.encode(),
+                           headers={"X-ClickHouse-User": "costguard_reader", "X-ClickHouse-Key": "reader-test"})
+
+    among = f"WHERE tenant_id IN ('{mine}', '{theirs}')"
+    r = as_reader(f"SELECT toString(tenant_id) FROM cost_records {among} FORMAT TSV", SQL_tenant_id=str(mine))
+    assert r.status_code == 200 and r.text.split() == [str(mine)]
+    # through the views as well
+    r = as_reader(f"SELECT sum(billed) FROM spend_by_month {among} FORMAT TSV", SQL_tenant_id=str(mine))
+    assert r.status_code == 200 and r.text.strip() == "10"
+    # naming no company is an error, not every company
+    assert as_reader(f"SELECT count() FROM cost_records {among}").status_code != 200
+    # nothing else of the database: raw Kafka messages may carry any company
+    assert as_reader("SELECT count() FROM kafka_errors", SQL_tenant_id=str(mine)).status_code != 200
+    # everyone else still sees every company
+    assert q(f"SELECT count() FROM cost_records {among} FORMAT TSV").strip() == "2"
