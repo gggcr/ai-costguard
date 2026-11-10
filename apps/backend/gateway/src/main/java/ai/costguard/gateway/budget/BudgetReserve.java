@@ -15,7 +15,9 @@ import reactor.core.publisher.Mono;
 
 /**
  * Budget counters in Redis. Only the gateway writes them. Every key of a tenant carries the {tenant} hash tag, so
- * one script touches one cluster slot.
+ * one script touches one cluster slot. The ledger of the core is the source of truth: its snapshots in
+ * budgets.limits.v1 set what was spent, plus what the gateway settled after the snapshot's moment, which every
+ * budget keeps in a settlement log for {@code costguard.gateway.settlement-log} (1 day; ADR 0040).
  */
 @Component
 public class BudgetReserve {
@@ -36,12 +38,21 @@ public class BudgetReserve {
     private final ReactiveStringRedisTemplate redis;
     private final Clock clock;
     private final Duration hold;
+    private final Duration settlementLog;
 
     public BudgetReserve(ReactiveStringRedisTemplate redis, Clock clock,
             @Value("${costguard.gateway.reservation-hold:PT15M}") Duration hold) {
+        this(redis, clock, hold, Duration.ofDays(1));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BudgetReserve(ReactiveStringRedisTemplate redis, Clock clock,
+            @Value("${costguard.gateway.reservation-hold:PT15M}") Duration hold,
+            @Value("${costguard.gateway.settlement-log:P1D}") Duration settlementLog) {
         this.redis = redis;
         this.clock = clock;
         this.hold = hold;
+        this.settlementLog = settlementLog;
     }
 
     static String budgetKey(UUID tenantId, UUID budgetId) {
@@ -54,6 +65,11 @@ public class BudgetReserve {
 
     static String openKey(UUID tenantId) {
         return "cg:{" + tenantId + "}:open";
+    }
+
+    /** What the gateway settled on the budget, by the moment: what a snapshot of the ledger does not count yet. */
+    static String settlementLogKey(UUID tenantId, UUID budgetId) {
+        return budgetKey(tenantId, budgetId) + ":log";
     }
 
     static String settledKey(UUID tenantId, String operationId) {
@@ -91,7 +107,8 @@ public class BudgetReserve {
     public Mono<Boolean> settle(UUID tenantId, String operationId, BigDecimal actual) {
         return redis.execute(SETTLE,
                         List.of(reservationKey(tenantId, operationId), openKey(tenantId), settledKey(tenantId, operationId)),
-                        List.of(Long.toString(Money.micros(actual)), Long.toString(Duration.ofDays(7).toSeconds())))
+                        List.of(Long.toString(Money.micros(actual)), Long.toString(Duration.ofDays(7).toSeconds()),
+                                Long.toString(clock.millis()), Long.toString(settlementLog.toMillis()), operationId))
                 .next().map(r -> ((Long) ((List<Object>) r).get(0)) == 1L);
     }
 
@@ -101,11 +118,25 @@ public class BudgetReserve {
     }
 
     public Mono<Boolean> applyLimit(UUID tenantId, UUID budgetId, BigDecimal limit, long version, BigDecimal correction) {
-        return redis.execute(LIMIT, List.of(budgetKey(tenantId, budgetId)),
-                        List.of(Long.toString(Money.micros(limit)), Long.toString(version),
-                                Long.toString(correction.signum() < 0 ? -Money.micros(correction.negate())
-                                        : Money.micros(correction))))
+        return applyLimit(tenantId, budgetId, limit, version, correction, null, null);
+    }
+
+    /**
+     * The limit, and with a snapshot of the ledger what was spent: {@code ledgerSpent} up to {@code ledgerAsOf} plus
+     * the settlement log after it (ADR 0040). Returns whether the limit was newer.
+     */
+    public Mono<Boolean> applyLimit(UUID tenantId, UUID budgetId, BigDecimal limit, long version, BigDecimal correction,
+            BigDecimal ledgerSpent, java.time.Instant ledgerAsOf) {
+        boolean snapshot = ledgerSpent != null && ledgerAsOf != null;
+        return redis.execute(LIMIT, List.of(budgetKey(tenantId, budgetId), settlementLogKey(tenantId, budgetId)),
+                        List.of(Long.toString(Money.micros(limit)), Long.toString(version), signedMicros(correction),
+                                snapshot ? signedMicros(ledgerSpent) : "",
+                                snapshot ? Long.toString(ledgerAsOf.toEpochMilli()) : "0"))
                 .next().map(n -> n == 1L);
+    }
+
+    private static String signedMicros(BigDecimal amount) {
+        return Long.toString(amount.signum() < 0 ? -Money.micros(amount.negate()) : Money.micros(amount));
     }
 
     /** Releases reservations past their hold: the agent never settled, so the money goes back. */

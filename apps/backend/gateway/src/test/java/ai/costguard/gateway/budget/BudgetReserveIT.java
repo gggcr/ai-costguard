@@ -171,6 +171,38 @@ class BudgetReserveIT {
         assertThat(counters(agent).get(1)).isEqualByComparingTo("-3");
     }
 
+    /** ADR 0040: the ledger's snapshot plus what the gateway settled after its moment. */
+    @Test
+    void aSnapshotOfTheLedgerBringsBackACounterLostWithRedis() {
+        limits("1000", "1000", "1000");
+        Instant start = NOW.get();
+        reserve.reserve(tenant, "before", chain(), new BigDecimal("100")).block();
+        reserve.settle(tenant, "before", new BigDecimal("100")).block();
+        Instant asOf = start.plusSeconds(60);
+        NOW.set(asOf.plusSeconds(30));
+        reserve.reserve(tenant, "after", chain(), new BigDecimal("30")).block();
+        reserve.settle(tenant, "after", new BigDecimal("30")).block();
+
+        // Redis lost the agent's counter; the limit comes back from the compacted topic, spent from zero
+        redis.delete(BudgetReserve.budgetKey(tenant, agent)).block();
+        reserve.applyLimit(tenant, agent, new BigDecimal("1000"), 1, BigDecimal.ZERO).block();
+        assertThat(counters(agent).get(1)).isEqualByComparingTo("0");
+
+        // the ledger counted the charge before the moment; the log holds the one after it
+        reserve.applyLimit(tenant, agent, new BigDecimal("1000"), 1, BigDecimal.ZERO, new BigDecimal("100"), asOf)
+                .block();
+        assertThat(counters(agent).get(1)).isEqualByComparingTo("130");
+        // a counter that was right stays right
+        reserve.applyLimit(tenant, company, new BigDecimal("1000"), 1, BigDecimal.ZERO, new BigDecimal("100"), asOf)
+                .block();
+        assertThat(counters(company).get(1)).isEqualByComparingTo("130");
+        // the same snapshot again changes nothing
+        reserve.applyLimit(tenant, agent, new BigDecimal("1000"), 1, BigDecimal.ZERO, new BigDecimal("100"), asOf)
+                .block();
+        assertThat(counters(agent).get(1)).isEqualByComparingTo("130");
+        NOW.set(start);
+    }
+
     @Test
     void aBudgetWithNoLimitHoldsNothing() {
         assertThat(reserve.reserve(tenant, "op", List.of(UUID.randomUUID()), BigDecimal.ONE).block())

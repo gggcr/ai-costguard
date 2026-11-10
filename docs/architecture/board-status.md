@@ -263,7 +263,7 @@
 | В NEAR только корень пакета квитанций | `apps/python/notary`, `contracts/notary` | сделано (ADR 0006) |
 | ClickHouse для фактов, PostgreSQL для справочников | `schemas/clickhouse`, Flyway | сделано (ADR 0007) |
 | Kafka между контурами | `schemas/avro` | сделано (ADR 0003) |
-| Счётчики в Redis, источник истины в PostgreSQL; после сбоя счётчики восстанавливаются из журнала проводок | `gateway/budget`, `core/ledger` | не сделано (частично): резерв в Redis есть, восстановления счётчиков из журнала проводок нет |
+| Счётчики в Redis, источник истины в PostgreSQL; после сбоя счётчики восстанавливаются из журнала проводок | `gateway/budget` (`limit.lua`, `settle.lua`), `core/ledger` (`CounterSnapshot`) | сделано (ADR 0040): снимок журнала раз в 5 минут в `budgets.limits.v1` плюс журнал списаний шлюза |
 | Шлюз агентов в разрыве трафика | `apps/backend/gateway` | сделано (ADR 0004) |
 | Ядро — модульный монолит на Spring Modulith | `apps/backend/core`, `ModuleBoundariesTest` | сделано (ADR 0001) |
 
@@ -287,7 +287,6 @@
 Не сделано:
 - двойные списания за ПО в детекторе (`batch/`);
 - в прогнозах нет LightGBM для агентов и пояснений LLM в отчётах (ADR 0034);
-- восстановление счётчиков Redis из журнала проводок;
 - Prometheus и Grafana в репозитории (ставятся kube-prometheus-stack), OpenTelemetry Collector, `infra/observability`;
 - FOCUS и SCIM на уровне 1 интеграций;
 - техника из 1С и Excel, правила «уволенный не сдал технику» и «срок возврата прошёл»;

@@ -93,7 +93,7 @@ public class StateListeners {
             BudgetLimit limit = read(r, BudgetLimit.class);
             budgets.apply(limit);
             reserve.applyLimit(limit.getTenantId(), limit.getBudgetId(), limit.getLimitAmount(), limit.getVersion(),
-                    limit.getCorrection()).block();
+                    limit.getCorrection(), limit.getLedgerSpent(), limit.getLedgerAsOf()).block();
         }
     }
 
