@@ -1,6 +1,6 @@
 COMPOSE = docker compose -f infra/local/docker-compose.yml $(if $(wildcard .env),--env-file .env)
 
-.PHONY: up down logs build test demo airflow codegen seed clickhouse
+.PHONY: up down logs build test demo airflow codegen seed clickhouse observability
 
 up:
 	$(COMPOSE) up -d --wait
@@ -20,6 +20,11 @@ test:
 airflow:
 	mkdir -p infra/local/airflow/tenants infra/local/airflow/reports
 	$(COMPOSE) --profile airflow up -d airflow
+
+# Prometheus, Grafana (http://localhost:3001), Tempo and the OpenTelemetry Collector (infra/observability). Traces of
+# the core and the gateway need TRACING=true when they start: TRACING=true make demo observability
+observability:
+	$(COMPOSE) --profile observability up -d otel-collector tempo prometheus grafana
 
 codegen:
 	python -m uv run python tools/codegen/openapi_ts.py

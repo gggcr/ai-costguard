@@ -1,0 +1,16 @@
+# Data sources of the local Grafana; the same uids as in the cluster, so the dashboard and links work in both.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Tempo
+    uid: costguard-tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      serviceMap: { datasourceUid: prometheus }

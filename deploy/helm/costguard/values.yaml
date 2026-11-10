@@ -201,6 +201,13 @@ logging:
   enabled: false
   lokiUrl: http://loki-gateway.observability.svc.cluster.local
 
+# Traces (ADR 0048): the core and the gateway send spans over OTLP to the OpenTelemetry Collector of
+# deploy/argocd/observability.yaml, which forwards them to Tempo; Grafana shows them next to the logs. Off, the
+# services still put a trace id into errors and logs, but export nothing. TRACE_SAMPLING of the core sets the share.
+tracing:
+  enabled: false
+  otlpEndpoint: http://otel-collector.observability.svc.cluster.local:4318/v1/traces
+
 # Delivery of alerts (ADR 0026): an AlertmanagerConfig for the Alertmanager of kube-prometheus-stack. Warnings go
 # to Telegram, critical alerts to Telegram and e-mail. The secret `secretName` holds TELEGRAM_BOT_TOKEN and
 # SMTP_PASSWORD; create it before switching this on (docs/runbooks/alerting.md).

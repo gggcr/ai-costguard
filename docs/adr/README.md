@@ -52,3 +52,4 @@
 | [0045](0045-agent-spend-boosting.md) | Прогноз расходов агентов по дням: градиентный бустинг на чистом Python среди кандидатов бэктеста | Принято |
 | [0046](0046-focus-from-bucket.md) | FOCUS-выгрузки облаков из бакета компании каждый час, автоподтверждение без человека, роль importer | Принято |
 | [0047](0047-image-per-python-service.md) | Свой образ, Dockerfile и README у каждого Python-сервиса вместо общего образа | Принято |
+| [0048](0048-observability-stack.md) | Prometheus, Grafana, Tempo и OpenTelemetry Collector в репозитории; трейсы ядра и шлюза | Принято |

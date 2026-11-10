@@ -20,7 +20,7 @@ from costguard_anomaly import models as modelling
 from costguard_anomaly.detector import Anomaly, Detector
 from costguard_anomaly.risk import Rules, Score
 from costguard_anomaly.scorer import Scorer, signal
-from costguard_common import logs
+from costguard_common import consuming, logs
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
@@ -73,7 +73,7 @@ def scorer(settings: AnomalySettings, store: modelling.Store | None = None) -> S
 
 
 def run(settings: AnomalySettings) -> None:
-    from confluent_kafka import Consumer, KafkaException, Producer
+    from confluent_kafka import Consumer, Producer
 
     codec = Codec(SchemaRegistry(settings.schema_registry_url))
     consumer = Consumer({"bootstrap.servers": settings.kafka_bootstrap_servers,
@@ -96,9 +96,9 @@ def run(settings: AnomalySettings) -> None:
         while True:
             msg = consumer.poll(1.0)
             now = datetime.now(UTC)
+            if msg is not None and msg.error() and consuming.skip(msg.error(), log):
+                msg = None
             if msg is not None:
-                if msg.error():
-                    raise KafkaException(msg.error())
                 record = codec.decode(msg.topic(), msg.value())
                 if msg.topic() == COSTS:
                     for a in detector.add(record):

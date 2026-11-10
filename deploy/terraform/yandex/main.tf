@@ -315,6 +315,8 @@ resource "yandex_mdb_redis_cluster" "main" {
   config {
     version  = "7.2"
     password = random_password.redis.result
+    # Never evict: a dropped key is a budget counter gone (docs/runbooks/redis.md)
+    maxmemory_policy = "NOEVICTION"
   }
   resources {
     resource_preset_id = var.redis_preset

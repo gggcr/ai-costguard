@@ -81,3 +81,80 @@ def test_the_migration_job_applies_row_policies_only_when_asked():
 
     assert "CLICKHOUSE_ACCESS_MANAGEMENT" not in job_env()
     assert job_env("clickhouseMigrations.rowPolicies=true")["CLICKHOUSE_ACCESS_MANAGEMENT"] == "1"
+
+
+# --- Prometheus, Grafana and traces (ADR 0048) ---------------------------------------------------------------------
+
+COLLECTOR = ROOT / "infra/observability/otel-collector.yaml"
+
+
+def test_the_cluster_runs_the_collector_config_of_infra_observability():
+    values = DOCS["otel-collector"]["spec"]["source"]["helm"]["valuesObject"]
+    assert values["alternateConfig"] == yaml.safe_load(COLLECTOR.read_text("utf-8"))
+    tempo = {e["name"]: e["value"] for e in values["extraEnvs"]}["TEMPO_OTLP_ENDPOINT"]
+    assert tempo.startswith("tempo.observability.svc.cluster.local:")
+
+
+def test_the_collector_drops_personal_data_before_tempo():
+    config = yaml.safe_load(COLLECTOR.read_text("utf-8"))
+    dropped = {a["key"] for a in config["processors"]["attributes/personal-data"]["actions"] if a["action"] == "delete"}
+    assert {"enduser.id", "user.email", "http.request.header.authorization", "url.query"} <= dropped
+    [pipeline] = config["service"]["pipelines"].values()
+    assert "attributes/personal-data" in pipeline["processors"]
+    assert pipeline["processors"].index("attributes/personal-data") < pipeline["processors"].index("batch")
+
+
+def test_prometheus_and_alertmanager_pick_up_what_the_chart_makes():
+    stack = DOCS["kube-prometheus-stack"]["spec"]["source"]["helm"]["valuesObject"]
+    spec = stack["prometheus"]["prometheusSpec"]
+    assert spec["serviceMonitorSelectorNilUsesHelmValues"] is False
+    assert spec["ruleSelectorNilUsesHelmValues"] is False
+    chart = yaml.safe_load((ROOT / "deploy/helm/costguard/values.yaml").read_text("utf-8"))
+    selector = stack["alertmanager"]["alertmanagerSpec"]["alertmanagerConfigSelector"]["matchLabels"]
+    assert selector == chart["alerting"]["selectorLabels"]
+    sidecar = stack["grafana"]["sidecar"]
+    assert sidecar["dashboards"]["label"] == "grafana_dashboard"
+    assert sidecar["datasources"]["label"] == "grafana_datasource"
+    # the Tempo data source links to the logs by the uid the chart gives Loki
+    [tempo] = stack["grafana"]["additionalDataSources"]
+    assert tempo["jsonData"]["tracesToLogsV2"]["datasourceUid"] == "costguard-loki"
+    assert "costguard-loki" in (ROOT / "deploy/helm/costguard/templates/logging.yaml").read_text("utf-8")
+
+
+def test_the_observability_project_allows_every_chart_it_installs():
+    project = DOCS["observability"]["spec"]
+    apps = [d for d in DOCS.values() if d["kind"] == "Application"]
+    assert {a["spec"]["source"]["repoURL"] for a in apps} <= set(project["sourceRepos"])
+    assert all(a["spec"]["project"] == "observability" for a in apps)
+
+
+def test_the_chart_points_traces_at_the_collector():
+    chart = yaml.safe_load((ROOT / "deploy/helm/costguard/values.yaml").read_text("utf-8"))
+    assert chart["tracing"]["otlpEndpoint"].startswith("http://otel-collector.observability.svc.cluster.local:4318")
+    assert DOCS["otel-collector"]["spec"]["source"]["helm"]["valuesObject"]["fullnameOverride"] == "otel-collector"
+
+
+@pytest.mark.skipif(HELM is None, reason="helm is not installed here")
+def test_the_java_services_export_traces_only_when_asked():
+    from test_helm import env_of
+
+    def env(*sets):
+        [core] = find(render(sets=sets), "Deployment", "costguard-core")
+        return {k: v.get("value") for k, v in env_of(core).items()}
+
+    off = env()
+    assert off["MANAGEMENT_TRACING_EXPORT_ENABLED"] == "false"
+    assert "MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT" not in off
+    on = env("tracing.enabled=true")
+    assert on["MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT"].endswith(":4318/v1/traces")
+    assert "MANAGEMENT_TRACING_EXPORT_ENABLED" not in on
+
+
+def test_the_local_stack_uses_the_same_config_and_dashboard():
+    compose = yaml.safe_load((ROOT / "infra/local/docker-compose.yml").read_text("utf-8"))["services"]
+    assert "../observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro" in compose["otel-collector"]["volumes"]
+    assert any(v.startswith("../../deploy/helm/costguard/dashboards:") for v in compose["grafana"]["volumes"])
+    for name in ("otel-collector", "tempo", "prometheus", "grafana"):
+        assert compose[name]["profiles"] == ["observability"]
+    # traces are off unless asked: an exporter without a collector would only log errors
+    assert compose["core"]["environment"]["MANAGEMENT_TRACING_EXPORT_ENABLED"] == "${TRACING:-false}"

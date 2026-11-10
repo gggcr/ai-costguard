@@ -1,0 +1,11 @@
+# Local Prometheus (profile observability): scrapes the core and the gateway of `make demo`. In a cluster the
+# ServiceMonitors of the chart do this (monitoring.serviceMonitor), and the alerts are deploy/helm/costguard/templates/monitoring.yaml.
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: costguard-core
+    metrics_path: /actuator/prometheus
+    static_configs: [{ targets: ["core:8080"], labels: { app: core } }]
+  - job_name: costguard-gateway
+    metrics_path: /actuator/prometheus
+    static_configs: [{ targets: ["gateway:8081"], labels: { app: gateway } }]

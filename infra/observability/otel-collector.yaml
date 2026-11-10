@@ -1,0 +1,36 @@
+# OpenTelemetry Collector of CostGuard: the one place traces go (ADR 0048).
+# The core and the gateway send OTLP over HTTP (spring-boot-starter-opentelemetry); the collector batches the spans,
+# drops what it cannot keep in memory and forwards them to Tempo. The same file runs locally
+# (infra/local/docker-compose.yml, profile observability) and in the cluster: deploy/argocd/observability.yaml
+# carries a copy under `config`, and tools/tests/test_observability.py checks the two are the same.
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  batch: {}
+  # Spans carry no personal data (ADR 0023): drop the attributes that could, whatever an instrumentation adds.
+  attributes/personal-data:
+    actions:
+      - { key: enduser.id, action: delete }
+      - { key: user.email, action: delete }
+      - { key: http.request.header.authorization, action: delete }
+      - { key: url.query, action: delete }
+exporters:
+  otlp/tempo:
+    endpoint: ${env:TEMPO_OTLP_ENDPOINT}
+    tls: { insecure: true }
+extensions:
+  health_check: { endpoint: 0.0.0.0:13133 }
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/personal-data, batch]
+      exporters: [otlp/tempo]

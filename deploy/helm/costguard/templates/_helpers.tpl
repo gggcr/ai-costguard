@@ -54,6 +54,14 @@ https://{{ required "ingress.hosts.keycloak is required with keycloak.enabled" .
   value: "true"
 - name: KEYCLOAK_ISSUER_URI
   value: {{ include "costguard.keycloakIssuer" . | quote }}
+{{- /* Traces of the Java services (ADR 0048): to the OpenTelemetry Collector, or nowhere. */}}
+{{- if .Values.tracing.enabled }}
+- name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
+  value: {{ .Values.tracing.otlpEndpoint | quote }}
+{{- else }}
+- name: MANAGEMENT_TRACING_EXPORT_ENABLED
+  value: "false"
+{{- end }}
 {{- if .Values.mlflow.enabled }}
 - name: MLFLOW_TRACKING_URI
   value: "http://costguard-mlflow"

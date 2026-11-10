@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from costguard_common import logs
+from costguard_common import consuming, logs
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
@@ -49,7 +49,7 @@ def receipt(record: dict) -> batches.Receipt:
 
 
 def run(settings: NotarySettings) -> None:
-    from confluent_kafka import Consumer, KafkaException, Producer
+    from confluent_kafka import Consumer, Producer
 
     if not (settings.near_account_id and settings.near_private_key and settings.near_contract_id):
         raise SystemExit("NEAR_ACCOUNT_ID, NEAR_PRIVATE_KEY and NEAR_CONTRACT_ID are required")
@@ -86,8 +86,8 @@ def run(settings: NotarySettings) -> None:
 
     def polled(c: Consumer, timeout: float):
         msg = c.poll(timeout)
-        if msg is not None and msg.error():
-            raise KafkaException(msg.error())
+        if msg is not None and msg.error() and consuming.skip(msg.error(), log):
+            return None
         return msg
 
     pending: list[batches.Receipt] = []

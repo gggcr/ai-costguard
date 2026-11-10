@@ -38,8 +38,7 @@ uv run costguard-forecast --help                               # from the reposi
 docker build -f apps/python/reports/Dockerfile -t costguard-reports .
 ```
 
-The image has `libgomp1`: `lightgbm` is among the dependencies of the package, and it needs the library to load.
-`agents.py` does not use it yet, its boosting is plain Python (ADR 0045).
+The models, the boosting among them, are plain Python (ADR 0034, 0045): the image needs no system libraries.
 
 | Variable | |
 |---|---|

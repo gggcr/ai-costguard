@@ -37,7 +37,8 @@ class InvoicesIntegrationTest extends PostgresTestSupport {
     @Autowired NormalizedEntities entities;
 
     final UUID tenant = UUID.randomUUID();
-    final LocalDate today = LocalDate.now();
+    // the date of the audit, whose clock is UTC (AssetsConfig)
+    final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
 
     RequestPostProcessor owner() {
         return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", "u@x.ru")

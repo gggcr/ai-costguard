@@ -1,7 +1,7 @@
 # Сверка с доской архитектуры
 
 Доска: [Miro «costguard»](https://miro.com/app/board/uXjVES7uH9I=/), фреймы 1–15 и «Правила репозитория».
-Состояние ветки `feat/backlog-2026-11-08` на 2026-11-09. Это только описание: по итогам сверки ничего не исправлялось.
+Состояние ветки `goidochka` на 2026-11-11. Это только описание: по итогам сверки ничего не исправлялось.
 
 **Изменения после части 5 (сверка фреймов 2, 3, 8, 15), ADR 0020:**
 - фрейм 2: обрыв потока сразу списывает полученное и возвращает остаток резерва, а не через уборщика;
@@ -182,7 +182,7 @@
 | core: ядро ×2+, проверяет токены Keycloak | Helm `workloads.yaml`, `core/shared/security` | сделано |
 | data-plane: шлюз ×3+, автомасштабирование | Helm, HPA в `workloads.yaml` | сделано |
 | analytics: Airflow → Python-воркеры с KEDA → MLflow | `keda.yaml`, `mlflow.yaml`, `infra/airflow` | сделано (ADR 0017) |
-| observability: Prometheus, Grafana, Loki | `monitoring.yaml` (PrometheusRule, дашборд Grafana), `deploy/argocd/observability.yaml` (Loki, Grafana Alloy), `logging.yaml` (источник данных Loki) | не сделано (частично, ADR 0035): Loki и сбор логов есть; Prometheus и Grafana ставит kube-prometheus-stack вне репозитория, OpenTelemetry Collector нет |
+| observability: Prometheus, Grafana, Loki | `monitoring.yaml` (PrometheusRule, дашборд Grafana), `deploy/argocd/observability.yaml` (Loki, Grafana Alloy), `logging.yaml` (источник данных Loki) | сделано (ADR 0035, 0048): `deploy/argocd/observability.yaml` ставит kube-prometheus-stack (Prometheus, Alertmanager, Grafana), Loki, Alloy, Tempo и OpenTelemetry Collector; трейсы ядра и шлюза — `tracing.enabled` |
 | Kafka 3 брокера, Redis Cluster, PostgreSQL лидер + 2 реплики, ClickHouse 2 реплики, S3 | Terraform: `yandex_mdb_kafka_cluster`, `yandex_mdb_redis_cluster`, `yandex_mdb_postgresql_cluster`, `yandex_mdb_clickhouse_cluster`, `yandex_storage_bucket` | сделано (управляемые сервисы; число хостов в prod задаётся по зонам) |
 | Vault | `infra/local` (vault), ключи провайдеров `gateway/keys`, ключ подписи квитанций `core/journal/ReceiptSigner` | сделано |
 | Внешние: провайдеры ИИ, NEAR RPC | `gateway/providers`, `apps/python/notary/near.py` | сделано |
@@ -203,10 +203,10 @@
 | `infra/local`: docker-compose с PostgreSQL, Redis, Kafka, ClickHouse, MinIO, Keycloak, Vault | `infra/local/docker-compose.yml` | сделано иначе, ADR нет: SeaweedFS вместо MinIO |
 | `infra/helm`, `infra/argocd`, `infra/terraform` | `deploy/helm`, `deploy/argocd`, `deploy/terraform` | сделано иначе, ADR нет: папка `deploy/` |
 | `infra/keycloak`: realm и роли owner, finance, it_admin, agent_owner, auditor | `infra/keycloak/costguard-realm.json` | сделано |
-| `infra/observability`: дашборды Grafana, алерты, OpenTelemetry Collector | `deploy/helm/costguard/dashboards`, `monitoring.yaml` | не сделано (частично): нет папки и Collector |
+| `infra/observability`: дашборды Grafana, алерты, OpenTelemetry Collector | `infra/observability` (конфиг Collector, локальные Prometheus, Grafana, Tempo; `make observability`), дашборд и алерты — `deploy/helm/costguard/dashboards`, `monitoring.yaml` | сделано иначе (ADR 0048): дашборд и алерты остаются в чарте, они выходят вместе с сервисами |
 | `tests/e2e`: лимит агента и ответ 402, Excel и находки | `tests/e2e/test_money_path.py` | сделано: путь денег, 402, находки аудита и загрузка списка техники из Excel до записи в технике |
 | `tests/load` (k6), `tests/contract` | `tests/load`, `tests/contracts` | сделано |
-| `docs/adr`, `docs/runbooks` (Redis, Kafka, ядро, провайдер), `docs/architecture` | `docs/*` | сделано; ранбука по Redis и провайдеру нет, есть gateway, kafka-lag, core, notary, mlflow, secrets, deploy, terraform |
+| `docs/adr`, `docs/runbooks` (Redis, Kafka, ядро, провайдер), `docs/architecture` | `docs/*` | сделано: `redis.md`, `provider.md`, `kafka-lag.md`, `core.md`, `gateway.md` и ещё 20, список в `docs/runbooks/README.md` |
 | `tools/codegen`, `tools/seed` | там же | сделано |
 | Файлы в корне: README.md, Makefile, .github/workflows, CODEOWNERS, settings.gradle.kts, gradle/libs.versions.toml, pyproject.toml и uv.lock, .env.example | корень репозитория | сделано |
 
@@ -284,9 +284,7 @@
 
 ## Коротко: что расходится с доской
 
-Не сделано:
-- Prometheus и Grafana в репозитории (ставятся kube-prometheus-stack), OpenTelemetry Collector, `infra/observability`;
-- ранбуки по Redis и провайдеру.
+Не сделано: ничего, все элементы доски есть в коде (ADR 0047, 0048 закрыли последние).
 
 Сделано иначе, ADR нет:
 - раскладка папок: `apps/python/*` вместо `apps/backend/*`, `infra/airflow`, `contracts/notary`, `deploy/*`,

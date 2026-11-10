@@ -165,5 +165,6 @@ def test_an_excel_list_of_equipment_reaches_the_assets(core):
     assert confirmed.status_code == 200, confirmed.text
 
     device = wait("the device in the assets", lambda: next(
-        (a for a in core.get("/api/v1/assets").json() if a["inventoryNumber"] == inventory), None))
+        (a for a in core.get("/api/v1/assets", params={"size": 200}).json()["items"]
+         if a["inventoryNumber"] == inventory), None))
     assert device["type"] == "LAPTOP" and device["currentAssignment"]["employeeId"] == IVANOV

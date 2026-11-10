@@ -6,6 +6,8 @@
 | Runbook | Когда |
 |---|---|
 | [gateway.md](gateway.md) | `GatewaySlow`, `GatewayErrors`, агенты жалуются на отказы |
+| [redis.md](redis.md) | Redis шлюза недоступен, потерял данные или переполнен; что в нём лежит |
+| [provider.md](provider.md) | Провайдер ИИ отвечает ошибками или медленно, сменить ключ провайдера |
 | [kafka-lag.md](kafka-lag.md) | `ConsumerLagGrowing`, масштабирование воркеров KEDA |
 | [notary.md](notary.md) | `NotaryNotAnchoring`, ошибка NEAR |
 | [core.md](core.md) | `CoreDown`, `DatabasePoolExhausted` |
@@ -17,6 +19,7 @@
 | [deploy.md](deploy.md) | Выкатить релиз, откатить |
 | [mlflow.md](mlflow.md) | Модели детектора в MLflow: включить, посмотреть, откатить |
 | [backups.md](backups.md) | `BackupFailed`, `BackupMissing`; включить копии; восстановить PostgreSQL, ClickHouse, файлы |
+| [observability.md](observability.md) | Prometheus, Grafana, логи и трейсы: включить, проверить, если пусто |
 | [alerting.md](alerting.md) | Доставка алертов в Telegram и на почту; какой runbook у какого алерта |
 | [outbox.md](outbox.md) | `OutboxStuck`, `OutboxRetryFailing` |
 | [budgets.md](budgets.md) | `BudgetReconciliationMismatch`, `BudgetReconciliationNotRunning` |

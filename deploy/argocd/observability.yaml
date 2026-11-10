@@ -1,25 +1,38 @@
-# Logs of CostGuard in Loki (ADR 0035): Grafana Alloy reads the logs of the pods of costguard and costguard-staging,
-# takes the level out of every line, and pushes them to Loki; Loki keeps them in the logs bucket of the region
-# (deploy/terraform/yandex, output logs_bucket) for 30 days. Grafana of kube-prometheus-stack shows them through the
-# data source the CostGuard chart adds (logging.enabled).
+# Observability of CostGuard (ADR 0035, ADR 0048), everything in the namespace observability:
+# - kube-prometheus-stack: Prometheus, Alertmanager and Grafana. Prometheus picks up the ServiceMonitors and
+#   PrometheusRules of the CostGuard chart (monitoring.*), Alertmanager its AlertmanagerConfig (alerting.*), Grafana
+#   its dashboard and data sources through the sidecars (labels grafana_dashboard, grafana_datasource).
+# - Loki and Grafana Alloy: logs. Alloy reads the logs of the pods of costguard and costguard-staging, takes the
+#   level out of every line, and pushes them to Loki; Loki keeps them in the logs bucket of the region
+#   (deploy/terraform/yandex, output logs_bucket) for 30 days.
+# - OpenTelemetry Collector and Tempo: traces of the core and the gateway (tracing.enabled of the chart). The
+#   collector config is infra/observability/otel-collector.yaml.
 #
-# The secret loki-s3 in the namespace observability holds S3_ACCESS_KEY and S3_SECRET_KEY of the storage service
-# account (terraform output secrets). Services mask personal data before they log (ADR 0023).
+# Secrets in the namespace observability, created before the first sync (docs/runbooks/observability.md):
+# loki-s3 with S3_ACCESS_KEY and S3_SECRET_KEY of the storage service account (terraform output secrets), and
+# grafana-admin with admin-user and admin-password. Services mask personal data before they log (ADR 0023).
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: observability
   namespace: argocd
 spec:
-  description: Logs of the CostGuard platform
+  description: Metrics, alerts, logs and traces of the CostGuard platform
   sourceRepos:
     - https://grafana.github.io/helm-charts
+    - https://prometheus-community.github.io/helm-charts
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
   destinations:
     - { server: https://kubernetes.default.svc, namespace: observability }
-  # Alloy discovers pods across namespaces: it needs a ClusterRole
+    # kube-prometheus-stack puts the kubelet Service there
+    - { server: https://kubernetes.default.svc, namespace: kube-system }
+  # Alloy and Prometheus read across namespaces (ClusterRole); the Prometheus operator brings its CRDs and webhooks
   clusterResourceWhitelist:
     - { group: rbac.authorization.k8s.io, kind: ClusterRole }
     - { group: rbac.authorization.k8s.io, kind: ClusterRoleBinding }
+    - { group: apiextensions.k8s.io, kind: CustomResourceDefinition }
+    - { group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration }
+    - { group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration }
   namespaceResourceWhitelist:
     - { group: "*", kind: "*" }
 ---
@@ -155,6 +168,163 @@ spec:
                   url = "http://loki-gateway.observability.svc.cluster.local/loki/api/v1/push"
                 }
               }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: observability
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 66.3.1
+    helm:
+      valuesObject:
+        # Managed Kubernetes: the control plane is not ours to scrape
+        kubeControllerManager: { enabled: false }
+        kubeScheduler: { enabled: false }
+        kubeEtcd: { enabled: false }
+        kubeProxy: { enabled: false }
+        prometheus:
+          prometheusSpec:
+            # take the ServiceMonitors and rules of every release, not only of this one
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            retention: 15d
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: [ReadWriteOnce]
+                  resources: { requests: { storage: 50Gi } }
+        alertmanager:
+          alertmanagerSpec:
+            # alerting.selectorLabels of the CostGuard chart
+            alertmanagerConfigSelector:
+              matchLabels: { alertmanagerConfig: costguard }
+        grafana:
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
+          sidecar:
+            dashboards: { enabled: true, label: grafana_dashboard, searchNamespace: ALL }
+            datasources: { enabled: true, label: grafana_datasource, searchNamespace: ALL }
+          additionalDataSources:
+            - name: Tempo
+              uid: costguard-tempo
+              type: tempo
+              access: proxy
+              url: http://tempo.observability.svc.cluster.local:3100
+              jsonData:
+                # from a span to the log lines around it (logging.enabled of the CostGuard chart)
+                tracesToLogsV2: { datasourceUid: costguard-loki, spanStartTimeShift: -5m, spanEndTimeShift: 5m }
+                serviceMap: { datasourceUid: prometheus }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    # the CRDs of the operator are too large for a client-side apply
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: observability
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: tempo
+    targetRevision: 1.14.0
+    helm:
+      valuesObject:
+        tempo:
+          # a week of traces is enough to explain an incident; metrics and logs keep the longer history
+          retention: 168h
+          receivers:
+            otlp:
+              protocols:
+                grpc: { endpoint: 0.0.0.0:4317 }
+        persistence: { enabled: true, size: 20Gi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collector
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: observability
+  source:
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.110.0
+    helm:
+      valuesObject:
+        mode: deployment
+        replicaCount: 2
+        image: { repository: otel/opentelemetry-collector-contrib }
+        fullnameOverride: otel-collector
+        extraEnvs:
+          - { name: TEMPO_OTLP_ENDPOINT, value: "tempo.observability.svc.cluster.local:4317" }
+        resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { memory: 512Mi } }
+        ports:
+          jaeger-compact: { enabled: false }
+          jaeger-thrift: { enabled: false }
+          jaeger-grpc: { enabled: false }
+          zipkin: { enabled: false }
+        # replaces the default config of the chart: infra/observability/otel-collector.yaml without its comments
+        alternateConfig:
+          receivers:
+            otlp:
+              protocols:
+                grpc: { endpoint: 0.0.0.0:4317 }
+                http: { endpoint: 0.0.0.0:4318 }
+          processors:
+            memory_limiter:
+              check_interval: 1s
+              limit_percentage: 80
+              spike_limit_percentage: 25
+            batch: {}
+            # Spans carry no personal data (ADR 0023): drop the attributes that could, whatever an instrumentation adds.
+            attributes/personal-data:
+              actions:
+                - { key: enduser.id, action: delete }
+                - { key: user.email, action: delete }
+                - { key: http.request.header.authorization, action: delete }
+                - { key: url.query, action: delete }
+          exporters:
+            otlp/tempo:
+              endpoint: ${env:TEMPO_OTLP_ENDPOINT}
+              tls: { insecure: true }
+          extensions:
+            health_check: { endpoint: 0.0.0.0:13133 }
+          service:
+            extensions: [health_check]
+            pipelines:
+              traces:
+                receivers: [otlp]
+                processors: [memory_limiter, attributes/personal-data, batch]
+                exporters: [otlp/tempo]
   destination:
     server: https://kubernetes.default.svc
     namespace: observability

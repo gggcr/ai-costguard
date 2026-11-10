@@ -46,6 +46,22 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
+  # Creates every topic of schemas/avro once Kafka is up, as Terraform does in the cloud. Without it a topic exists
+  # only after its first message, and a consumer of the pipeline waits for it (costguard_common.consuming).
+  topics:
+    image: apache/kafka:3.9.0
+    depends_on: [kafka]
+    volumes:
+      - ../../schemas/avro:/schemas:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list >/dev/null 2>&1; do sleep 2; done
+        for f in /schemas/*.avsc; do
+          t=$${f##*/}
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${t%.avsc}" --partitions 3
+        done
+
   schema-registry:
     image: confluentinc/cp-schema-registry:7.7.1
     depends_on: [kafka]
@@ -163,6 +179,15 @@ services:
       AIRFLOW_URL: ${AIRFLOW_URL:-}
       AIRFLOW_USERNAME: admin
       AIRFLOW_PASSWORD: ${AIRFLOW_PASSWORD:-}
+      # Uploaded files, shared with the ingest service below: the core keeps them on disk (FileStore)
+      COSTGUARD_IMPORTS_STORAGE_DIR: /var/costguard/imports
+      # Traces go to the OpenTelemetry Collector of the observability profile; off unless TRACING=true (ADR 0048).
+      MANAGEMENT_TRACING_EXPORT_ENABLED: ${TRACING:-false}
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    # The imports volume is new and belongs to root; on a laptop only
+    user: "0"
+    volumes:
+      - imports:/var/costguard/imports
     healthcheck:
       # Tomcat opens the port after Flyway has migrated, so an open port means the tables exist.
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
@@ -182,6 +207,67 @@ services:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8081'"]
       interval: 5s
       retries: 60
+
+  # The ingest pipeline for `make demo` (apps/python/ingest): reads what is uploaded to «Импорт» from the volume the
+  # core writes to, suggests the mapping, and writes cost records, devices and people. Without it uploads wait forever.
+  ingest:
+    profiles: [demo]
+    build:
+      context: ../..
+      dockerfile: apps/python/ingest/Dockerfile
+    depends_on:
+      kafka: { condition: service_started }
+      schema-registry: { condition: service_started }
+    user: "0"        # reads the root-owned imports volume; on a laptop only
+    # it stops when its topics do not exist yet (`make clickhouse` creates them): start again until they do
+    restart: on-failure
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      INGEST_STORAGE_DIR: /var/costguard/imports
+    volumes:
+      - imports:/var/costguard/imports:ro
+
+  # Metrics, dashboards and traces (infra/observability, ADR 0048). Not started by `make up`: `make observability`
+  # starts them; Grafana is on http://localhost:3001 (admin / admin), Prometheus on http://localhost:9090.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    profiles: [observability]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      TEMPO_OTLP_ENDPOINT: tempo:4317
+    volumes:
+      - ../observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports: ["4318:4318"]
+    depends_on: [tempo]
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    profiles: [observability]
+    command: ["-config.file=/etc/tempo.yaml"]
+    user: "0"        # a new named volume belongs to root; on a laptop only
+    volumes:
+      - ../observability/local/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo:/var/tempo
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [observability]
+    volumes:
+      - ../observability/local/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    profiles: [observability]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - ../observability/local/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/costguard.yaml:ro
+      - ../observability/local/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/costguard.yaml:ro
+      - ../../deploy/helm/costguard/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3001:3000"]
+    depends_on: [prometheus, tempo]
 
   # Catches the e-mail of the local stack: http://localhost:8025
   mailpit:
@@ -228,3 +314,5 @@ volumes:
   clickhouse:
   s3:
   mlflow:
+  tempo:
+  imports:

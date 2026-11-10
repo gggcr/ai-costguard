@@ -1,0 +1,6 @@
+# The dashboard of the chart (deploy/helm/costguard/dashboards), mounted read-only.
+apiVersion: 1
+providers:
+  - name: costguard
+    type: file
+    options: { path: /var/lib/grafana/dashboards }

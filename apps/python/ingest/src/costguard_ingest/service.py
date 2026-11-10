@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from costguard_common import llm, logs
+from costguard_common import consuming, llm, logs
 from costguard_common import payments as paying
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
@@ -150,7 +150,7 @@ class Handler:
 
 
 def run(settings: IngestSettings) -> None:
-    from confluent_kafka import Consumer, KafkaException, Producer
+    from confluent_kafka import Consumer, Producer
 
     files: storage.Files = (storage.LocalFiles(settings.ingest_storage_dir) if settings.ingest_storage_dir
                             else storage.S3Files(settings.s3_endpoint, settings.s3_access_key,
@@ -172,7 +172,8 @@ def run(settings: IngestSettings) -> None:
             if msg is None:
                 continue
             if msg.error():
-                raise KafkaException(msg.error())
+                if consuming.skip(msg.error(), log):
+                    continue
             record = codec.decode(msg.topic(), msg.value())
             out = handler.on_file(record) if msg.topic() == FILES else handler.on_accepted(record)
             failed: list[str] = []
