@@ -2,6 +2,8 @@ package ai.costguard.core.org.internal;
 
 import ai.costguard.core.org.DismissalChecklistSection;
 import ai.costguard.core.org.EmployeeDismissed;
+import ai.costguard.core.plans.Limit;
+import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
@@ -24,14 +26,21 @@ class OrgService {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final List<DismissalChecklistSection> checklistSections;
+    private final PlanLimits plans;
+    private final IdentityProvider accounts;
+    private final RegistrationRepository registrations;
 
     OrgService(OrgRepository org, TenantSession session, Clock clock, ApplicationEventPublisher events,
-            List<DismissalChecklistSection> checklistSections) {
+            List<DismissalChecklistSection> checklistSections, PlanLimits plans, IdentityProvider accounts,
+            RegistrationRepository registrations) {
         this.org = org;
         this.session = session;
         this.clock = clock;
         this.events = events;
         this.checklistSections = checklistSections;
+        this.plans = plans;
+        this.accounts = accounts;
+        this.registrations = registrations;
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +97,7 @@ class OrgService {
     Employee createEmployee(UUID tenantId, EmployeeDetails details) {
         session.bind(tenantId);
         requireDepartment(details.departmentId());
+        plans.requireRoom(tenantId, Limit.EMPLOYEES, org::countActiveEmployees);
         UUID id = UUID.randomUUID();
         try {
             org.insertEmployee(tenantId, id, details);
@@ -203,6 +213,16 @@ class OrgService {
         UserAccount user = org.user(id).orElseThrow(OrgProblem.USER_NOT_FOUND::failure);
         if (user.role() == UserRole.owner && owners == 1) {
             throw OrgProblem.LAST_OWNER.failure();
+        }
+        // An account created by an invitation goes too, or the person could still log in (ADR 0032). Deleted
+        // before the row: if Keycloak fails, nothing changes and the call can be repeated.
+        var account = registrations.accountOfUser(id);
+        if (account.isPresent() && accounts.configured()) {
+            try {
+                accounts.delete(account.get());
+            } catch (IdentityProvider.Unavailable e) {
+                throw RegistrationProblem.REGISTRATION_UNAVAILABLE.failure();
+            }
         }
         org.deleteUser(id);
         events.publishEvent(ActionTaken.of(tenantId, "user.removed", "user", id,

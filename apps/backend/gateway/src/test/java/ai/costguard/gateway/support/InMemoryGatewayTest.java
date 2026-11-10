@@ -11,6 +11,8 @@ import ai.costguard.gateway.filters.LoopFilter;
 import ai.costguard.gateway.keys.AgentDirectory;
 import ai.costguard.gateway.ladder.Operation;
 import ai.costguard.gateway.ladder.StepResult;
+import ai.costguard.gateway.plans.OperationQuota;
+import ai.costguard.gateway.plans.PlanBoard;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -45,6 +47,36 @@ import reactor.core.publisher.Mono;
 public abstract class InMemoryGatewayTest {
 
     public static final MemoryReserve RESERVE = new MemoryReserve();
+    public static final MemoryQuota QUOTA = new MemoryQuota();
+
+    /** What quota-take.lua and quota-give-back.lua do, per company and month. */
+    public static class MemoryQuota extends OperationQuota {
+        public final Map<String, Long> used = new ConcurrentHashMap<>();
+
+        MemoryQuota() {
+            super(null);
+        }
+
+        public long used(UUID tenantId, String month) {
+            return used.getOrDefault(tenantId + ":" + month, 0L);
+        }
+
+        @Override
+        public synchronized Mono<Boolean> take(UUID tenantId, String month, long limit) {
+            String key = tenantId + ":" + month;
+            if (used.getOrDefault(key, 0L) >= limit) {
+                return Mono.just(false);
+            }
+            used.merge(key, 1L, Long::sum);
+            return Mono.just(true);
+        }
+
+        @Override
+        public synchronized Mono<Void> giveBack(UUID tenantId, String month) {
+            used.computeIfPresent(tenantId + ":" + month, (k, n) -> n > 0 ? n - 1 : 0);
+            return Mono.empty();
+        }
+    }
 
     /** All levels or none, settle and release once: what reserve.lua, settle.lua and release.lua do. */
     public static class MemoryReserve extends BudgetReserve {
@@ -125,6 +157,12 @@ public abstract class InMemoryGatewayTest {
             return new RecordingLog();
         }
 
+        @Bean
+        @Primary
+        MemoryQuota memoryQuota() {
+            return QUOTA;
+        }
+
         /** No Kafka here: listeners would only retry the connection. */
         @Bean
         static BeanPostProcessor noKafkaListeners() {
@@ -160,6 +198,7 @@ public abstract class InMemoryGatewayTest {
     @Autowired protected BudgetTree tree;
     @Autowired protected MemoryReserve reserve;
     @Autowired protected RecordingLog log;
+    @Autowired protected PlanBoard plans;
 
     protected final UUID tenant = UUID.randomUUID();
     protected final UUID agent = UUID.randomUUID();

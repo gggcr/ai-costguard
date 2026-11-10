@@ -40,4 +40,35 @@ class ProblemHandlerTest {
 
         assertThat(body.getProperties()).containsOnlyKeys("code");
     }
+
+    record Numbers() implements ProblemCode {
+        @Override
+        public String name() {
+            return "LIMIT_REACHED";
+        }
+
+        @Override
+        public HttpStatus status() {
+            return HttpStatus.PAYMENT_REQUIRED;
+        }
+
+        @Override
+        public String detail() {
+            return "The plan allows 3 and the company has 3";
+        }
+
+        @Override
+        public java.util.Map<String, Object> properties() {
+            return java.util.Map.of("allowed", 3L, "used", 3L);
+        }
+    }
+
+    @Test
+    void carriesTheNumbersOfAProblemNextToItsCode() {
+        ProblemDetail body = new ProblemHandler(Optional::empty).handle(new Numbers().failure());
+
+        assertThat(body.getStatus()).isEqualTo(402);
+        assertThat(body.getProperties()).containsEntry("code", "limit_reached").containsEntry("allowed", 3L)
+                .containsEntry("used", 3L);
+    }
 }

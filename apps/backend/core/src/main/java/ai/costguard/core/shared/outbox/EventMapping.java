@@ -12,6 +12,7 @@ import ai.costguard.core.imports.ImportFileUploaded;
 import ai.costguard.core.journal.ReceiptIssued;
 import ai.costguard.core.ledger.BudgetLimitChanged;
 import ai.costguard.core.ledger.OperationCharged;
+import ai.costguard.core.plans.TenantPlanChanged;
 import ai.costguard.core.policies.PolicySnapshotPublished;
 import ai.costguard.events.AgentState;
 import ai.costguard.events.ApprovalDecision;
@@ -34,6 +35,7 @@ import ai.costguard.events.PolicyEffect;
 import ai.costguard.events.PolicyRule;
 import ai.costguard.events.PolicySnapshot;
 import ai.costguard.events.PriceUnit;
+import ai.costguard.events.TenantPlan;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneOffset;
@@ -84,6 +86,13 @@ final class EventMapping {
                 .setLimitAmount(money(e.limitAmount())).setCurrency(e.currency()).setCorrection(money(BigDecimal.ZERO))
                 .setPeriodStart(java.time.LocalDate.of(1970, 1, 1)).setPeriodEnd(java.time.LocalDate.of(9999, 12, 31))
                 .setVersion(e.version()).build());
+    }
+
+    static Message of(TenantPlanChanged e) {
+        return new Message("tenants.plans.v1", e.tenantId().toString(), TenantPlan.newBuilder()
+                .setTenantId(e.tenantId()).setPlan(e.plan()).setReadOnly(e.readOnly())
+                .setOperationsPerMonth(e.operationsPerMonth()).setAccessUntil(e.accessUntil())
+                .setVersion(e.version()).setUpdatedAt(e.at()).build());
     }
 
     static Message of(ApprovalDecided e) {

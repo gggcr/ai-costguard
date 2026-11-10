@@ -12,6 +12,7 @@ import ai.costguard.core.imports.ImportFileUploaded;
 import ai.costguard.core.journal.ReceiptIssued;
 import ai.costguard.core.ledger.BudgetLimitChanged;
 import ai.costguard.core.ledger.OperationCharged;
+import ai.costguard.core.plans.TenantPlanChanged;
 import ai.costguard.core.policies.PolicySnapshotPublished;
 import ai.costguard.core.privacy.CompactedRecordsErased;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -76,6 +77,11 @@ class KafkaOutbox {
 
     @ApplicationModuleListener
     void on(ReceiptIssued e) {
+        send(EventMapping.of(e));
+    }
+
+    @ApplicationModuleListener
+    void on(TenantPlanChanged e) {
         send(EventMapping.of(e));
     }
 

@@ -2,6 +2,8 @@ package ai.costguard.core.connections.internal;
 
 import ai.costguard.core.connections.ConnectionChanged;
 import ai.costguard.core.connections.ConnectorRuns;
+import ai.costguard.core.plans.Limit;
+import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
 import io.micrometer.core.instrument.Counter;
@@ -31,9 +33,12 @@ class ConnectionService implements ConnectorRuns {
     private final MeterRegistry registry;
     private final AirflowLauncher airflow;
     private final SecretBox box;
+    private final PlanLimits plans;
 
     ConnectionService(ConnectionRepository connections, TenantSession session, Clock clock,
-            ApplicationEventPublisher events, MeterRegistry registry, AirflowLauncher airflow, SecretBox box) {
+            ApplicationEventPublisher events, MeterRegistry registry, AirflowLauncher airflow, SecretBox box,
+            PlanLimits plans) {
+        this.plans = plans;
         this.box = box;
         this.connections = connections;
         this.session = session;
@@ -118,6 +123,10 @@ class ConnectionService implements ConnectorRuns {
         session.bind(tenantId);
         Instant now = clock.instant();
         var existing = connections.lockByType(details.type());
+        if (existing.isEmpty() || !connections.enabled(existing.get())) {
+            // A system that is connected already takes no new place of the plan (ADR 0033).
+            plans.requireRoom(tenantId, Limit.CONNECTED_SYSTEMS, connections::countEnabled);
+        }
         UUID id;
         if (existing.isPresent()) {
             id = existing.get();

@@ -23,6 +23,7 @@ public class ProblemHandler {
     /** Also for handlers that map a framework exception to a module's code. */
     public ProblemDetail body(ProblemCode problem) {
         ProblemDetail body = ProblemDetail.forStatusAndDetail(problem.status(), problem.detail());
+        problem.properties().forEach(body::setProperty);
         body.setProperty("code", problem.code());
         traces.current().ifPresent(id -> body.setProperty("trace_id", id));
         return body;

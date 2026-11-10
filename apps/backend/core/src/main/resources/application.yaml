@@ -1,5 +1,8 @@
 server:
   port: ${CORE_PORT:8080}
+  # The client address behind the ingress (registration rate limits, ADR 0032). Tomcat trusts it only from
+  # internal proxy addresses.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
 
 spring:
   application:
@@ -95,6 +98,65 @@ costguard:
       bot-token: ${TELEGRAM_BOT_TOKEN:}
       bot-username: ${TELEGRAM_BOT_USERNAME:}
       api-url: ${TELEGRAM_API_URL:https://api.telegram.org}
+
+  # Self-registration and invitations (ADR 0032). Accounts are created in Keycloak as the confidential client
+  # costguard-registration; off while its secret is empty: registration then answers 503 registration_unavailable.
+  registration:
+    keycloak:
+      url: ${KEYCLOAK_ADMIN_URL:http://localhost:8180}
+      realm: ${KEYCLOAK_REALM:costguard}
+      client-id: costguard-registration
+      client-secret: ${KEYCLOAK_REGISTRATION_CLIENT_SECRET:}
+      # The client and the page Keycloak returns people to after they confirm the e-mail and set a password.
+      login-client-id: costguard-frontend
+      redirect-uri: ${WEB_URL:http://localhost:3000}
+    # How long the link in the e-mail works, and how long an unconfirmed registration is kept before it is deleted.
+    link-lifespan: ${REGISTRATION_LINK_LIFESPAN:PT24H}
+    unconfirmed-for: ${REGISTRATION_UNCONFIRMED_FOR:PT48H}
+    sweep-delay: PT15M
+    # Abuse prevention: attempts per client IP address and per e-mail in a sliding window, kept in PostgreSQL.
+    rate-limit:
+      per-ip: ${REGISTRATION_LIMIT_PER_IP:5}
+      per-email: ${REGISTRATION_LIMIT_PER_EMAIL:3}
+      window: ${REGISTRATION_LIMIT_WINDOW:PT1H}
+  # Pricing plans (ADR 0033). The limits and prices below are placeholders for the product owner to set; an empty
+  # limit is no limit. Any value can be overridden from the environment by its relaxed name, e.g.
+  # COSTGUARD_PLANS_CATALOG_START_LIMITS_AGENTS=20.
+  plans:
+    trial-length: ${PLAN_TRIAL_LENGTH:P14D}
+    warn-before: ${PLAN_WARN_BEFORE:P3D}
+    paid-period: P1M
+    watch-delay: PT15M
+    payments:
+      # Empty: no payments (checkout answers 503). dummy: every payment succeeds at once, local stack only (ADR 0034).
+      provider: ${PAYMENT_PROVIDER:}
+      return-url: ${WEB_URL:http://localhost:3000}/settings/plan
+    catalog:
+      trial:
+        title: Trial
+        limits:
+          agents: 3
+          employees: 25
+          connected-systems: 2
+          operations-per-month: 10000
+      start:
+        title: Start
+        monthly-price: 4990
+        currency: RUB
+        limits:
+          agents: 10
+          employees: 100
+          connected-systems: 5
+          operations-per-month: 100000
+      business:
+        title: Business
+        monthly-price: 19990
+        currency: RUB
+        limits:
+          agents: 50
+          employees: 1000
+          connected-systems: 25
+          operations-per-month: 1000000
 
 springdoc:
   default-produces-media-type: application/json

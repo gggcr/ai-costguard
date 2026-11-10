@@ -100,6 +100,17 @@ export type ChecklistSection = {
   totalCost?: number;
 };
 
+export type CheckoutRequest = {
+  plan: string;
+};
+
+export type CheckoutView = {
+  paymentId?: string;  // uuid
+  status?: string;
+  confirmationUrl?: string;
+  plan?: CurrentPlan;
+};
+
 export type Company = {
   id?: string;  // uuid
   name?: string;
@@ -187,6 +198,15 @@ export type Conversion = {
   currency?: string;
   date?: string;  // date
   rub?: number;
+};
+
+export type CurrentPlan = {
+  plan?: string;
+  title?: string;
+  status?: "trial" | "active" | "read_only";
+  trialEndsAt?: string;  // date-time
+  accessUntil?: string;  // date-time
+  limits?: PlanLimitsView;
 };
 
 export type Decision = {
@@ -286,6 +306,16 @@ export type ImportJob = {
   sha256?: string;
 };
 
+export type Invitation = {
+  id?: string;  // uuid
+  userId?: string;  // uuid
+  email?: string;
+  role?: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  status?: "sent" | "accepted" | "revoked";
+  createdAt?: string;  // date-time
+  acceptedAt?: string;  // date-time
+};
+
 export type IssuedKey = {
   key?: VirtualKey;
   secret?: string;
@@ -382,6 +412,14 @@ export type NewDepartment = {
   name: string;
 };
 
+export type NewInvitation = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  employeeId?: string;  // uuid
+};
+
 export type NewLicense = {
   employeeId: string;  // uuid
 };
@@ -434,6 +472,21 @@ export type OperationView = {
   receipt?: "pending" | "anchored";
 };
 
+export type PlanLimitsView = {
+  agents?: number;
+  employees?: number;
+  connectedSystems?: number;
+  operationsPerMonth?: number;
+};
+
+export type PlanOffer = {
+  name?: string;
+  title?: string;
+  monthlyPrice?: number;
+  currency?: string;
+  limits?: PlanLimitsView;
+};
+
 export type PolicyRule = {
   id?: string;  // uuid
   name?: string;
@@ -481,6 +534,19 @@ export type ReceiptView = {
   merkleRoot?: string;
   txHash?: string;
   merklePath?: Array<string>;
+};
+
+export type RegistrationAccepted = {
+  status?: string;
+};
+
+export type RegistrationRequest = {
+  companyName: string;
+  country: string;
+  currency: string;
+  email: string;
+  ownerFirstName: string;
+  ownerLastName: string;
 };
 
 export type Resolution = {
@@ -723,6 +789,10 @@ export const operations = {
   importsGet: { method: "GET", path: "/api/v1/imports/{id}" },
   importsMapping: { method: "PUT", path: "/api/v1/imports/{id}/mapping" },
   importsResolve: { method: "PUT", path: "/api/v1/imports/{id}/review-tasks/{taskId}" },
+  registrationInvitations: { method: "GET", path: "/api/v1/invitations" },
+  registrationInvite: { method: "POST", path: "/api/v1/invitations" },
+  registrationRevoke_1: { method: "DELETE", path: "/api/v1/invitations/{id}" },
+  registrationResend: { method: "POST", path: "/api/v1/invitations/{id}/resend" },
   journalKey: { method: "GET", path: "/api/v1/journal/signing-key" },
   journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
@@ -745,6 +815,10 @@ export const operations = {
   notificationsRead: { method: "PUT", path: "/api/v1/notifications/{id}/read" },
   journalOperations: { method: "GET", path: "/api/v1/operations" },
   journalReceipt: { method: "GET", path: "/api/v1/operations/{operationId}/receipt" },
+  plansNotice: { method: "POST", path: "/api/v1/payments/notifications/{provider}" },
+  plansCurrent: { method: "GET", path: "/api/v1/plan" },
+  plansCheckout: { method: "POST", path: "/api/v1/plan/checkout" },
+  plansCatalog: { method: "GET", path: "/api/v1/plans" },
   policiesPublication: { method: "GET", path: "/api/v1/policies/publication" },
   policiesPublish: { method: "POST", path: "/api/v1/policies/publication" },
   policiesRules: { method: "GET", path: "/api/v1/policies/rules" },
@@ -752,6 +826,7 @@ export const operations = {
   policiesDelete: { method: "DELETE", path: "/api/v1/policies/rules/{id}" },
   policiesUpdate: { method: "PUT", path: "/api/v1/policies/rules/{id}" },
   policiesSimulate: { method: "POST", path: "/api/v1/policies/simulation" },
+  registrationRegister: { method: "POST", path: "/api/v1/registrations" },
   softwareSubscriptions: { method: "GET", path: "/api/v1/subscriptions" },
   softwareCreateSubscription: { method: "POST", path: "/api/v1/subscriptions" },
   softwareSubscription: { method: "GET", path: "/api/v1/subscriptions/{id}" },

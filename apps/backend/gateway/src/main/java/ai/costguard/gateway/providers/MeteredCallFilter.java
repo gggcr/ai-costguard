@@ -202,7 +202,8 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
             OperationLookup lookup = new OperationLookup(op, estimate);
             return decisions.decide(lookup.prepared()).flatMap(result -> switch (result) {
                 case StepResult.Pass pass -> Mono.just(true);
-                case StepResult.Refuse refuse -> refuse(exchange, refuse.status(), refuse.type(), null).thenReturn(false);
+                case StepResult.Refuse refuse -> refuse(exchange, refuse.status(), refuse.type(), refuse.message(), null)
+                        .thenReturn(false);
                 case StepResult.RequireApproval held -> refuse(exchange, 403, "approval_required",
                         op.operationId().toString()).thenReturn(false);
             });
@@ -414,10 +415,17 @@ class MeteredCallFilter implements GlobalFilter, Ordered {
     }
 
     private static Mono<Void> refuse(ServerWebExchange exchange, int status, String type, String approvalId) {
+        return refuse(exchange, status, type, type, approvalId);
+    }
+
+    /** The OpenAI error shape. {@code message} is escaped for JSON: it is a sentence, not a code. */
+    private static Mono<Void> refuse(ServerWebExchange exchange, int status, String type, String message,
+            String approvalId) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatusCode.valueOf(status));
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        String body = "{\"error\":{\"type\":\"" + type + "\",\"message\":\"" + type + "\""
+        String text = (message == null ? type : message).replace("\\", "\\\\").replace("\"", "\\\"");
+        String body = "{\"error\":{\"type\":\"" + type + "\",\"message\":\"" + text + "\""
                 + (approvalId == null ? "" : ",\"approval_id\":\"" + approvalId + "\"") + "}}";
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));
     }

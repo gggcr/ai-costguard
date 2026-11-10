@@ -1,5 +1,7 @@
 package ai.costguard.core.agents.internal;
 
+import ai.costguard.core.plans.Limit;
+import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.agents.AgentStateChanged;
 import ai.costguard.core.agents.MandatePublished;
 import ai.costguard.core.org.EmployeeDirectory;
@@ -23,9 +25,11 @@ class AgentService {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final EmployeeDirectory directory;
+    private final PlanLimits plans;
 
     AgentService(AgentRepository agents, TenantSession session, Clock clock, ApplicationEventPublisher events,
-            EmployeeDirectory directory) {
+            EmployeeDirectory directory, PlanLimits plans) {
+        this.plans = plans;
         this.agents = agents;
         this.session = session;
         this.clock = clock;
@@ -72,6 +76,7 @@ class AgentService {
         session.bind(actor.tenantId());
         requireOwnership(actor, details.ownerId());
         mandate(details.mandateId());
+        plans.requireRoom(actor.tenantId(), Limit.AGENTS, agents::count);
         UUID id = UUID.randomUUID();
         agents.insertAgent(actor.tenantId(), id, details, clock.instant());
         Agent created = found(id);

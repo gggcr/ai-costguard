@@ -30,4 +30,8 @@ record ErrorBody(Error error) {
     static ErrorBody of(String type) {
         return new ErrorBody(new Error(type, type, null));
     }
+
+    static ErrorBody of(String type, String message) {
+        return new ErrorBody(new Error(type, message == null ? type : message, null));
+    }
 }

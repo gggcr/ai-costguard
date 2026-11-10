@@ -96,6 +96,18 @@
       "serviceAccountsEnabled": true,
       "redirectUris": [],
       "webOrigins": []
+    },
+    {
+      "clientId": "costguard-registration",
+      "name": "Core: creates accounts of self-registered companies and invited people (ADR 0032)",
+      "description": "Local stack only. Staging and prod create this client in their own Keycloak with a secret from Vault (docs/runbooks/registration.md).",
+      "publicClient": false,
+      "secret": "costguard-registration-local",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
     }
   ],
   "users": [
@@ -108,6 +120,19 @@
           "view-users",
           "query-users",
           "manage-users"
+        ]
+      }
+    },
+    {
+      "username": "service-account-costguard-registration",
+      "enabled": true,
+      "serviceAccountClientId": "costguard-registration",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users",
+          "view-realm"
         ]
       }
     }
@@ -123,5 +148,11 @@
         }
       }
     ]
+  },
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "noreply@costguard.local",
+    "fromDisplayName": "CostGuard"
   }
 }

@@ -47,7 +47,8 @@ class OrgPersonalData implements DataHolder, ErasureSubjects {
 
     @Override
     public List<String> tables() {
-        return List.of("tenant", "department", "employee", "user_account");
+        return List.of("tenant", "department", "employee", "user_account", "registration", "registration_timer",
+                "invitation");
     }
 
     private record Row(UUID id, String name, String email, LocalDate dismissedAt, boolean erased) {
@@ -105,7 +106,8 @@ class OrgPersonalData implements DataHolder, ErasureSubjects {
 
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "org", "user_account", "employee", "department");
+        TenantRows.delete(jdbc, tenantId, report, "org", "invitation", "registration", "registration_timer",
+                "user_account", "employee", "department");
         report.deleted("org.tenant", jdbc.sql("delete from tenant where id = ?").param(tenantId).update());
     }
 }

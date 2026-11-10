@@ -28,6 +28,7 @@ public final class Operation {
     private boolean needsApproval;
     private String approvalReason;
     private String taskGoal;
+    private String countedIn;
     private java.util.function.Supplier<java.util.Optional<BigDecimal>> estimate;
 
     public Operation(UUID operationId, String secret, String taskId, OperationKind kind, String vendor, String model,
@@ -80,6 +81,10 @@ public final class Operation {
     public void reserved(boolean reserved) { this.reserved = reserved; }
     public void tokens(long input, Long maxOutput) { this.inputTokens = input; this.maxOutputTokens = maxOutput; }
     public void estimatedCost(BigDecimal cost) { this.estimatedCost = cost; }
+
+    /** The month (yyyy-MM, UTC) whose plan quota this operation took a place in; null when it took none. */
+    public String countedIn() { return countedIn; }
+    public void countedIn(String month) { this.countedIn = month; }
 
     /** The first reason wins; it is what people see on the approval. */
     public void needApproval(String reason) {

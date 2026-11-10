@@ -141,6 +141,11 @@ services:
       # Erasures delete Keycloak accounts through the admin API (ADR 0021); the client is in costguard-realm.json.
       KEYCLOAK_ADMIN_URL: http://keycloak:8080
       KEYCLOAK_PRIVACY_CLIENT_SECRET: ${KEYCLOAK_PRIVACY_CLIENT_SECRET:-costguard-privacy-local}
+      # Self-registration and invitations create accounts as costguard-registration (ADR 0032); Keycloak's e-mail
+      # goes to Mailpit too.
+      KEYCLOAK_REGISTRATION_CLIENT_SECRET: ${KEYCLOAK_REGISTRATION_CLIENT_SECRET:-costguard-registration-local}
+      # Payments succeed without money here (ADR 0034); never in staging or prod.
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-dummy}
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-costguard}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-costguard}

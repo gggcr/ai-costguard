@@ -6,12 +6,14 @@ import ai.costguard.events.ApprovalDecision;
 import ai.costguard.events.BudgetLimit;
 import ai.costguard.events.CatalogPrice;
 import ai.costguard.events.PolicySnapshot;
+import ai.costguard.events.TenantPlan;
 import ai.costguard.events.wire.AvroWire;
 import ai.costguard.events.wire.SchemaRegistryClient;
 import ai.costguard.gateway.approvals.ApprovalBoard;
 import ai.costguard.gateway.budget.BudgetReserve;
 import ai.costguard.gateway.budget.BudgetTree;
 import ai.costguard.gateway.keys.AgentDirectory;
+import ai.costguard.gateway.plans.PlanBoard;
 import ai.costguard.gateway.risk.RiskBoard;
 import ai.costguard.gateway.rules.PriceBook;
 import ai.costguard.gateway.rules.RuleBook;
@@ -22,7 +24,8 @@ import org.springframework.stereotype.Component;
 /**
  * Every instance reads every state topic from the start, with a group of its own, so each one holds the full
  * state in memory. The topics are compacted, so that read stays short. A tombstone (null value) is skipped, except
- * on agents.state.v1: there it is a company that was erased (ADR 0021), and its agents must stop at once.
+ * on agents.state.v1: there it is a company that was erased (ADR 0021), and its agents must stop at once; and on
+ * tenants.plans.v1, where it is a company erased or a registration dropped.
  */
 @Component
 public class StateListeners {
@@ -37,9 +40,11 @@ public class StateListeners {
     private final BudgetReserve reserve;
     private final RiskBoard risk;
     private final ApprovalBoard approvals;
+    private final PlanBoard plans;
 
     public StateListeners(SchemaRegistryClient registry, AgentDirectory agents, RuleBook rules, PriceBook prices,
-            BudgetTree budgets, BudgetReserve reserve, RiskBoard risk, ApprovalBoard approvals) {
+            BudgetTree budgets, BudgetReserve reserve, RiskBoard risk, ApprovalBoard approvals, PlanBoard plans) {
+        this.plans = plans;
         this.registry = registry;
         this.agents = agents;
         this.rules = rules;
@@ -103,6 +108,19 @@ public class StateListeners {
     void approvals(ConsumerRecord<String, byte[]> r) {
         if (r.value() != null) {
             approvals.apply(read(r, ApprovalDecision.class));
+        }
+    }
+
+    @KafkaListener(topics = "tenants.plans.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void plans(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            plans.apply(read(r, TenantPlan.class));
+        } else if (r.key() != null) {
+            try {
+                plans.remove(java.util.UUID.fromString(r.key()));
+            } catch (IllegalArgumentException notATenant) {
+                // a key that is not a tenant id names nothing here
+            }
         }
     }
 }

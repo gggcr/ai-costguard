@@ -9,6 +9,7 @@ import ai.costguard.events.ApprovalDecision;
 import ai.costguard.events.BudgetLimit;
 import ai.costguard.events.CatalogPrice;
 import ai.costguard.events.PolicySnapshot;
+import ai.costguard.events.TenantPlan;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -32,7 +33,8 @@ class TopicContractTest {
             "catalog.prices.v1", CatalogPrice.class,
             "budgets.limits.v1", BudgetLimit.class,
             "agent.risk-signals.v1", AgentRiskSignal.class,
-            "approvals.decisions.v1", ApprovalDecision.class);
+            "approvals.decisions.v1", ApprovalDecision.class,
+            "tenants.plans.v1", TenantPlan.class);
 
     private static Schema file(String topic) throws Exception {
         Path path = Path.of(System.getProperty("repo.root", "../../.."), "schemas", "avro", topic + ".avsc");

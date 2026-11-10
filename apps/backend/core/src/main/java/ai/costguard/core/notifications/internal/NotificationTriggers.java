@@ -7,8 +7,12 @@ import ai.costguard.core.approvals.ApprovalEscalated;
 import ai.costguard.core.findings.FindingOpened;
 import ai.costguard.core.findings.SavingsConfirmed;
 import ai.costguard.core.org.EmployeeDismissed;
+import ai.costguard.core.plans.PlanAccessEnded;
+import ai.costguard.core.plans.PlanAccessEnding;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
@@ -22,6 +26,8 @@ import org.springframework.stereotype.Component;
 class NotificationTriggers {
 
     private static final int REASONS = 3;
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
 
     private final NotificationService service;
 
@@ -116,5 +122,22 @@ class NotificationTriggers {
     void on(SavingsConfirmed e) {
         service.notify(e.tenantId(), "Подтверждена экономия " + rub(e.monthlySavings()) + "/мес: " + e.title(),
                 "/findings/" + e.findingId(), Level.good, Audience.roles("owner", "finance"));
+    }
+
+    /** Owners are warned before the trial or the paid period ends, and told when it ended (ADR 0033). */
+    @ApplicationModuleListener
+    void on(PlanAccessEnding e) {
+        String day = DAY.format(e.accessUntil().atZone(MOSCOW));
+        String text = e.trial()
+                ? "Пробный период заканчивается " + day + ". Выберите тариф, чтобы не потерять возможность вносить изменения"
+                : "Оплаченный период заканчивается " + day + ". Продлите тариф, чтобы не потерять возможность вносить изменения";
+        service.notify(e.tenantId(), text, "/settings/plan", Level.warning, Audience.roles("owner"));
+    }
+
+    @ApplicationModuleListener
+    void on(PlanAccessEnded e) {
+        String text = (e.trial() ? "Пробный период закончился" : "Оплаченный период закончился")
+                + ". Данные доступны только для просмотра, агенты остановлены шлюзом, пока тариф не оплачен";
+        service.notify(e.tenantId(), text, "/settings/plan", Level.critical, Audience.roles("owner"));
     }
 }

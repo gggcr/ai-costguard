@@ -1,0 +1,57 @@
+{
+  "type": "record",
+  "name": "TenantPlan",
+  "namespace": "ai.costguard.events",
+  "doc": "A company's pricing plan as the gateway enforces it (ADR 0033). Compacted. Key: tenant_id.",
+  "fields": [
+    {
+      "name": "tenant_id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "plan",
+      "type": "string",
+      "doc": "trial, start or business."
+    },
+    {
+      "name": "read_only",
+      "type": "boolean",
+      "doc": "The trial or the paid period ended: the gateway refuses every operation with 402 plan_read_only."
+    },
+    {
+      "name": "operations_per_month",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Operations the gateway lets through in a calendar month (UTC); null is no limit."
+    },
+    {
+      "name": "access_until",
+      "type": [
+        "null",
+        {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        }
+      ],
+      "default": null,
+      "doc": "When the trial or the paid period ends; null for a plan without an end."
+    },
+    {
+      "name": "version",
+      "type": "long"
+    },
+    {
+      "name": "updated_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}

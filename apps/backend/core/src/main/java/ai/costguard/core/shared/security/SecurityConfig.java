@@ -8,12 +8,16 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
-/** Every API call needs a Keycloak token; health checks and the OpenAPI spec stay open. */
+/**
+ * Every API call needs a Keycloak token; health checks, the OpenAPI spec, self-registration and payment provider
+ * notices stay open.
+ */
 @Configuration
 @EnableMethodSecurity
 @OpenAPIDefinition(
@@ -30,6 +34,9 @@ class SecurityConfig {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/prometheus", "/v3/api-docs/**").permitAll()
+                        // Self-registration and payment provider notices come without a token (ADR 0032, 0034)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/registrations",
+                                "/api/v1/payments/notifications/*").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(tokens)))
                 .csrf(csrf -> csrf.disable())

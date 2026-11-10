@@ -4,6 +4,7 @@ import ai.costguard.events.AgentOperation;
 import ai.costguard.events.OperationDecision;
 import ai.costguard.gateway.budget.BudgetReserve;
 import ai.costguard.gateway.events.OperationLog;
+import ai.costguard.gateway.plans.PlanGate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.stereotype.Component;
@@ -11,7 +12,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Runs the ladder and makes its outcome stick: a refused or held operation gets its reserve back, and every
- * outcome is recorded. A step that fails becomes 503 check_unavailable, never a pass.
+ * outcome is recorded. A step that fails becomes 503 check_unavailable, never a pass. An operation that took a
+ * place in the plan's monthly quota gives it back when it does not pass (ADR 0033).
  */
 @Component
 public class Decisions {
@@ -19,11 +21,13 @@ public class Decisions {
     private final CheckLadder ladder;
     private final BudgetReserve reserve;
     private final OperationLog log;
+    private final PlanGate plans;
 
-    public Decisions(CheckLadder ladder, BudgetReserve reserve, OperationLog log) {
+    public Decisions(CheckLadder ladder, BudgetReserve reserve, OperationLog log, PlanGate plans) {
         this.ladder = ladder;
         this.reserve = reserve;
         this.log = log;
+        this.plans = plans;
     }
 
     public Mono<StepResult> decide(Operation op) {
@@ -35,7 +39,8 @@ public class Decisions {
                     }
                     Mono<Boolean> release = op.reserved() ? reserve.release(op.tenantId(), op.operationId().toString())
                             : Mono.just(false);
-                    return release.onErrorReturn(false).doOnNext(x -> {
+                    return release.onErrorReturn(false)
+                            .flatMap(x -> plans.giveBack(op).onErrorComplete().thenReturn(x)).doOnNext(x -> {
                         op.reserved(false);
                         record(op, result);
                     }).thenReturn(result);

@@ -12,7 +12,7 @@ class CheckLadderOrderTest {
     @Test
     void stepsRunInTheOrderOfTheCheckLadder() {
         List<CheckStep> ladder = List.of(
-                new IdentityFilter(null),
+                new IdentityFilter(null, null),
                 new MandateFilter(null, null),
                 new LoopFilter(null),
                 new RiskFilter(null),

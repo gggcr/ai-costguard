@@ -24,6 +24,7 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `notary.confirmations.v1` | NEAR notary | Core agents and approvals | request_id |
 | `connectors.config.v1` (compacted) | Core connections | Connector agent | tenant_id:type |
 | `connectors.runs.v1` | Connector agent | Core connections | tenant_id:type |
+| `tenants.plans.v1` (compacted) | Core plans | Agent gateway | tenant_id |
 
 `agents.state.v1` carries the virtual key hash, agent status (suspended or not) and the active mandate version.
 Budget counters in Redis are written only by the gateway. The core ledger reconciles them against PostgreSQL and publishes corrections in `budgets.limits.v1`; the gateway applies them.
@@ -60,3 +61,7 @@ where it drops the agent and its keys at once.
 Every producer and consumer is checked against these files (ADR 0018): `TopicContractTest` of the core and the
 gateway, `EventMappingTest` for what the core publishes, and `tests/contracts` for the Python services, which also
 feed every consumer random messages the schema allows. A listener added without its contract fails those tests.
+
+`tenants.plans.v1` is not on the board: self-registration and pricing plans came after it
+([ADR 0033](../../docs/adr/0033-pricing-plans-and-limits.md)). The gateway refuses operations of a read-only
+company and counts the operations of the month against the plan.

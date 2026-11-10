@@ -22,3 +22,4 @@
 | [smoke.md](smoke.md) | Smoke-тест staging после выкладки: настроить, разобрать падение |
 | [key-leak.md](key-leak.md) | Утёк ключ или пароль |
 | [privacy.md](privacy.md) | Запрос на удаление данных сотрудника, удаление компании, клиент Keycloak, сроки хранения |
+| [registration.md](registration.md) | Включить регистрацию и приглашения на стенде: клиент Keycloak, почта Keycloak; оплата; отказы 402 по тарифу |

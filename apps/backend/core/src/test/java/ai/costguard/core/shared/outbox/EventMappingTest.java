@@ -39,6 +39,10 @@ class EventMappingTest {
         encodes(EventMapping.of(new PolicySnapshotPublished(tenant, 2,
                 List.of(new PolicySnapshotPublished.Rule(id, "n", "cost > 1.0", "DENY")), now)));
         encodes(EventMapping.of(new BudgetLimitChanged(tenant, id, null, "company", null, new BigDecimal("1000.5"), "RUB", 3)));
+        encodes(EventMapping.of(new ai.costguard.core.plans.TenantPlanChanged(tenant, "trial", false, 10000L,
+                now, 1, now)));
+        encodes(EventMapping.of(new ai.costguard.core.plans.TenantPlanChanged(tenant, "business", true, null,
+                null, 7, now)));
         encodes(EventMapping.of(new ai.costguard.core.approvals.ApprovalDecided(tenant, id, id, id, "approved",
                 new BigDecimal("1500"), now)));
         encodes(EventMapping.of(new ReceiptIssued(id, tenant, id, "a".repeat(64), "0".repeat(64), "sig", "k", now)));

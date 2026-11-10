@@ -22,6 +22,10 @@ tags:
   description: Systems the connector agent pulls and how each pull went
 - name: Journal
   description: Signed receipts of operations and their anchoring in NEAR
+- name: Registration
+  description: Self-registration of a company and invitations of its people
+- name: Plans
+  description: "Pricing plans, their limits, the trial and payment"
 - name: Organisation
   description: "Company, departments, employees, users and dismissals"
 - name: Ledger
@@ -958,6 +962,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/License"
+  /api/v1/registrations:
+    post:
+      tags:
+      - Registration
+      summary: Register a company
+      description: "No token. Creates the company, its owner and a trial; the owner\
+        \ gets an e-mail to confirm the address and set a password, and the company\
+        \ becomes active at the first login. Always 202 check_email for a valid request,\
+        \ whether or not the e-mail is known. 429 too_many_registrations: per address\
+        \ and per e-mail. Unconfirmed registrations are dropped."
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationAccepted"
+      security: []
   /api/v1/policies/simulation:
     post:
       tags:
@@ -1038,6 +1067,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Publication"
+  /api/v1/plan/checkout:
+    post:
+      tags:
+      - Plans
+      summary: Pay for a plan
+      description: "Owner only. Works when the company is read-only too. status pending:\
+        \ send the payer to confirmationUrl, the plan changes when the provider confirms;\
+        \ succeeded: the plan changed already. 503 payment_provider_missing: payments\
+        \ are not configured."
+      operationId: checkout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutView"
+  /api/v1/payments/notifications/{provider}:
+    post:
+      tags:
+      - Plans
+      summary: Receive a notice from the payment provider
+      description: "Called by the provider, not by people: no token. The provider's\
+        \ implementation verifies the notice; one it cannot verify changes nothing\
+        \ (400 payment_notice_invalid)."
+      operationId: notice
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: OK
+      security: []
   /api/v1/notifications/telegram-link:
     post:
       tags:
@@ -1086,6 +1162,58 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Mandate"
+  /api/v1/invitations:
+    get:
+      tags:
+      - Registration
+      summary: List invitations
+      operationId: invitations
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invitation"
+    post:
+      tags:
+      - Registration
+      summary: Invite a person with a role
+      description: "Owner only. The person gets an e-mail to confirm the address and\
+        \ set a password, and appears in the users list at once."
+      operationId: invite
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewInvitation"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invitation"
+  /api/v1/invitations/{id}/resend:
+    post:
+      tags:
+      - Registration
+      summary: Send the invitation e-mail again
+      description: Only while it is not accepted.
+      operationId: resend
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/v1/imports:
     get:
       tags:
@@ -1627,6 +1755,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IssuedKey"
+  /api/v1/plans:
+    get:
+      tags:
+      - Plans
+      summary: List the plans and their limits
+      description: An empty limit is no limit.
+      operationId: catalog
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanOffer"
+  /api/v1/plan:
+    get:
+      tags:
+      - Plans
+      summary: Get the company's plan
+      description: "status read_only: the trial or the paid period ended and changes\
+        \ are refused with 402 plan_read_only until a plan is paid. 404 plan_not_assigned:\
+        \ the company existed before plans and has no limits."
+      operationId: current
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentPlan"
   /api/v1/operations:
     get:
       tags:
@@ -2417,6 +2577,23 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/invitations/{id}:
+    delete:
+      tags:
+      - Registration
+      summary: Take back an invitation
+      description: "Only while it is not accepted: the account and the user are deleted."
+      operationId: revoke_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/v1/agents/{id}/keys/{keyId}:
     delete:
       tags:
@@ -3192,6 +3369,46 @@ components:
           format: uuid
       required:
       - employeeId
+    RegistrationRequest:
+      type: object
+      properties:
+        companyName:
+          type: string
+          maxLength: 200
+          minLength: 0
+        country:
+          type: string
+          minLength: 1
+          pattern: "[A-Z]{2}"
+        currency:
+          type: string
+          minLength: 1
+          pattern: "[A-Z]{3}"
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          minLength: 0
+        ownerFirstName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        ownerLastName:
+          type: string
+          maxLength: 100
+          minLength: 0
+      required:
+      - companyName
+      - country
+      - currency
+      - email
+      - ownerFirstName
+      - ownerLastName
+    RegistrationAccepted:
+      type: object
+      properties:
+        status:
+          type: string
     SampleOperation:
       type: object
       properties:
@@ -3279,12 +3496,131 @@ components:
         publishedAt:
           type: string
           format: date-time
+    CheckoutRequest:
+      type: object
+      properties:
+        plan:
+          type: string
+          minLength: 1
+      required:
+      - plan
+    CheckoutView:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        confirmationUrl:
+          type: string
+        plan:
+          $ref: "#/components/schemas/CurrentPlan"
+    CurrentPlan:
+      type: object
+      properties:
+        plan:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum:
+          - trial
+          - active
+          - read_only
+        trialEndsAt:
+          type: string
+          format: date-time
+        accessUntil:
+          type: string
+          format: date-time
+        limits:
+          $ref: "#/components/schemas/PlanLimitsView"
+    PlanLimitsView:
+      type: object
+      properties:
+        agents:
+          type: integer
+          format: int64
+        employees:
+          type: integer
+          format: int64
+        connectedSystems:
+          type: integer
+          format: int64
+        operationsPerMonth:
+          type: integer
+          format: int64
     TelegramLink:
       type: object
       properties:
         url:
           type: string
         expiresAt:
+          type: string
+          format: date-time
+    NewInvitation:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          minLength: 0
+        firstName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        lastName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        role:
+          type: string
+          enum:
+          - owner
+          - finance
+          - it_admin
+          - agent_owner
+          - auditor
+        employeeId:
+          type: string
+          format: uuid
+      required:
+      - email
+      - firstName
+      - lastName
+      - role
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+          - owner
+          - finance
+          - it_admin
+          - agent_owner
+          - auditor
+        status:
+          type: string
+          enum:
+          - sent
+          - accepted
+          - revoked
+        createdAt:
+          type: string
+          format: date-time
+        acceptedAt:
           type: string
           format: date-time
     ActionRequest:
@@ -3669,6 +4005,19 @@ components:
           enum:
           - active
           - revoked
+    PlanOffer:
+      type: object
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        monthlyPrice:
+          type: number
+        currency:
+          type: string
+        limits:
+          $ref: "#/components/schemas/PlanLimitsView"
     OperationView:
       type: object
       properties:

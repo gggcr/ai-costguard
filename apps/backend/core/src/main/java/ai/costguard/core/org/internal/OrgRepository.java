@@ -164,4 +164,19 @@ class OrgRepository {
     void setRole(UUID id, UserRole role) {
         jdbc.sql("update user_account set role = ? where id = ?").params(role.name(), id).update();
     }
+
+    Optional<UUID> userByEmail(String email) {
+        return jdbc.sql("select id from user_account where lower(email) = lower(?)").param(email).query(UUID.class)
+                .optional();
+    }
+
+    /** What the employee limit of the plan counts: people still working, not dismissed or erased (ADR 0033). */
+    long countActiveEmployees() {
+        return jdbc.sql("select count(*) from employee where dismissed_at is null and erased_at is null")
+                .query(Long.class).single();
+    }
+
+    void setPlan(String plan) {
+        jdbc.sql("update tenant set plan = ?").param(plan).update();
+    }
 }

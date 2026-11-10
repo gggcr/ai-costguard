@@ -9,7 +9,7 @@ Board frames: 2 (operation path), 3 (gateway check ladder), 13 (inside the servi
 
 | Order | Filter | Check | Refusal |
 |---|---|---|---|
-| 1 | `IdentityFilter` | Key is valid, agent is not suspended | 401, or 423 `agent_suspended` |
+| 1 | `IdentityFilter` | Key is valid, agent is not suspended, the company's plan is not read-only and has operations of the month left ([ADR 0033](../../../docs/adr/0033-pricing-plans-and-limits.md)) | 401, 423 `agent_suspended`, or 402 `plan_read_only` / `plan_limit_exceeded` |
 | 2 | `MandateFilter` | Mandate allows the model, vendor, amount and time | 403 `policy_denied` |
 | 3 | `LoopFilter` | Repeat or loop within a task | Cached response, or 409 `duplicate_operation` |
 | 4 | `RiskFilter` | Agent risk score | 429 `rate_limited`, approval, or 423 `agent_suspended` |

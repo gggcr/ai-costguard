@@ -229,4 +229,9 @@ class AgentRepository {
         }
         return out.append('}').toString();
     }
+
+    /** What the agent limit of the plan counts: every agent, suspended ones too (ADR 0033). */
+    long count() {
+        return jdbc.sql("select count(*) from agent").query(Long.class).single();
+    }
 }

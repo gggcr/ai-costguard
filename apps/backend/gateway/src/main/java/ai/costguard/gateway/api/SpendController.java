@@ -93,7 +93,8 @@ public class SpendController {
         return decisions.decide(op).map(result -> switch (result) {
             case StepResult.Pass pass -> ResponseEntity.ok(
                     new Authorized(op.operationId().toString(), "authorized", op.estimatedCost()));
-            case StepResult.Refuse refuse -> error(refuse.status(), refuse.type());
+            case StepResult.Refuse refuse -> ResponseEntity.status(refuse.status())
+                    .body(ErrorBody.of(refuse.type(), refuse.message()));
             case StepResult.RequireApproval held -> ResponseEntity.status(403).body(new ErrorBody(
                     new ErrorBody.Error("approval_required", held.reason(), op.operationId().toString())));
         });
