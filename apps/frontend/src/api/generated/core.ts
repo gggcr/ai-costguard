@@ -677,6 +677,11 @@ export type RegistrationRequest = {
   ownerLastName: string;
 };
 
+export type Request = {
+  name: string;
+  dismissOnDeactivate?: boolean;
+};
+
 export type Resolution = {
   value: string;
 };
@@ -877,6 +882,16 @@ export type VendorDetails = {
   category: string;
 };
 
+export type View = {
+  id?: string;  // uuid
+  name?: string;
+  dismissOnDeactivate?: boolean;
+  createdAt?: string;  // date-time
+  lastUsedAt?: string;  // date-time
+  revokedAt?: string;  // date-time
+  token?: string;
+};
+
 export type VirtualKey = {
   id?: string;  // uuid
   agentId?: string;  // uuid
@@ -901,10 +916,10 @@ export const operations = {
   analyticsPublish: { method: "PUT", path: "/api/v1/analytics/forecast" },
   analyticsScenario: { method: "POST", path: "/api/v1/analytics/scenarios" },
   analyticsSummary: { method: "GET", path: "/api/v1/analytics/summary" },
-  approvalsList_3: { method: "GET", path: "/api/v1/approvals" },
+  approvalsList_4: { method: "GET", path: "/api/v1/approvals" },
   approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
   approvalsDecide: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
-  assetsList_1: { method: "GET", path: "/api/v1/assets" },
+  assetsList_2: { method: "GET", path: "/api/v1/assets" },
   assetsCreate_2: { method: "POST", path: "/api/v1/assets" },
   assetsGet_2: { method: "GET", path: "/api/v1/assets/{id}" },
   assetsTakeBack: { method: "DELETE", path: "/api/v1/assets/{id}/assignment" },
@@ -954,24 +969,24 @@ export const operations = {
   privacyEraseEmployee: { method: "POST", path: "/api/v1/employees/{id}/erasure" },
   privacyListErasures: { method: "GET", path: "/api/v1/erasures" },
   privacyGetErasure: { method: "GET", path: "/api/v1/erasures/{id}" },
-  findingsList_2: { method: "GET", path: "/api/v1/findings" },
+  findingsList_3: { method: "GET", path: "/api/v1/findings" },
   findingsTotals: { method: "GET", path: "/api/v1/findings/totals" },
   findingsGet_1: { method: "GET", path: "/api/v1/findings/{id}" },
   findingsAct: { method: "POST", path: "/api/v1/findings/{id}/actions" },
-  importsList: { method: "GET", path: "/api/v1/imports" },
+  importsList_1: { method: "GET", path: "/api/v1/imports" },
   importsUpload: { method: "POST", path: "/api/v1/imports" },
   importsGet: { method: "GET", path: "/api/v1/imports/{id}" },
   importsMapping: { method: "PUT", path: "/api/v1/imports/{id}/mapping" },
   importsResolve: { method: "PUT", path: "/api/v1/imports/{id}/review-tasks/{taskId}" },
   registrationInvitations: { method: "GET", path: "/api/v1/invitations" },
   registrationInvite: { method: "POST", path: "/api/v1/invitations" },
-  registrationRevoke_1: { method: "DELETE", path: "/api/v1/invitations/{id}" },
+  registrationRevoke_2: { method: "DELETE", path: "/api/v1/invitations/{id}" },
   registrationResend: { method: "POST", path: "/api/v1/invitations/{id}/resend" },
   softwareInvoices: { method: "GET", path: "/api/v1/invoices" },
   journalKey: { method: "GET", path: "/api/v1/journal/signing-key" },
   journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
-  softwareRevoke: { method: "DELETE", path: "/api/v1/licenses/{id}" },
+  softwareRevoke_1: { method: "DELETE", path: "/api/v1/licenses/{id}" },
   softwareActivity: { method: "PUT", path: "/api/v1/licenses/{id}/activity" },
   agentsMandates: { method: "GET", path: "/api/v1/mandates" },
   agentsCreateMandate: { method: "POST", path: "/api/v1/mandates" },
@@ -1005,6 +1020,9 @@ export const operations = {
   softwareProducts: { method: "GET", path: "/api/v1/products" },
   softwareSetCategory: { method: "PUT", path: "/api/v1/products/{id}/category" },
   registrationRegister: { method: "POST", path: "/api/v1/registrations" },
+  sCIMList: { method: "GET", path: "/api/v1/scim/tokens" },
+  sCIMIssue: { method: "POST", path: "/api/v1/scim/tokens" },
+  sCIMRevoke: { method: "DELETE", path: "/api/v1/scim/tokens/{id}" },
   softwareSubscriptions: { method: "GET", path: "/api/v1/subscriptions" },
   softwareCreateSubscription: { method: "POST", path: "/api/v1/subscriptions" },
   softwareSubscription: { method: "GET", path: "/api/v1/subscriptions/{id}" },

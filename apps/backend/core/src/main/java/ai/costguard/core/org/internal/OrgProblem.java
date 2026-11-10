@@ -8,6 +8,7 @@ enum OrgProblem implements ProblemCode {
     COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "Company not found"),
     DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Department not found"),
     EMPLOYEE_NOT_FOUND(HttpStatus.NOT_FOUND, "Employee not found"),
+    SCIM_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "SCIM token not found"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     DEPARTMENT_NAME_TAKEN(HttpStatus.CONFLICT, "A department with this name exists"),
     EMAIL_TAKEN(HttpStatus.CONFLICT, "This email is already registered"),

@@ -41,6 +41,9 @@ tags:
   description: "Vendors, contracts, subscriptions and licenses"
 - name: Policies
   description: "Company rules over agent operations, simulation and publication"
+- name: SCIM
+  description: Tokens of the SCIM server an identity provider provisions employees
+    through
 - name: Imports
   description: "Uploads, column mapping and manual review"
 - name: Agents
@@ -1069,6 +1072,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/License"
+  /api/v1/scim/tokens:
+    get:
+      tags:
+      - SCIM
+      summary: List SCIM tokens
+      description: The tokens themselves are never shown again.
+      operationId: list
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/View"
+    post:
+      tags:
+      - SCIM
+      summary: Issue a SCIM token
+      description: "The answer carries the token once: put it into the provisioning\
+        \ settings of the identity provider with the base URL /scim/v2. dismissOnDeactivate:\
+        \ whether active = false dismisses the employee (Okta and Entra ID switch\
+        \ an account off when a person leaves)."
+      operationId: issue
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/View"
   /api/v1/registrations:
     post:
       tags:
@@ -1314,7 +1355,7 @@ paths:
       tags:
       - Imports
       summary: "List imports, newest first"
-      operationId: list
+      operationId: list_1
       responses:
         "200":
           description: OK
@@ -1747,7 +1788,7 @@ paths:
       tags:
       - Assets
       summary: "List assets, optionally by status"
-      operationId: list_1
+      operationId: list_2
       parameters:
       - name: status
         in: query
@@ -2169,7 +2210,7 @@ paths:
       tags:
       - Findings
       summary: "List findings, optionally by status"
-      operationId: list_2
+      operationId: list_3
       parameters:
       - name: status
         in: query
@@ -2675,7 +2716,7 @@ paths:
       tags:
       - Approvals
       summary: "List requests, optionally by status"
-      operationId: list_3
+      operationId: list_4
       parameters:
       - name: status
         in: query
@@ -2804,6 +2845,22 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/scim/tokens/{id}:
+    delete:
+      tags:
+      - SCIM
+      summary: Revoke a SCIM token
+      operationId: revoke
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/notifications/telegram:
     delete:
       tags:
@@ -2822,7 +2879,7 @@ paths:
       tags:
       - Software
       summary: Take a license back
-      operationId: revoke
+      operationId: revoke_1
       parameters:
       - name: id
         in: path
@@ -2839,7 +2896,7 @@ paths:
       - Registration
       summary: Take back an invitation
       description: "Only while it is not accepted: the account and the user are deleted."
-      operationId: revoke_1
+      operationId: revoke_2
       parameters:
       - name: id
         in: path
@@ -3843,6 +3900,38 @@ components:
           format: uuid
       required:
       - employeeId
+    Request:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        dismissOnDeactivate:
+          type: boolean
+      required:
+      - name
+    View:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        dismissOnDeactivate:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+        token:
+          type: string
     RegistrationRequest:
       type: object
       properties:
