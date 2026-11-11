@@ -41,6 +41,16 @@ class S3FileStore implements FileStore {
     }
 
     @Override
+    public java.util.Optional<byte[]> get(String key) {
+        check(key);
+        try {
+            return java.util.Optional.of(s3.getObjectAsBytes(b -> b.bucket(bucket).key(key)).asByteArray());
+        } catch (NoSuchKeyException e) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    @Override
     public boolean exists(String key) {
         check(key);
         try {

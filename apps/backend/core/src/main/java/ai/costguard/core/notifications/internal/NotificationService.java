@@ -63,6 +63,33 @@ class NotificationService {
         });
     }
 
+    /** One employee's notification (ADR 0052): their cabinet feed and their channels, not the company's feed. */
+    @Transactional
+    void notifyPersonal(UUID tenantId, UUID employeeId, String text, String link, Level level) {
+        session.bind(tenantId);
+        Notification n = new Notification(UUID.randomUUID(), clock.instant(), text, link, level, false);
+        notifications.insertPersonal(tenantId, employeeId, n);
+        plan(tenantId, n, new Audience(java.util.Set.of(), employeeId, null));
+    }
+
+    @Transactional(readOnly = true)
+    NotificationPage personalPage(UUID tenantId, UUID employeeId) {
+        session.bind(tenantId);
+        return new NotificationPage(notifications.personal(employeeId, 200), notifications.unreadPersonal(employeeId));
+    }
+
+    @Transactional
+    void markPersonalRead(UUID tenantId, UUID employeeId, UUID id) {
+        session.bind(tenantId);
+        notifications.markReadPersonal(employeeId, id);
+    }
+
+    @Transactional
+    void markAllPersonalRead(UUID tenantId, UUID employeeId) {
+        session.bind(tenantId);
+        notifications.markAllReadPersonal(employeeId);
+    }
+
     private void plan(UUID tenantId, Notification n, Audience audience) {
         UUID owner = audience.agentId() == null ? null : agentOwners.ownerOf(audience.agentId()).orElse(null);
         for (UserDirectory.UserCard user : users.users()) {

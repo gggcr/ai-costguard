@@ -361,3 +361,7 @@ details summary { cursor: pointer; color: var(--accent); margin-top: 8px; }
 .type-card:disabled { cursor: not-allowed; opacity: 0.55; }
 .input-error { border-color: var(--critical) !important; }
 .error-text { color: var(--critical); margin: 0 0 12px; }
+
+/* Вкладки «Моего кабинета» — ссылки */
+.cabinet-tabs { margin-bottom: 16px; }
+.cabinet-tabs .tab { text-decoration: none; }

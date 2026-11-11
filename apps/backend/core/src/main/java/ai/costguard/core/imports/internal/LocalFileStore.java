@@ -39,6 +39,19 @@ class LocalFileStore implements FileStore {
     }
 
     @Override
+    public java.util.Optional<byte[]> get(String key) {
+        Path path = inside(key);
+        if (!Files.isRegularFile(path)) {
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(Files.readAllBytes(path));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
     public boolean exists(String key) {
         return Files.exists(root.resolve(key));
     }

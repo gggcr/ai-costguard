@@ -3,6 +3,7 @@ package ai.costguard.core.notifications.internal;
 import ai.costguard.core.privacy.DataHolder;
 import ai.costguard.core.privacy.Report;
 import ai.costguard.core.privacy.Retention;
+import ai.costguard.core.privacy.Subject;
 import ai.costguard.core.privacy.TenantRows;
 import java.sql.Timestamp;
 import java.util.List;
@@ -27,6 +28,13 @@ class NotificationPersonalData implements DataHolder {
     public List<String> tables() {
         return List.of("notification", "notification_delivery", "notification_setting", "notification_tenant",
                 "telegram_link");
+    }
+
+    /** One employee's own notifications (ADR 0052) name them by being theirs: they go with the person. */
+    @Override
+    public void eraseEmployee(Subject subject, Retention retention, Report report) {
+        report.deleted("notifications.personal", jdbc.sql("delete from notification where employee_id = ?")
+                .param(subject.employeeId()).update());
     }
 
     @Override

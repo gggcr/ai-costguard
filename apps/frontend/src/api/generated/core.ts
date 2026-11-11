@@ -275,6 +275,19 @@ export type EmployeeDetails = {
   position: string;
 };
 
+export type EmployeeDocument = {
+  id?: string;  // uuid
+  source?: string;
+  kind?: string;
+  title?: string;
+  number?: string;
+  signedOn?: string;  // date
+  fileName?: string;
+  size?: number;
+  createdAt?: string;  // date-time
+  returnedOn?: string;  // date
+};
+
 export type Erasure = {
   id?: string;  // uuid
   employeeId?: string;  // uuid
@@ -973,7 +986,7 @@ export const operations = {
   catalogConvert: { method: "GET", path: "/api/v1/catalog/fx-conversion" },
   catalogRates: { method: "GET", path: "/api/v1/catalog/fx-rates" },
   catalogPrices: { method: "GET", path: "/api/v1/catalog/prices" },
-  catalogAdd: { method: "POST", path: "/api/v1/catalog/prices" },
+  catalogAdd_1: { method: "POST", path: "/api/v1/catalog/prices" },
   catalogHistory: { method: "GET", path: "/api/v1/catalog/prices/{skuId}/history" },
   organisationCompany: { method: "GET", path: "/api/v1/company" },
   organisationSaveCompany: { method: "PUT", path: "/api/v1/company" },
@@ -996,6 +1009,10 @@ export const operations = {
   organisationEmployees: { method: "GET", path: "/api/v1/employees" },
   organisationCreateEmployee: { method: "POST", path: "/api/v1/employees" },
   assetsHeldBy: { method: "GET", path: "/api/v1/employees/{employeeId}/assets" },
+  cabinetOf: { method: "GET", path: "/api/v1/employees/{employeeId}/documents" },
+  cabinetAdd: { method: "POST", path: "/api/v1/employees/{employeeId}/documents" },
+  cabinetRemove: { method: "DELETE", path: "/api/v1/employees/{employeeId}/documents/{id}" },
+  cabinetFile: { method: "GET", path: "/api/v1/employees/{employeeId}/documents/{id}/file" },
   organisationEmployee: { method: "GET", path: "/api/v1/employees/{id}" },
   organisationUpdateEmployee: { method: "PUT", path: "/api/v1/employees/{id}" },
   organisationDismiss: { method: "PUT", path: "/api/v1/employees/{id}/dismissal" },
@@ -1029,6 +1046,11 @@ export const operations = {
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
   cabinetMe: { method: "GET", path: "/api/v1/me" },
+  cabinetMine: { method: "GET", path: "/api/v1/me/documents" },
+  cabinetMyFile: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
+  cabinetPage_1: { method: "GET", path: "/api/v1/me/notifications" },
+  cabinetReadAll_1: { method: "PUT", path: "/api/v1/me/notifications/read" },
+  cabinetRead_1: { method: "PUT", path: "/api/v1/me/notifications/{id}/read" },
   notificationsClear: { method: "DELETE", path: "/api/v1/notifications" },
   notificationsPage: { method: "GET", path: "/api/v1/notifications" },
   notificationsReadAll: { method: "PUT", path: "/api/v1/notifications/read" },

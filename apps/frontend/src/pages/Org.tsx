@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { EmployeeDocumentsModal } from './cabinet/Documents';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
@@ -16,6 +17,7 @@ export function Org() {
   const highlight = params.get('employee');
   const [dept, setDept] = useState('all');
   const [modal, setModal] = useState<'dept' | 'employee' | 'invite' | null>(null);
+  const [docsOf, setDocsOf] = useState<{ id: string; name: string } | null>(null);
   const [editEmployee, setEditEmployee] = useState<Employee | undefined>();
   const edit = canEdit('org');
 
@@ -55,6 +57,7 @@ export function Org() {
                         <td>{edit && (
                           <span className="row-gap">
                             <Button variant="ghost" onClick={() => { setEditEmployee(e); setModal('employee'); }}>Изменить</Button>
+                            {mode === 'api' && <Button variant="ghost" onClick={() => setDocsOf({ id: e.id, name: e.name })}>Документы</Button>}
                             {e.active
                               ? <ConfirmButton variant="ghost" title="Отметить увольнение?" text={`${e.name}: движок аудита проверит лицензии (${licenses.length}) и технику (${held}) и создаст находки.`} confirmLabel="Отметить" onConfirm={() => actions.setEmployeeActive(e.id, false)}>Уволен</ConfirmButton>
                               : mode === 'demo' && <Button variant="ghost" onClick={() => actions.setEmployeeActive(e.id, true)}>Восстановить</Button>}
@@ -100,6 +103,7 @@ export function Org() {
       {modal === 'dept' && <DeptForm onClose={() => setModal(null)} />}
       {modal === 'employee' && <EmployeeForm employee={editEmployee} onClose={() => setModal(null)} />}
       {modal === 'invite' && <InviteForm onClose={() => setModal(null)} />}
+      {docsOf && <EmployeeDocumentsModal employeeId={docsOf.id} name={docsOf.name} onClose={() => setDocsOf(null)} />}
     </>
   );
 }

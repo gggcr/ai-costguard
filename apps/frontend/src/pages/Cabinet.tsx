@@ -1,12 +1,14 @@
 // «Мой кабинет» (ADR 0051): всё о человеке, который вошёл, и ничего о компании. В режиме API — GET /api/v1/me,
 // в демо — из демо-данных. Документы, отпуска, зарплата, лицензии и запросы появятся следующими частями.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink, Route, Routes } from 'react-router-dom';
 import { api, ApiError } from '../api/http';
 import { useStore } from '../api/store';
 import type { Me } from '../api/types';
 import { ROLE_LABEL, useAuth } from '../auth/auth';
 import { Badge, Card, Empty, PageHeader } from '../components/ui';
 import { ChannelSettings } from './ChannelSettings';
+import { MyDocuments, MyNotifications } from './cabinet/Documents';
 
 /** Профиль того, кто вошёл: из ядра в режиме API, из демо-данных в демо. */
 export function useMe(): { me: Me | null; error: string | null } {
@@ -35,24 +37,47 @@ export function useMe(): { me: Me | null; error: string | null } {
   };
 }
 
-const COMING = [
-  { title: 'Мои документы', text: 'Трудовой договор, соглашения, акты выдачи техники; уведомление о каждом новом документе' },
-  { title: 'Отпуска', text: 'Заявка на отпуск, согласование руководителем отдела, остаток дней' },
-  { title: 'Зарплата', text: 'Суммы и даты аванса и зарплаты из 1С:ЗУП' },
-  { title: 'Лицензии', text: 'Мои программы и запрос лицензии из общего пула' },
-  { title: 'Покупка ПО', text: 'Запрос на покупку: система сверит с лицензиями компании' },
-  { title: 'Свои траты на софт', text: 'Сообщить о покупке с личной карты; руководство видит только сводку без имён' },
+
+/** Вкладки кабинета: каждая часть кабинета добавляет свою (ADR 0051–0057). */
+export const CABINET_TABS: { to: string; label: string; api: boolean }[] = [
+  { to: '', label: 'Профиль', api: false },
+  { to: 'notifications', label: 'Уведомления', api: true },
+  { to: 'documents', label: 'Документы', api: true },
 ];
 
-export function Cabinet() {
+function ApiOnly({ children }: { children: ReactNode }) {
   const { mode } = useStore();
+  return mode === 'api' ? <>{children}</> : <Empty>Раздел работает при подключении к серверу CostGuard</Empty>;
+}
+
+export function Cabinet() {
   const { me, error } = useMe();
   if (error) return <Empty>{error}</Empty>;
   if (!me) return <Empty>Загрузка…</Empty>;
-  const p = me.employee;
   return (
     <>
       <PageHeader title="Мой кабинет" subtitle="Здесь только ваше: профиль, документы, отпуска, зарплата и запросы" />
+      {me.employee && (
+        <nav className="tabs cabinet-tabs" aria-label="Разделы кабинета">
+          {CABINET_TABS.map((t) => (
+            <NavLink key={t.to} to={t.to === '' ? '/cabinet' : `/cabinet/${t.to}`} end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>{t.label}</NavLink>
+          ))}
+        </nav>
+      )}
+      <Routes>
+        <Route index element={<Profile me={me} />} />
+        {me.employee && <Route path="notifications" element={<ApiOnly><MyNotifications /></ApiOnly>} />}
+        {me.employee && <Route path="documents" element={<ApiOnly><MyDocuments /></ApiOnly>} />}
+      </Routes>
+    </>
+  );
+}
+
+function Profile({ me }: { me: Me }) {
+  const { mode } = useStore();
+  const p = me.employee;
+  return (
+    <>
       <Card title="Профиль">
         {p ? (
           <dl className="dl">
@@ -67,15 +92,6 @@ export function Cabinet() {
           <Empty>Вы не числитесь сотрудником компании в CostGuard. Если это ошибка, напишите администратору.</Empty>
         )}
       </Card>
-      {p && (
-        <Card title="Скоро в кабинете">
-          <ul className="list">
-            {COMING.map((c) => (
-              <li key={c.title} className="list-row"><span className="grow"><b>{c.title}</b><span className="muted small block">{c.text}</span></span></li>
-            ))}
-          </ul>
-        </Card>
-      )}
       {mode === 'api' && <ChannelSettings />}
     </>
   );

@@ -39,7 +39,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<Protected />}>
         <Route index element={<Home />} />
-        <Route path="cabinet" element={<Guard section="cabinet"><Cabinet /></Guard>} />
+        <Route path="cabinet/*" element={<Guard section="cabinet"><Cabinet /></Guard>} />
         <Route path="agents" element={<Guard section="agents"><Agents /></Guard>} />
         <Route path="agents/:id" element={<Guard section="agents"><AgentDetail /></Guard>} />
         <Route path="policies" element={<Guard section="policies"><Policies /></Guard>} />

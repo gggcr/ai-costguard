@@ -72,6 +72,16 @@ export async function upload<T>(path: string, file: File, query?: Query): Promis
   return (await r.json()) as T;
 }
 
+/** Загрузка файла вместе с полями формы (документ сотрудника: вид, название, номер). */
+export async function uploadForm<T>(path: string, file: File, fields: Record<string, string | undefined>): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  Object.entries(fields).forEach(([k, v]) => { if (v !== undefined && v !== '') form.append(k, v); });
+  const r = await fetch(url(path), { method: 'POST', headers: await headers(), body: form });
+  if (!r.ok) throw await failure(r);
+  return (await r.json()) as T;
+}
+
 /** Скачать файл (PDF акта, отчёт) и отдать браузеру под именем из Content-Disposition. */
 export async function download(path: string, fallbackName: string, query?: Query): Promise<void> {
   const r = await fetch(url(path, query), { headers: await headers() });

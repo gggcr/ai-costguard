@@ -135,6 +135,8 @@ class AssetService {
         assets.insertAssignment(tenantId, issued);
         assets.setStatus(asset.id(), AssetStatus.ASSIGNED);
         String number = acts.make(tenantId, asset, issued, employee, issuedBy);
+        events.publishEvent(new ai.costguard.core.assets.AssetIssued(tenantId, asset.id(), issued.id(),
+                request.employeeId(), asset.model(), asset.inventoryNumber(), number, issued.issuedAt()));
         String system = issuedBy != null && issuedBy.startsWith(CONNECTOR) ? "connector" : null;
         events.publishEvent(new ActionTaken(tenantId, "asset.issued", "asset", asset.id(), ActionTaken.details(
                 "employeeId", request.employeeId(), "assignmentId", issued.id(), "inventoryNumber",

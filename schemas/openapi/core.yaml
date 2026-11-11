@@ -319,6 +319,31 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/notifications/{id}/read:
+    put:
+      tags:
+      - Cabinet
+      summary: Mark one of my notifications as read
+      operationId: read_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/me/notifications/read:
+    put:
+      tags:
+      - Cabinet
+      summary: Mark all my notifications as read
+      operationId: readAll_1
+      responses:
+        "204":
+          description: No Content
   /api/v1/mandates/{id}:
     get:
       tags:
@@ -1488,6 +1513,84 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Erasure"
+  /api/v1/employees/{employeeId}/documents:
+    get:
+      tags:
+      - Cabinet
+      summary: Documents of an employee
+      operationId: of
+      parameters:
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeDocument"
+    post:
+      tags:
+      - Cabinet
+      summary: Add a document of an employee; the employee is notified
+      operationId: add
+      parameters:
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: kind
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - employment_contract
+          - agreement
+          - order
+          - other
+      - name: title
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: number
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: signedOn
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeDocument"
   /api/v1/departments:
     get:
       tags:
@@ -1691,7 +1794,7 @@ paths:
       - Catalog
       summary: Set a price from a date
       description: Earlier prices stay for past operations.
-      operationId: add
+      operationId: add_1
       requestBody:
         content:
           application/json:
@@ -2128,6 +2231,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Me"
+  /api/v1/me/notifications:
+    get:
+      tags:
+      - Cabinet
+      summary: My latest 200 notifications and the unread count
+      operationId: page_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPage"
+  /api/v1/me/documents:
+    get:
+      tags:
+      - Cabinet
+      summary: "My documents: contract, agreements, orders and handover acts"
+      operationId: mine
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeDocument"
+  /api/v1/me/documents/{id}/file:
+    get:
+      tags:
+      - Cabinet
+      summary: The file of one of my documents
+      operationId: myFile
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                format: byte
   /api/v1/journal/verification:
     get:
       tags:
@@ -2329,6 +2481,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DismissalChecklist"
+  /api/v1/employees/{employeeId}/documents/{id}/file:
+    get:
+      tags:
+      - Cabinet
+      summary: The file of an employee's document
+      operationId: file
+      parameters:
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                format: byte
   /api/v1/employees/{employeeId}/assets:
     get:
       tags:
@@ -2922,6 +3101,28 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/employees/{employeeId}/documents/{id}:
+    delete:
+      tags:
+      - Cabinet
+      summary: Remove a document added by mistake
+      operationId: remove
+      parameters:
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/agents/{id}/keys/{keyId}:
     delete:
       tags:
@@ -4319,6 +4520,34 @@ components:
         note:
           type: string
         until:
+          type: string
+          format: date
+    EmployeeDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source:
+          type: string
+        kind:
+          type: string
+        title:
+          type: string
+        number:
+          type: string
+        signedOn:
+          type: string
+          format: date
+        fileName:
+          type: string
+        size:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        returnedOn:
           type: string
           format: date
     NewDepartment:

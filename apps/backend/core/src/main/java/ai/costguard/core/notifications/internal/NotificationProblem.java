@@ -5,7 +5,8 @@ import org.springframework.http.HttpStatus;
 
 enum NotificationProblem implements ProblemCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Your e-mail is not a CostGuard user of this company"),
-    TELEGRAM_UNAVAILABLE(HttpStatus.CONFLICT, "Telegram is not configured on this server");
+    TELEGRAM_UNAVAILABLE(HttpStatus.CONFLICT, "Telegram is not configured on this server"),
+    NOT_AN_EMPLOYEE(HttpStatus.NOT_FOUND, "You are not an employee of this company in CostGuard");
 
     private final HttpStatus status;
     private final String detail;

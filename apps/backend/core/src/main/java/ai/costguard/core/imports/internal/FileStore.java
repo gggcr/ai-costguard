@@ -14,6 +14,9 @@ interface FileStore {
 
     boolean exists(String key);
 
+    /** The file, empty when there is none. */
+    java.util.Optional<byte[]> get(String key);
+
     /** Deleting a file that is gone already is fine: retention and erasure may run again. */
     boolean delete(String key);
 
