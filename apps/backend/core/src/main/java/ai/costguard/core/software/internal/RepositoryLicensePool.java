@@ -119,6 +119,15 @@ class RepositoryLicensePool implements LicensePool {
     }
 
     @Override
+    public boolean used(UUID subscriptionId, String email, LocalDate day) {
+        return jdbc.sql("""
+                update license_assignment set last_active = greatest(coalesce(last_active, ?), ?)
+                where subscription_id = ?
+                  and employee_id in (select id from employee where lower(email) = lower(?))""")
+                .params(day, day, subscriptionId, email).update() > 0;
+    }
+
+    @Override
     public java.util.Map<UUID, java.math.BigDecimal> monthlySeatPrices() {
         java.util.Map<UUID, java.math.BigDecimal> prices = new java.util.HashMap<>();
         jdbc.sql("select id, price_per_seat, billing_period from subscription").query((rs, i) -> {

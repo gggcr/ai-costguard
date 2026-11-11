@@ -38,6 +38,7 @@ class ProgramMatcherTest {
             public boolean reclaim(UUID licenseId) { return false; }
             public Optional<Offer> match(String text, int idleDays) { return Optional.empty(); }
             public Map<UUID, BigDecimal> monthlySeatPrices() { return Map.of(); }
+            public boolean used(UUID subscriptionId, String email, java.time.LocalDate day) { return false; }
         };
     }
 

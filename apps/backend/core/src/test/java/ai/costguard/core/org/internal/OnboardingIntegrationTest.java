@@ -192,4 +192,38 @@ class OnboardingIntegrationTest extends PostgresTestSupport {
         assertThat(ACCOUNTS.disabled).contains(account);
         assertThat(MICROSOFT.disabled).contains(email);
     }
+
+    @Test
+    void theMicrosoftSignInLogMarksLicensesUsed() throws Exception {
+        connect(false);
+        String dept = department();
+        String body = add(dept, "anna-" + UUID.randomUUID() + "@" + domain, false).andReturn().getResponse()
+                .getContentAsString();
+        String email = JsonPath.read(body, "$.email");
+        String vendor = JsonPath.read(mvc.perform(post("/api/v1/vendors").with(as("owner"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Figma-%s\",\"inn\":\"\",\"category\":\"SaaS\"}"
+                        .formatted(UUID.randomUUID()))).andReturn().getResponse().getContentAsString(), "$.id");
+        String subscription = JsonPath.read(mvc.perform(post("/api/v1/subscriptions").with(as("owner"))
+                .contentType(MediaType.APPLICATION_JSON).content(("{\"vendorId\":\"%s\",\"product\":\"Figma Professional\","
+                        + "\"contractId\":null,\"departmentId\":\"%s\",\"seats\":2,\"pricePerSeat\":1500,"
+                        + "\"billingPeriod\":\"month\",\"renewalDate\":\"2027-01-01\"}").formatted(vendor, dept)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        RequestPostProcessor anna = jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email)
+                        .claim("realm_access", Map.of("roles", List.of("employee"))))
+                .authorities(realmRoles);
+        mvc.perform(post("/api/v1/me/license-requests").with(anna).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"subscriptionId\":\"%s\"}".formatted(subscription)))
+                .andExpect(jsonPath("$.status").value("granted"));
+
+        MICROSOFT.log.add(new MicrosoftDirectory.SignIn(email, "Figma", java.time.Instant.now()));
+        MICROSOFT.log.add(new MicrosoftDirectory.SignIn(email, "Some Internal Tool", java.time.Instant.now()));
+        mvc.perform(post("/api/v1/license-pool/microsoft-activity").with(as("it_admin")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.licensesUpdated").value(1))
+                .andExpect(jsonPath("$.unmatchedApps").value(org.hamcrest.Matchers.hasItem("Some Internal Tool")));
+        java.time.LocalDate seen = JdbcClient.create(superuserAppDataSource())
+                .sql("select last_active from license_assignment where subscription_id = ?::uuid").param(subscription)
+                .query(java.time.LocalDate.class).single();
+        assertThat(seen).isNotNull();
+    }
 }

@@ -89,8 +89,8 @@ class SavingsService {
             byMonth.merge(YearMonth.from(r.at().atZone(MOSCOW)), monthly, BigDecimal::add);
         }
 
-        List<CabinetSavings.Month> series = new ArrayList<>();
-        byMonth.forEach((m, v) -> series.add(new CabinetSavings.Month(m.toString(), v)));
+        List<CabinetSavings.SavedMonth> series = new ArrayList<>();
+        byMonth.forEach((m, v) -> series.add(new CabinetSavings.SavedMonth(m.toString(), v)));
         LocalDate since = first.atDay(1);
         return new CabinetSavings(since, seats.size(), reassigned, seatMonthly, refused.size(), purchaseMonthly,
                 seatMonthly.add(purchaseMonthly), series);

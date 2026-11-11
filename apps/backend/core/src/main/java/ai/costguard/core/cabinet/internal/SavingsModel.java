@@ -9,8 +9,8 @@ import java.util.List;
  * colleague); {@code purchasesRefused}: purchases not made because the company had the program. Sums are a month.
  */
 record CabinetSavings(LocalDate since, int seatsFromPool, int reassignedIdle, BigDecimal seatsMonthly,
-        int purchasesRefused, BigDecimal purchasesMonthly, BigDecimal totalMonthly, List<Month> byMonth) {
+        int purchasesRefused, BigDecimal purchasesMonthly, BigDecimal totalMonthly, List<SavedMonth> byMonth) {
 
-    record Month(String month, BigDecimal saved) {
+    record SavedMonth(String month, BigDecimal saved) {
     }
 }

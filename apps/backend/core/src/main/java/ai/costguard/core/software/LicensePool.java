@@ -37,6 +37,9 @@ public interface LicensePool {
     /** What one seat of each subscription costs a month (a yearly price divided by 12): what a seat not bought saves. */
     java.util.Map<UUID, java.math.BigDecimal> monthlySeatPrices();
 
+    /** The person with this e-mail used the subscription's program that day: their license is not idle. */
+    boolean used(UUID subscriptionId, String email, LocalDate day);
+
     record Held(UUID licenseId, UUID subscriptionId, String vendor, String product, LocalDate lastActive) {
     }
 

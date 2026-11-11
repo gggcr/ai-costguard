@@ -27,6 +27,12 @@ interface MicrosoftDirectory {
 
     void delete(App app, String id);
 
+    record SignIn(String email, String app, java.time.Instant at) {
+    }
+
+    /** The sign-in log since {@code from} (AuditLog.Read.All; Entra ID P1 or higher keeps 30 days). */
+    java.util.List<SignIn> signIns(App app, java.time.Instant from);
+
     /** Dismissal (ADR 0060): the account can no longer sign in, its open sessions end; the mailbox stays. */
     void disable(App app, String address);
 }

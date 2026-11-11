@@ -31,7 +31,9 @@ enum CabinetProblem implements ProblemCode {
     PURCHASE_PRODUCT(HttpStatus.BAD_REQUEST, "Name the program, subscription or API"),
     PURCHASE_AMOUNT(HttpStatus.BAD_REQUEST, "The amount cannot be negative"),
     SHADOW_NOT_FOUND(HttpStatus.NOT_FOUND, "Report not found"),
-    SHADOW_COLUMNS(HttpStatus.BAD_REQUEST, "The sheet needs the columns: сервис, сумма, дата; назначение is optional");
+    SHADOW_COLUMNS(HttpStatus.BAD_REQUEST, "The sheet needs the columns: сервис, сумма, дата; назначение is optional"),
+    MICROSOFT_UNAVAILABLE(HttpStatus.BAD_GATEWAY,
+            "Microsoft did not give the sign-in log: check the app's permission AuditLog.Read.All and Entra ID P1");
 
     private final HttpStatus status;
     private final String detail;

@@ -120,6 +120,15 @@ export function EmployerLicenses({ canDecide }: { canDecide: boolean }) {
       toast(errorText(e), 'critical');
     }
   };
+  const activity = async () => {
+    try {
+      const r = await api<{ signIns: number; licensesUpdated: number; unmatchedApps: string[] }>('POST', '/api/v1/license-pool/microsoft-activity');
+      toast(`Входов Microsoft: ${r.signIns}, отмечено используемых лицензий: ${r.licensesUpdated}${r.unmatchedApps.length ? `. Нет подписки для: ${r.unmatchedApps.slice(0, 5).join(', ')}` : ''}`, 'good');
+      pool.reload();
+    } catch (e) {
+      toast(errorText(e), 'critical');
+    }
+  };
   const reclaim = async () => {
     try {
       const r = await api<{ licenses: number }>('POST', '/api/v1/license-pool/reclaim');
@@ -150,7 +159,7 @@ export function EmployerLicenses({ canDecide }: { canDecide: boolean }) {
           </div>
         )}
       </Card>
-      <Card title="Пул по подпискам" actions={canDecide && <ConfirmButton title="Вернуть простаивающие лицензии в пул?" text="Владельцы получат уведомление и смогут запросить лицензию снова." confirmLabel="Вернуть" onConfirm={() => { void reclaim(); }}>Вернуть простаивающие в пул</ConfirmButton>}>
+      <Card title="Пул по подпискам" actions={canDecide && <><Button variant="ghost" onClick={() => { void activity(); }}>Активность из Microsoft 365</Button><ConfirmButton title="Вернуть простаивающие лицензии в пул?" text="Владельцы получат уведомление и смогут запросить лицензию снова." confirmLabel="Вернуть" onConfirm={() => { void reclaim(); }}>Вернуть простаивающие в пул</ConfirmButton></>}>
         {!pool.data ? <Empty>Загрузка…</Empty> : (
           <div className="table-wrap">
             <table>

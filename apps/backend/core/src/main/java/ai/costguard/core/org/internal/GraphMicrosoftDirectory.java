@@ -136,6 +136,33 @@ class GraphMicrosoftDirectory implements MicrosoftDirectory {
     }
 
     @Override
+    public java.util.List<SignIn> signIns(App app, java.time.Instant from) {
+        String token = token(app);
+        java.util.List<SignIn> out = new java.util.ArrayList<>();
+        String next = graph + "/v1.0/auditLogs/signIns?$top=999&$select=userPrincipalName,appDisplayName,"
+                + "createdDateTime,status&$filter=" + URLEncoder.encode("createdDateTime ge "
+                        + from.truncatedTo(java.time.temporal.ChronoUnit.SECONDS), StandardCharsets.UTF_8);
+        for (int page = 0; next != null && page < 200; page++) {
+            HttpResponse<String> r = send(HttpRequest.newBuilder(URI.create(next)).timeout(Duration.ofSeconds(60))
+                    .header("Authorization", "Bearer " + token).GET().build());
+            if (r.statusCode() != 200) {
+                throw new Unavailable("Microsoft sign-ins: HTTP " + r.statusCode());
+            }
+            JsonNode body = read(r.body());
+            for (JsonNode s : body.path("value")) {
+                // only successful sign-ins mean the program is used
+                if (s.path("status").path("errorCode").asInt(0) != 0) {
+                    continue;
+                }
+                out.add(new SignIn(s.path("userPrincipalName").asText().toLowerCase(java.util.Locale.ROOT),
+                        s.path("appDisplayName").asText(), java.time.Instant.parse(s.path("createdDateTime").asText())));
+            }
+            next = body.hasNonNull("@odata.nextLink") ? body.path("@odata.nextLink").asText() : null;
+        }
+        return out;
+    }
+
+    @Override
     public void delete(App app, String id) {
         HttpResponse<String> r = send(graph(token(app), "/users/" + id).DELETE().build());
         if (r.statusCode() != 204 && r.statusCode() != 404) {

@@ -30,6 +30,15 @@ public class FakeMicrosoftDirectory implements MicrosoftDirectory {
     }
 
     public final java.util.Set<String> disabled = ConcurrentHashMap.newKeySet();
+    public final java.util.List<SignIn> log = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    @Override
+    public java.util.List<SignIn> signIns(App app, java.time.Instant from) {
+        if (down) {
+            throw new Unavailable("down");
+        }
+        return log.stream().filter(s -> !s.at().isBefore(from)).toList();
+    }
 
     @Override
     public void disable(App app, String address) {

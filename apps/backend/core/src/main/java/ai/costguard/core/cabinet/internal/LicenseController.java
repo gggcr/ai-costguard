@@ -29,8 +29,11 @@ class LicenseController {
 
     private final LicenseService service;
 
-    LicenseController(LicenseService service) {
+    private final MicrosoftActivity activity;
+
+    LicenseController(LicenseService service, MicrosoftActivity activity) {
         this.service = service;
+        this.activity = activity;
     }
 
     @GetMapping("/me/licenses")
@@ -73,6 +76,18 @@ class LicenseController {
     LicenseRequest decide(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
             @Valid @RequestBody LicenseDecision decision) {
         return service.decide(TenantClaim.of(jwt), id, decision, Whoami.who(jwt));
+    }
+
+    @PostMapping("/license-pool/microsoft-activity")
+    @PreAuthorize("hasAnyRole('owner', 'it_admin')")
+    @Operation(summary = "Mark licenses used from the Microsoft sign-in log of the last days (also every morning)")
+    MicrosoftActivityResult microsoftActivity(@AuthenticationPrincipal Jwt jwt,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "30") int days) {
+        try {
+            return activity.load(TenantClaim.of(jwt), Math.max(1, Math.min(days, 30)));
+        } catch (ai.costguard.core.org.MicrosoftSignIns.Unavailable e) {
+            throw CabinetProblem.MICROSOFT_UNAVAILABLE.failure();
+        }
     }
 
     @PostMapping("/license-pool/reclaim")

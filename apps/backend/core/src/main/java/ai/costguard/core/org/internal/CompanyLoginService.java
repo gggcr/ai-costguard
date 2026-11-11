@@ -161,6 +161,14 @@ class CompanyLoginService {
                 .optional().map(a -> new LoginHint("microsoft", a));
     }
 
+    /** The company's Microsoft app with its secret, if the core keeps it. Call with the tenant bound. */
+    Optional<MicrosoftDirectory.App> app(UUID tenantId) {
+        return jdbc.sql("select directory_id, client_id, client_secret from company_login where client_secret is not null")
+                .query((rs, i) -> new MicrosoftDirectory.App(rs.getString("directory_id"), rs.getString("client_id"),
+                        secrets.open(tenantId, rs.getBytes("client_secret"))))
+                .optional();
+    }
+
     /** What adding an employee needs to make a mailbox; empty when the company has not turned it on. */
     record Mailboxes(MicrosoftDirectory.App app, String domain, String licenseSku, String usageLocation) {
     }

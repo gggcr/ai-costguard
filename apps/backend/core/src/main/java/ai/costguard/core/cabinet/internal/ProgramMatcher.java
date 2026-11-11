@@ -78,6 +78,11 @@ class ProgramMatcher {
     }
 
     Optional<Match> match(LicensePool pool, int idleDays, String product, String vendor) {
+        return match(pool, idleDays, product, vendor, true);
+    }
+
+    /** {@code model} false: names, brands and typos only (a sign-in log has thousands of names). */
+    Optional<Match> match(LicensePool pool, int idleDays, String product, String vendor, boolean model) {
         Optional<LicensePool.Offer> exact = pool.match(product, idleDays)
                 .or(() -> vendor == null ? Optional.empty() : pool.match(vendor, idleDays));
         if (exact.isPresent()) {
@@ -112,6 +117,9 @@ class ProgramMatcher {
         }
         if (found.size() == 1) {
             return Optional.of(new Match(found.get(0), "alias"));
+        }
+        if (!model) {
+            return Optional.empty();
         }
         return ask(found.size() > 1 ? found : offers, product, vendor).map(o -> new Match(o, "model"));
     }

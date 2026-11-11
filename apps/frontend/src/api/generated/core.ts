@@ -113,7 +113,7 @@ export type CabinetSavings = {
   purchasesRefused?: number;
   purchasesMonthly?: number;
   totalMonthly?: number;
-  byMonth?: Array<Month>;
+  byMonth?: Array<SavedMonth>;
 };
 
 export type ChainVerification = {
@@ -558,9 +558,15 @@ export type Me = {
   employee?: Profile;
 };
 
+export type MicrosoftActivityResult = {
+  signIns?: number;
+  licensesUpdated?: number;
+  unmatchedApps?: Array<string>;
+};
+
 export type Month = {
   month?: string;
-  saved?: number;
+  amount?: number;
 };
 
 export type MonthAmount = {
@@ -980,6 +986,11 @@ export type SampleOperation = {
   weekday?: number;
 };
 
+export type SavedMonth = {
+  month?: string;
+  saved?: number;
+};
+
 export type SavingsMonth = {
   month: string;
   expected: number;
@@ -1324,6 +1335,7 @@ export const operations = {
   journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
   cabinetPool: { method: "GET", path: "/api/v1/license-pool" },
+  cabinetMicrosoftActivity: { method: "POST", path: "/api/v1/license-pool/microsoft-activity" },
   cabinetReclaim: { method: "POST", path: "/api/v1/license-pool/reclaim" },
   cabinetAll_2: { method: "GET", path: "/api/v1/license-requests" },
   cabinetDecide_2: { method: "PUT", path: "/api/v1/license-requests/{id}/decision" },

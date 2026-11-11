@@ -1803,6 +1803,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Reclaimed"
+  /api/v1/license-pool/microsoft-activity:
+    post:
+      tags:
+      - Cabinet
+      summary: Mark licenses used from the Microsoft sign-in log of the last days
+        (also every morning)
+      operationId: microsoftActivity
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicrosoftActivityResult"
   /api/v1/invitations:
     get:
       tags:
@@ -5528,6 +5550,19 @@ components:
         licenses:
           type: integer
           format: int32
+    MicrosoftActivityResult:
+      type: object
+      properties:
+        signIns:
+          type: integer
+          format: int32
+        licensesUpdated:
+          type: integer
+          format: int32
+        unmatchedApps:
+          type: array
+          items:
+            type: string
     NewInvitation:
       type: object
       properties:
@@ -6768,8 +6803,8 @@ components:
         byMonth:
           type: array
           items:
-            $ref: "#/components/schemas/Month"
-    Month:
+            $ref: "#/components/schemas/SavedMonth"
+    SavedMonth:
       type: object
       properties:
         month:
@@ -6824,6 +6859,13 @@ components:
           type: string
         limits:
           $ref: "#/components/schemas/PlanLimitsView"
+    Month:
+      type: object
+      properties:
+        month:
+          type: string
+        amount:
+          type: number
     Summary:
       type: object
       properties:
