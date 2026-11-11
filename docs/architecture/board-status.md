@@ -11,6 +11,13 @@
   со счетами нет — помечено «сделано иначе»;
 - фрейм 15: находка по технике закрывается возвратом техники, действия по счёту для неё запрещены.
 
+**11.11.2026: доска приведена к коду.** Всё, что было «сделано иначе», перенесено на доску: пути
+`apps/python/*`, `contracts/notary`, `deploy/*`, `libs/*`; аудит внутри ядра; свой клиент NEAR и методы
+`anchor`/`get_anchor`; Tesseract вместо PaddleOCR; модели прогноза на чистом Python; S3 (Object Storage и
+SeaweedFS); дополнительные топики и таблицы; страница «Подключённые системы»; окружения staging и prod. На доске
+добавлены три карточки «Ключевых решений» и пометка «Сверено с кодом». Поэтому такие строки теперь «сделано, доска
+приведена к коду» с прежним пояснением, что было иначе.
+
 Статусы:
 - **сделано** — как на доске;
 - **сделано иначе** — работает, но устроено не так, как на доске. Со ссылкой на ADR, если решение записано,
@@ -29,16 +36,16 @@
 | Ядро на Spring Modulith: пользователи, роли, оргструктура, правила, бюджеты, мандаты, согласования, подписки, договоры, оборудование, импорт, журнал, находки | `apps/backend/core/src/main/java/ai/costguard/core/*` | сделано (ADR 0001) |
 | PostgreSQL: справочники, журнал, состояния | Flyway `core/src/main/resources/db/migration` V1–V19, RLS | сделано (ADR 0002) |
 | Kafka: операции агентов, риск-сигналы, правила; outbox ядра, квитанции; импорт, записи затрат, находки | `schemas/avro` (20 топиков), `core/shared/outbox`, `core/shared/inbox` | сделано (ADR 0003) |
-| Детектор аномалий (Python): петли, всплески, подозрительные операции, риск 0–100 в шлюз | `apps/python/anomaly` | сделано иначе: папка `apps/python/anomaly`, а не `apps/backend/detector`, ADR нет. Устройство по ADR 0016 |
-| Нотариус NEAR (Python, py-near): пакеты квитанций, дерево Меркла | `apps/python/notary` | сделано иначе (ADR 0006): свой RPC-клиент `near.py` вместо py-near, папка `apps/python/notary` |
-| Смарт-контракт NEAR `costguard-notary` | `contracts/notary` | сделано иначе (ADR 0006, 0009): папка `contracts/notary`, а не `smart-contracts/costguard-notary` |
+| Детектор аномалий (Python): петли, всплески, подозрительные операции, риск 0–100 в шлюз | `apps/python/anomaly` | сделано, доска приведена к коду 11.11.2026: папка `apps/python/anomaly`, а не `apps/backend/detector`, ADR нет. Устройство по ADR 0016 |
+| Нотариус NEAR (Python, py-near): пакеты квитанций, дерево Меркла | `apps/python/notary` | сделано, доска приведена к коду 11.11.2026: (ADR 0006): свой RPC-клиент `near.py` вместо py-near, папка `apps/python/notary` |
+| Смарт-контракт NEAR `costguard-notary` | `contracts/notary` | сделано, доска приведена к коду 11.11.2026: (ADR 0006, 0009): папка `contracts/notary`, а не `smart-contracts/costguard-notary` |
 | Конвейер приёма: Excel, CSV, PDF, выписки, проверки, ручная проверка, нормализация в FOCUS | `apps/python/ingest`, `core/imports` | сделано (ADR 0012, 0013) |
 | Коннекторы и агент у клиента: единые API и свои для 1С, Яндекс 360 | `apps/python/connectors` | сделано (ADR 0014, 0015, 0019) |
-| Движок аудита (Python): правила, находки, оценка экономии | `core/findings` + `AuditRules` в `software` и `assets` | сделано иначе (ADR 0005): в ядре, а не отдельным Python-сервисом |
-| Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` (`models`, `backtest`, `baseline`, `reconcile`, `savings`, `publish`, `report`), сценарии в `core/analytics` | сделано иначе (ADR 0034): модели на чистом Python вместо statsforecast; сценарии считает ядро |
-| MLflow: модели прогнозов | `deploy/mlflow`, Helm `mlflow.yaml` | сделано иначе (ADR 0016, 0017): в MLflow лежат модели детектора аномалий, моделей прогноза там нет |
+| Движок аудита (Python): правила, находки, оценка экономии | `core/findings` + `AuditRules` в `software` и `assets` | сделано, доска приведена к коду 11.11.2026: (ADR 0005): в ядре, а не отдельным Python-сервисом |
+| Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` (`models`, `backtest`, `baseline`, `reconcile`, `savings`, `publish`, `report`), сценарии в `core/analytics` | сделано, доска приведена к коду 11.11.2026: (ADR 0034): модели на чистом Python вместо statsforecast; сценарии считает ядро |
+| MLflow: модели прогнозов | `deploy/mlflow`, Helm `mlflow.yaml` | сделано, доска приведена к коду 11.11.2026: (ADR 0016, 0017): в MLflow лежат модели детектора аномалий, моделей прогноза там нет |
 | ClickHouse: единый реестр затрат, витрины | `schemas/clickhouse/migrations` 001–003 | сделано (ADR 0007) |
-| S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано иначе, ADR нет: локально SeaweedFS вместо MinIO (MinIO не публикует образы). Файлы импорта ядро пишет в бакет `costguard-<env>-imports`, ingest читает оттуда же (ADR 0049) |
+| S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано, доска приведена к коду 11.11.2026: ADR нет: локально SeaweedFS вместо MinIO (MinIO не публикует образы). Файлы импорта ядро пишет в бакет `costguard-<env>-imports`, ingest читает оттуда же (ADR 0049) |
 | Фронтенд: отдельная команда, REST API и SSE | `apps/frontend` (`api/remote*.ts`, `api/api-store.tsx`, `auth/oidc.ts`), `schemas/openapi`, `/api/v1/notifications/stream` | сделано: вход через Keycloak (PKCE), все страницы на API ядра, уведомления по SSE; журнал операций — `GET /api/v1/operations` из ClickHouse |
 | Синхронно в момент операции работают только шлюз и Redis | Лестница шлюза; ядро получает операции из `agent.operations.v1` | сделано (ADR 0004) |
 
@@ -62,7 +69,7 @@
 | Повтор или петля → ответ из кэша или `409 duplicate_operation` | `LoopFilter.java`, `answers/AnswerCache.java` | сделано (ADR 0039): повтор прошедшей операции получает первый ответ, 409 — если ответа нет |
 | Риск проверяется до резерва | `RiskFilter` (4) перед `BudgetFilter` (5) | сделано |
 | ИИ-оценщик сам пропускает крупную операцию, если она соответствует цели задачи, иначе решает человек | `approvals/LlmTaskFitAssessor.java`, `HumanOnlyAssessor.java`, заголовок цели задачи в SDK | сделано (ADR 0011) |
-| Согласование человеком; одобренная операция повторяется и снова проходит все проверки, включая резерв | `ApprovalFilter`, `approvals/ApprovalBoard.java` ← `approvals.decisions.v1` из `core/approvals` | сделано иначе, ADR нет: решения идут через топик `approvals.decisions.v1`, которого на доске нет |
+| Согласование человеком; одобренная операция повторяется и снова проходит все проверки, включая резерв | `ApprovalFilter`, `approvals/ApprovalBoard.java` ← `approvals.decisions.v1` из `core/approvals` | сделано, доска приведена к коду 11.11.2026: ADR нет: решения идут через топик `approvals.decisions.v1`, которого на доске нет |
 | Разрешение на повтор одноразовое и с ограниченным сроком | `ApprovalFilter` (Redis `SET NX`, `costguard.gateway.approval-ttl`) | сделано (ADR 0020) |
 | Платные внешние API через шлюз | `gateway/egress` | сделано (ADR 0010) |
 
@@ -87,11 +94,11 @@
 |---|---|---|
 | Нотариус читает `journal.receipts.v1` | `apps/python/notary/.../service.py` | сделано |
 | Пакет за 60 с или 10 000 квитанций, дерево Меркла и пути проверки | `batches.py`, `merkle.py` | сделано |
-| Ключ Function-Call, вызов контракта | `near.py` | сделано иначе (ADR 0006): свой клиент NEAR RPC вместо py-near |
-| `anchor_batch` и `journal.anchors.v1` | `notarize.py`; в контракте метод `anchor` | сделано иначе (ADR 0006): методы называются `anchor`/`get_anchor`, а не `anchor_batch`/`get_batch` |
+| Ключ Function-Call, вызов контракта | `near.py` | сделано, доска приведена к коду 11.11.2026: (ADR 0006): свой клиент NEAR RPC вместо py-near |
+| `anchor_batch` и `journal.anchors.v1` | `notarize.py`; в контракте метод `anchor` | сделано, доска приведена к коду 11.11.2026: (ADR 0006): методы называются `anchor`/`get_anchor`, а не `anchor_batch`/`get_batch` |
 | `register_mandate`, `get_mandate`, `confirm_operation` | `contracts/notary/src/lib.rs`, `notary.requests.v1` / `notary.confirmations.v1` | сделано (ADR 0009) |
 | В NEAR только корень пакета, без сумм и персональных данных | `merkle.py`, контракт хранит хэши | сделано |
-| Контракт: `batches.rs`, `mandates.rs`, `approvals.rs`, тесты near-workspaces в sandbox, сборка cargo-near | `contracts/notary/src/lib.rs` | сделано иначе, ADR нет: всё в одном `lib.rs`, unit-тесты `cargo test` вместо near-workspaces |
+| Контракт: `batches.rs`, `mandates.rs`, `approvals.rs`, тесты near-workspaces в sandbox, сборка cargo-near | `contracts/notary/src/lib.rs` | сделано, доска приведена к коду 11.11.2026: ADR нет: всё в одном `lib.rs`, unit-тесты `cargo test` вместо near-workspaces |
 | Ядро принимает якоря обратно | `core/shared/inbox` слушает `journal.anchors.v1` | сделано |
 
 ## 6. Конвейер данных контура Б
@@ -105,10 +112,10 @@
 | Проверки пройдены и уверенность выше порога? Нет → ручная проверка, исправления становятся шаблоном | `ingest.results.v1` → `core/imports` (подтверждение сопоставления), шаблоны поставщика | сделано |
 | Нормализация и склейка: поставщик, сотрудник, валюта, период → `ingest.normalized.v1` → справочники ядра | `costguard_common.normalized`, `core/imports` `NormalizedEntities` | сделано (ADR 0008) |
 | Silver: записи затрат FOCUS в ClickHouse; сюда же операции агентов из контура А | `schemas/clickhouse/001_cost_records.sql`, `002_agent_operations.sql`, `cost.records.v1` | сделано (ADR 0007) |
-| Сопоставление: счёт, подписка, договор, сотрудник | `core/imports` (`EntityStaging`, лицензии и подписки) | сделано иначе, ADR нет: сопоставление идёт в PostgreSQL ядра, а не между Silver и Gold в ClickHouse |
+| Сопоставление: счёт, подписка, договор, сотрудник | `core/imports` (`EntityStaging`, лицензии и подписки) | сделано, доска приведена к коду 11.11.2026: ADR нет: сопоставление идёт в PostgreSQL ядра, а не между Silver и Gold в ClickHouse |
 | Gold: витрины | `003_spend_views.sql` | сделано |
-| Движок аудита → находки и экономия | `core/findings` | сделано иначе (ADR 0005) |
-| Прогнозы; отчёты XLSX и PDF | `apps/python/reports` | сделано иначе (ADR 0034): прогноз расходов моделью-чемпионом бэктеста, прогноз экономии по находкам, отчёт |
+| Движок аудита → находки и экономия | `core/findings` | сделано, доска приведена к коду 11.11.2026: (ADR 0005) |
+| Прогнозы; отчёты XLSX и PDF | `apps/python/reports` | сделано, доска приведена к коду 11.11.2026: (ADR 0034): прогноз расходов моделью-чемпионом бэктеста, прогноз экономии по находкам, отчёт |
 
 ## 7. Парсинг отчётов
 
@@ -117,11 +124,11 @@
 | Маршрут по типу файла | `ingest/documents.py`, `pipeline.py` | сделано |
 | Excel по шаблону; Excel в свободной форме: заголовки, синонимы, LLM | `mapping.py`, `tables.py`, `examples.py` | сделано |
 | PDF с текстом (pdfplumber) | `documents.py` | сделано |
-| Сканы (PaddleOCR) | `ocr.py` | сделано иначе (ADR 0012): Tesseract вместо PaddleOCR |
+| Сканы (PaddleOCR) | `ocr.py` | сделано, доска приведена к коду 11.11.2026: (ADR 0012): Tesseract вместо PaddleOCR |
 | LLM: поля счёта в JSON-схему | `extraction.py`, вызов через шлюз | сделано (ADR 0013) |
 | Банковские выписки: 1CClientBankExchange, MT940 | `statements.py`, `mt940.py` (и ещё `camt053.py`, `ofx.py`) | сделано |
-| Проверки: суммы, ИНН, даты, дубли (pandera) | `values.py`, `pipeline.py` | сделано иначе, ADR нет: свои проверки без pandera |
-| Сервис на FastStream | `service.py` на confluent-kafka | сделано иначе, ADR нет |
+| Проверки: суммы, ИНН, даты, дубли (pandera) | `values.py`, `pipeline.py` | сделано, доска приведена к коду 11.11.2026: ADR нет: свои проверки без pandera |
+| Сервис на FastStream | `service.py` на confluent-kafka | сделано, доска приведена к коду 11.11.2026: ADR нет |
 | Низкая уверенность → человеку, исправления становятся шаблоном поставщика | `ingest.results.v1`, `core/imports` | сделано |
 | Нормализация валюты по курсу ЦБ | `core/catalog/internal/CbrRatesLoader.java` | сделано |
 
@@ -155,7 +162,7 @@
 | ASSET, ASSET_ASSIGNMENT | `core/assets`, `V2__assets.sql` | сделано; отличия в [assets-vs-board.md](assets-vs-board.md) |
 | COST_RECORD в ClickHouse | `schemas/clickhouse/001_cost_records.sql` | сделано |
 | У каждой записи есть `tenant_id` | все таблицы ядра + RLS; ClickHouse по `tenant_id` | сделано (ADR 0002) |
-| CONNECTION, CONNECTION_RUN | `V19__connections.sql` | сделано иначе (ADR 0019): на доске их нет |
+| CONNECTION, CONNECTION_RUN | `V19__connections.sql` | сделано, доска приведена к коду 11.11.2026: (ADR 0019): на доске их нет |
 
 ## 10. Топики Kafka
 
@@ -168,10 +175,10 @@
 | `agent.risk-signals.v1` детектор → шлюз | `gateway/risk` | сделано |
 | `agent.risk-signals.v1` детектор → ядро: agents и notifications | `InboxConfig` (группа `core-risk`) | сделано (ADR 0031) |
 | `journal.receipts.v1` → нотариус → `journal.anchors.v1` → ядро | `core/journal`, `apps/python/notary`, `core/shared/inbox` | сделано |
-| `cost.records.v1` → сервис прогнозов и ClickHouse | ClickHouse (ADR 0007); `apps/python/reports` читает ClickHouse, а не топик | сделано иначе (ADR 0007) |
+| `cost.records.v1` → сервис прогнозов и ClickHouse | ClickHouse (ADR 0007); `apps/python/reports` читает ClickHouse, а не топик | сделано, доска приведена к коду 11.11.2026: (ADR 0007) |
 | `ingest.files.v1` ядро → конвейер приёма; `ingest.normalized.v1` → ядро: software и org | `core/imports`, `apps/python/ingest` | сделано |
-| `findings.v1` движок аудита → ядро: findings и notifications | `core/shared/inbox` ← `apps/python/anomaly` | сделано иначе (ADR 0005): топик пишет детектор, движок аудита работает внутри ядра |
-| Топики, которых нет на доске: `ingest.accepted.v1`, `ingest.results.v1`, `notary.requests.v1`, `notary.confirmations.v1`, `approvals.decisions.v1`, `assets.assignments.v1`, `connectors.config.v1`, `connectors.runs.v1` | `schemas/avro`, `schemas/avro/README.md` | сделано иначе (ADR 0009, 0013, 0019); для `ingest.results.v1`, `approvals.decisions.v1`, `assets.assignments.v1` ADR нет |
+| `findings.v1` движок аудита → ядро: findings и notifications | `core/shared/inbox` ← `apps/python/anomaly` | сделано, доска приведена к коду 11.11.2026: (ADR 0005): топик пишет детектор, движок аудита работает внутри ядра |
+| Топики, которых нет на доске: `ingest.accepted.v1`, `ingest.results.v1`, `notary.requests.v1`, `notary.confirmations.v1`, `approvals.decisions.v1`, `assets.assignments.v1`, `connectors.config.v1`, `connectors.runs.v1` | `schemas/avro`, `schemas/avro/README.md` | сделано, доска приведена к коду 11.11.2026: (ADR 0009, 0013, 0019); для `ingest.results.v1`, `approvals.decisions.v1`, `assets.assignments.v1` ADR нет |
 
 ## 11. Развёртывание
 
@@ -192,18 +199,18 @@
 | Элемент доски | Где в коде | Статус |
 |---|---|---|
 | `apps/backend/gateway`, `apps/backend/core` | там же | сделано |
-| `apps/backend/{detector,notary,ingest,connectors,audit,forecast}` | `apps/python/{anomaly,notary,ingest,connectors,reports}`; audit в ядре | сделано иначе: Python-сервисы лежат в `apps/python` (ADR нет); audit в ядре (ADR 0005); forecast — `reports` |
-| `apps/backend/airflow` | `infra/airflow` | сделано иначе, ADR нет |
+| `apps/backend/{detector,notary,ingest,connectors,audit,forecast}` | `apps/python/{anomaly,notary,ingest,connectors,reports}`; audit в ядре | сделано, доска приведена к коду 11.11.2026: Python-сервисы лежат в `apps/python` (ADR нет); audit в ядре (ADR 0005); forecast — `reports` |
+| `apps/backend/airflow` | `infra/airflow` | сделано, доска приведена к коду 11.11.2026: ADR нет |
 | `apps/frontend` — зона фронтенд-команды | `apps/frontend`, строка в `CODEOWNERS` с плейсхолдером владельца | сделано |
-| `smart-contracts/costguard-notary` | `contracts/notary` | сделано иначе, ADR нет |
+| `smart-contracts/costguard-notary` | `contracts/notary` | сделано, доска приведена к коду 11.11.2026: ADR нет |
 | `libs/java`: platform-starter (tenant и RLS, RFC 9457, трассировка), events | `libs/java/platform-starter`, `libs/java/events` | сделано |
-| `libs/python`: costguard-common, costguard-events, costguard-storage, costguard-llm | `libs/python/costguard-common` (схемы, wire, normalized, payments) | сделано иначе, ADR нет: одна библиотека вместо четырёх |
-| `sdk/python` (costguard-sdk), `sdk/js` (@costguard/sdk) | `libs/python/costguard-sdk`, `libs/js/costguard-sdk` | сделано иначе, ADR нет: в `libs/`, а не в `sdk/` |
+| `libs/python`: costguard-common, costguard-events, costguard-storage, costguard-llm | `libs/python/costguard-common` (схемы, wire, normalized, payments) | сделано, доска приведена к коду 11.11.2026: ADR нет: одна библиотека вместо четырёх |
+| `sdk/python` (costguard-sdk), `sdk/js` (@costguard/sdk) | `libs/python/costguard-sdk`, `libs/js/costguard-sdk` | сделано, доска приведена к коду 11.11.2026: ADR нет: в `libs/`, а не в `sdk/` |
 | `schemas/avro` («9 топиков»), `schemas/openapi`, `schemas/clickhouse` (row policies по tenant_id) | `schemas/*`, 20 топиков; `schemas/clickhouse/access/001_row_policies.sql` | сделано (ADR 0035): row policies для читателя одной компании; в staging и prod включаются вместе с SQL-управлением пользователями ClickHouse |
-| `infra/local`: docker-compose с PostgreSQL, Redis, Kafka, ClickHouse, MinIO, Keycloak, Vault | `infra/local/docker-compose.yml` | сделано иначе, ADR нет: SeaweedFS вместо MinIO |
-| `infra/helm`, `infra/argocd`, `infra/terraform` | `deploy/helm`, `deploy/argocd`, `deploy/terraform` | сделано иначе, ADR нет: папка `deploy/` |
+| `infra/local`: docker-compose с PostgreSQL, Redis, Kafka, ClickHouse, MinIO, Keycloak, Vault | `infra/local/docker-compose.yml` | сделано, доска приведена к коду 11.11.2026: ADR нет: SeaweedFS вместо MinIO |
+| `infra/helm`, `infra/argocd`, `infra/terraform` | `deploy/helm`, `deploy/argocd`, `deploy/terraform` | сделано, доска приведена к коду 11.11.2026: ADR нет: папка `deploy/` |
 | `infra/keycloak`: realm и роли owner, finance, it_admin, agent_owner, auditor | `infra/keycloak/costguard-realm.json` | сделано |
-| `infra/observability`: дашборды Grafana, алерты, OpenTelemetry Collector | `infra/observability` (конфиг Collector, локальные Prometheus, Grafana, Tempo; `make observability`), дашборд и алерты — `deploy/helm/costguard/dashboards`, `monitoring.yaml` | сделано иначе (ADR 0048): дашборд и алерты остаются в чарте, они выходят вместе с сервисами |
+| `infra/observability`: дашборды Grafana, алерты, OpenTelemetry Collector | `infra/observability` (конфиг Collector, локальные Prometheus, Grafana, Tempo; `make observability`), дашборд и алерты — `deploy/helm/costguard/dashboards`, `monitoring.yaml` | сделано, доска приведена к коду 11.11.2026: (ADR 0048): дашборд и алерты остаются в чарте, они выходят вместе с сервисами |
 | `tests/e2e`: лимит агента и ответ 402, Excel и находки | `tests/e2e/test_money_path.py` | сделано: путь денег, 402, находки аудита и загрузка списка техники из Excel до записи в технике |
 | `tests/load` (k6), `tests/contract` | `tests/load`, `tests/contracts` | сделано |
 | `docs/adr`, `docs/runbooks` (Redis, Kafka, ядро, провайдер), `docs/architecture` | `docs/*` | сделано: `redis.md`, `provider.md`, `kafka-lag.md`, `core.md`, `gateway.md` и ещё 20, список в `docs/runbooks/README.md` |
@@ -219,11 +226,11 @@
 | Ядро `analytics/`: прогнозы, сценарии, отчёты | `core/analytics`: `GET/PUT /api/v1/analytics/forecast`, `POST /api/v1/analytics/scenarios`, `summary` | сделано (ADR 0034); отчёты XLSX/PDF по-прежнему строит `costguard-report` |
 | Ядро `notifications/`: Telegram, почта, поток SSE | `core/notifications` | сделано (ADR 0031): лента и SSE; почта (SMTP) и Telegram-бот через очередь доставки в PostgreSQL с повторами; у каждого пользователя свои уровни, Telegram привязывается одноразовой ссылкой |
 | Flyway V1 tenant и RLS; тест границ модулей | `V1__org_tenant.sql`, `ModuleBoundariesTest` | сделано |
-| Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано иначе (ADR 0016): другая раскладка файлов; двойные списания в `detector.py`, а не в `batch/` |
-| Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано иначе (ADR 0006, 0009) |
-| Ingest: `bronze`, `parsers/` (excel_template, excel_freeform, pdf_text, ocr, bank_1c, mt940), `extract/`, `validate/`, `normalize/`, `review/`, `sinks/`, `tests/fixtures` | `apps/python/ingest/src/costguard_ingest/*` плоско | сделано иначе (ADR 0012, 0013): плоская раскладка, Tesseract, без FastStream и pandera |
-| Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано иначе (ADR 0005); все 10 правил есть (ADR 0032, см. фрейм 8) |
-| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `publish.py`; сценарии в ядре; `forecast_weekly` в Airflow | сделано иначе (ADR 0034, 0044, 0045): свои модели вместо statsforecast; расходы агентов — градиентный бустинг среди кандидатов бэктеста (`agents.py`); пояснения LLM через шлюз (`explain.py`); переобучение — еженедельный запуск, прогоны пишутся в MLflow (`tracking.py`) |
+| Детектор: `features/` (окна, SimHash, EWMA), `detectors/` (loops, velocity, suspicious, iforest, drift), `scoring.py`, `batch/` | `apps/python/anomaly`: `risk.py`, `models.py`, `scorer.py`, `detector.py` | сделано, доска приведена к коду 11.11.2026: (ADR 0016): другая раскладка файлов; двойные списания в `detector.py`, а не в `batch/` |
+| Нотариус: `main.py`, `batcher.py`, `merkle.py`, `near_client.py`, `anchors.py`, `mandates.py`, тесты в near-sandbox | `service.py`, `batches.py`, `merkle.py`, `near.py`, `notarize.py`; тесты на фейковом клиенте | сделано, доска приведена к коду 11.11.2026: (ADR 0006, 0009) |
+| Ingest: `bronze`, `parsers/` (excel_template, excel_freeform, pdf_text, ocr, bank_1c, mt940), `extract/`, `validate/`, `normalize/`, `review/`, `sinks/`, `tests/fixtures` | `apps/python/ingest/src/costguard_ingest/*` плоско | сделано, доска приведена к коду 11.11.2026: (ADR 0012, 0013): плоская раскладка, Tesseract, без FastStream и pandera |
+| Audit: `engine.py`, 10 правил, `fingerprint.py`, `savings.py`, `publish.py` | `core/findings` + правила в модулях | сделано, доска приведена к коду 11.11.2026: (ADR 0005); все 10 правил есть (ADR 0032, см. фрейм 8) |
+| Forecast: baseline, ETS и Theta (statsforecast), расходы агентов (LightGBM), MinT, savings, scenarios, backtest (WAPE, MASE), `reports/` с пояснениями LLM, еженедельное переобучение в MLflow | `apps/python/reports`: `baseline.py`, `models.py` (наивный, сезонный, Хольт, ETS(A,Ad,N), Theta), `backtest.py`, `reconcile.py`, `savings.py`, `publish.py`; сценарии в ядре; `forecast_weekly` в Airflow | сделано, доска приведена к коду 11.11.2026: (ADR 0034, 0044, 0045): свои модели вместо statsforecast; расходы агентов — градиентный бустинг среди кандидатов бэктеста (`agents.py`); пояснения LLM через шлюз (`explain.py`); переобучение — еженедельный запуск, прогоны пишутся в MLflow (`tracking.py`) |
 | У каждого сервиса свой Dockerfile | Java-сервисы и каждый Python-сервис — свой (`apps/python/<сервис>/Dockerfile`) | сделано (ADR 0047) |
 
 ## 14. Интеграции с системами компании
@@ -240,7 +247,7 @@
 | Системы на серверах клиента читает агент, наружу ничего не открывается | `connectors/agent.py` (только исходящие к Kafka) | сделано |
 | Склейка поставщиков и людей | `costguard_common.normalized`, `core/imports` | сделано (ADR 0008) |
 | Новый коннектор только переводит формат в единую модель | `connectors/contract.py` | сделано |
-| Страница «Подключённые системы» | API `core/connections`, ТЗ для фронтенда в [connections-page.md](connections-page.md) | сделано иначе (ADR 0019): на доске нет; страница `apps/frontend/src/pages/Connections.tsx` работает с API, секреты вводятся при подключении |
+| Страница «Подключённые системы» | API `core/connections`, ТЗ для фронтенда в [connections-page.md](connections-page.md) | сделано, доска приведена к коду 11.11.2026: (ADR 0019): на доске нет; страница `apps/frontend/src/pages/Connections.tsx` работает с API, секреты вводятся при подключении |
 
 ## 15. Учёт оборудования сотрудников
 
@@ -275,23 +282,18 @@
 | Фронтенд связан с бэкендом только контрактом; клиент генерируется из той же спецификации | `tools/codegen/openapi_ts.py` → `apps/frontend/src/api/generated` | сделано |
 | `apps/frontend` принадлежит фронтенд-команде | `CODEOWNERS` | сделано иначе: владелец — плейсхолдер `@frontend-owner-placeholder`, его нужно заменить на реальный логин |
 | CI по изменённым путям; правка в `schemas/` запускает всех, кто использует схему | `paths` в `.github/workflows/*.yml`, `contracts.yml` | сделано (у `load.yml` фильтра нет: запускается вручную или по расписанию) |
-| Argo CD разворачивает готовые образы по окружениям | `deploy/argocd/{staging,prod}.yaml`, `deploy.yml` | сделано иначе, ADR нет: окружения staging и prod, отдельного dev нет |
+| Argo CD разворачивает готовые образы по окружениям | `deploy/argocd/{staging,prod}.yaml`, `deploy.yml` | сделано, доска приведена к коду 11.11.2026: ADR нет: окружения staging и prod, отдельного dev нет |
 | Границы модулей ядра проверяет тест; модули общаются через события | `ModuleBoundariesTest` | сделано |
-| События Kafka: сначала схема Avro, классы Java и Python генерируются | `schemas/avro`, `libs/java/events`; Python читает `.avsc` во время работы | сделано иначе (ADR 0003): Python-классы не генерируются |
+| События Kafka: сначала схема Avro, классы Java и Python генерируются | `schemas/avro`, `libs/java/events`; Python читает `.avsc` во время работы | сделано, доска приведена к коду 11.11.2026: (ADR 0003): Python-классы не генерируются |
 | REST: OpenAPI выгружается из кода, CI сравнивает с прошлой версией и останавливает несовместимые изменения | `OpenApiContractTest`, `oasdiff breaking` в `contracts.yml` | сделано |
 | Java: один Gradle-проект, версии в `gradle/libs.versions.toml`; Python: workspace uv с общим `uv.lock`; Rust: cargo в smart-contracts | `settings.gradle.kts`, `gradle/libs.versions.toml`, `pyproject.toml`, `uv.lock`, `contracts/notary/Cargo.toml` | сделано (Rust в `contracts/`, а не `smart-contracts/`) |
 | Один сервис — одна папка: код, тесты, Dockerfile и README; владелец в CODEOWNERS | Java-сервисы — да. Python: у каждого сервиса свои Dockerfile и README, строка в `CODEOWNERS` | сделано (ADR 0047) |
 
 ## Коротко: что расходится с доской
 
-Не сделано: ничего, все элементы доски есть в коде (ADR 0047, 0048 закрыли последние).
+Не сделано: ничего, все элементы доски есть в коде (ADR 0047, 0048, 0049 закрыли последние).
 
-Сделано иначе, ADR нет:
-- раскладка папок: `apps/python/*` вместо `apps/backend/*`, `infra/airflow`, `contracts/notary`, `deploy/*`,
-  SDK в `libs/`, одна `costguard-common` вместо четырёх библиотек;
-- SeaweedFS вместо MinIO;
-- ingest без FastStream и pandera;
-- контракт NEAR в одном `lib.rs` с unit-тестами вместо near-workspaces;
-- топики `approvals.decisions.v1`, `assets.assignments.v1`, `ingest.results.v1`;
-- сопоставление счетов и подписок в PostgreSQL ядра, а не в ClickHouse;
-- окружения Argo CD: staging и prod, без dev.
+Расходится с доской: ничего — 11.11.2026 доска приведена к коду (см. начало документа).
+
+Открытым осталось одно: в `CODEOWNERS` владелец `apps/frontend` — плейсхолдер `@frontend-owner-placeholder`, его
+нужно заменить на реальный логин или команду фронтенда.
