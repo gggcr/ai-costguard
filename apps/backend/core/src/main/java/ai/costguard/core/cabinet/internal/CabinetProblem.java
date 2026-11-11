@@ -25,7 +25,11 @@ enum CabinetProblem implements ProblemCode {
     LICENSE_ASKED(HttpStatus.CONFLICT, "You already asked for this license"),
     LICENSE_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "License request not found"),
     LICENSE_REQUEST_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
-    NO_FREE_SEAT(HttpStatus.CONFLICT, "No free seat and no idle license: add seats to the subscription first");
+    NO_FREE_SEAT(HttpStatus.CONFLICT, "No free seat and no idle license: add seats to the subscription first"),
+    PURCHASE_NOT_FOUND(HttpStatus.NOT_FOUND, "Purchase request not found"),
+    PURCHASE_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
+    PURCHASE_PRODUCT(HttpStatus.BAD_REQUEST, "Name the program, subscription or API"),
+    PURCHASE_AMOUNT(HttpStatus.BAD_REQUEST, "The amount cannot be negative");
 
     private final HttpStatus status;
     private final String detail;

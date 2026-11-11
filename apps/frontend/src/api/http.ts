@@ -82,6 +82,16 @@ export async function uploadForm<T>(path: string, file: File, fields: Record<str
   return (await r.json()) as T;
 }
 
+/** Форма с необязательным файлом (запрос на покупку ПО: счёт или чек можно не прикладывать). */
+export async function postForm<T>(path: string, fields: Record<string, string | undefined>, file?: File | null): Promise<T> {
+  const form = new FormData();
+  if (file) form.append('file', file);
+  Object.entries(fields).forEach(([k, v]) => { if (v !== undefined && v !== '') form.append(k, v); });
+  const r = await fetch(url(path), { method: 'POST', headers: await headers(), body: form });
+  if (!r.ok) throw await failure(r);
+  return (await r.json()) as T;
+}
+
 /** Скачать файл (PDF акта, отчёт) и отдать браузеру под именем из Content-Disposition. */
 export async function download(path: string, fallbackName: string, query?: Query): Promise<void> {
   const r = await fetch(url(path, query), { headers: await headers() });

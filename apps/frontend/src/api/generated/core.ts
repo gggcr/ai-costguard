@@ -799,6 +799,31 @@ export type PublishedForecast = {
   forecast?: ForecastDocument;
 };
 
+export type PurchaseDecision = {
+  approve?: boolean;
+  comment?: string;
+};
+
+export type PurchaseRequest = {
+  id?: string;  // uuid
+  employeeId?: string;  // uuid
+  employeeName?: string;
+  product?: string;
+  vendor?: string;
+  amount?: number;
+  currency?: string;
+  period?: string;
+  reason?: string;
+  fileName?: string;
+  status?: string;
+  matchedProduct?: string;
+  licenseStatus?: string;
+  decidedBy?: string;
+  decidedAt?: string;  // date-time
+  decisionComment?: string;
+  createdAt?: string;  // date-time
+};
+
 export type ReceiptView = {
   id?: string;  // uuid
   operationId?: string;  // uuid
@@ -1119,7 +1144,7 @@ export const operations = {
   analyticsSummary: { method: "GET", path: "/api/v1/analytics/summary" },
   approvalsList_4: { method: "GET", path: "/api/v1/approvals" },
   approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
-  approvalsDecide_2: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
+  approvalsDecide_3: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
   assetsList_2: { method: "GET", path: "/api/v1/assets" },
   assetsCreate_2: { method: "POST", path: "/api/v1/assets" },
   assetsGet_2: { method: "GET", path: "/api/v1/assets/{id}" },
@@ -1167,7 +1192,7 @@ export const operations = {
   cabinetOf: { method: "GET", path: "/api/v1/employees/{employeeId}/documents" },
   cabinetAdd: { method: "POST", path: "/api/v1/employees/{employeeId}/documents" },
   cabinetRemove: { method: "DELETE", path: "/api/v1/employees/{employeeId}/documents/{id}" },
-  cabinetFile: { method: "GET", path: "/api/v1/employees/{employeeId}/documents/{id}/file" },
+  cabinetFile_1: { method: "GET", path: "/api/v1/employees/{employeeId}/documents/{id}/file" },
   organisationEmployee: { method: "GET", path: "/api/v1/employees/{id}" },
   organisationUpdateEmployee: { method: "PUT", path: "/api/v1/employees/{id}" },
   organisationDismiss: { method: "PUT", path: "/api/v1/employees/{id}/dismissal" },
@@ -1194,8 +1219,8 @@ export const operations = {
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
   cabinetPool: { method: "GET", path: "/api/v1/license-pool" },
   cabinetReclaim: { method: "POST", path: "/api/v1/license-pool/reclaim" },
-  cabinetAll_1: { method: "GET", path: "/api/v1/license-requests" },
-  cabinetDecide_1: { method: "PUT", path: "/api/v1/license-requests/{id}/decision" },
+  cabinetAll_2: { method: "GET", path: "/api/v1/license-requests" },
+  cabinetDecide_2: { method: "PUT", path: "/api/v1/license-requests/{id}/decision" },
   softwareRevoke_1: { method: "DELETE", path: "/api/v1/licenses/{id}" },
   softwareActivity: { method: "PUT", path: "/api/v1/licenses/{id}/activity" },
   agentsMandates: { method: "GET", path: "/api/v1/mandates" },
@@ -1205,17 +1230,21 @@ export const operations = {
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
   cabinetMe: { method: "GET", path: "/api/v1/me" },
-  cabinetMine_3: { method: "GET", path: "/api/v1/me/documents" },
-  cabinetMyFile: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
-  cabinetAsk_1: { method: "POST", path: "/api/v1/me/license-requests" },
-  cabinetCancel_1: { method: "DELETE", path: "/api/v1/me/license-requests/{id}" },
-  cabinetMine_2: { method: "GET", path: "/api/v1/me/licenses" },
+  cabinetMine_4: { method: "GET", path: "/api/v1/me/documents" },
+  cabinetMyFile_1: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
+  cabinetAsk_2: { method: "POST", path: "/api/v1/me/license-requests" },
+  cabinetCancel_2: { method: "DELETE", path: "/api/v1/me/license-requests/{id}" },
+  cabinetMine_3: { method: "GET", path: "/api/v1/me/licenses" },
   cabinetPage_1: { method: "GET", path: "/api/v1/me/notifications" },
   cabinetReadAll_1: { method: "PUT", path: "/api/v1/me/notifications/read" },
   cabinetRead_1: { method: "PUT", path: "/api/v1/me/notifications/{id}/read" },
-  cabinetMine_1: { method: "GET", path: "/api/v1/me/payroll" },
+  cabinetMine_2: { method: "GET", path: "/api/v1/me/payroll" },
+  cabinetMine_1: { method: "GET", path: "/api/v1/me/purchase-requests" },
+  cabinetAsk_1: { method: "POST", path: "/api/v1/me/purchase-requests" },
+  cabinetCancel_1: { method: "DELETE", path: "/api/v1/me/purchase-requests/{id}" },
+  cabinetMyFile: { method: "GET", path: "/api/v1/me/purchase-requests/{id}/file" },
   cabinetTeam: { method: "GET", path: "/api/v1/me/team/vacations" },
-  cabinetDecide: { method: "PUT", path: "/api/v1/me/team/vacations/{id}/decision" },
+  cabinetDecide_1: { method: "PUT", path: "/api/v1/me/team/vacations/{id}/decision" },
   cabinetMine: { method: "GET", path: "/api/v1/me/vacations" },
   cabinetAsk: { method: "POST", path: "/api/v1/me/vacations" },
   cabinetCancel: { method: "DELETE", path: "/api/v1/me/vacations/{id}" },
@@ -1249,6 +1278,9 @@ export const operations = {
   policiesSimulate: { method: "POST", path: "/api/v1/policies/simulation" },
   softwareProducts: { method: "GET", path: "/api/v1/products" },
   softwareSetCategory: { method: "PUT", path: "/api/v1/products/{id}/category" },
+  cabinetAll_1: { method: "GET", path: "/api/v1/purchase-requests" },
+  cabinetDecide: { method: "PUT", path: "/api/v1/purchase-requests/{id}/decision" },
+  cabinetFile: { method: "GET", path: "/api/v1/purchase-requests/{id}/file" },
   registrationRegister: { method: "POST", path: "/api/v1/registrations" },
   sCIMList: { method: "GET", path: "/api/v1/scim/tokens" },
   sCIMIssue: { method: "POST", path: "/api/v1/scim/tokens" },

@@ -176,6 +176,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Subscription"
+  /api/v1/purchase-requests/{id}/decision:
+    put:
+      tags:
+      - Cabinet
+      summary: Approve or reject a purchase; the employee and the head of the department
+        are told
+      operationId: decide
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseDecision"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseRequest"
   /api/v1/products/{id}/category:
     put:
       tags:
@@ -381,7 +408,7 @@ paths:
       tags:
       - Cabinet
       summary: "Decide on a request of my department, as its head"
-      operationId: decide
+      operationId: decide_1
       parameters:
       - name: id
         in: path
@@ -541,7 +568,7 @@ paths:
       tags:
       - Cabinet
       summary: Approve (an idle license goes back to the pool first) or reject a request
-      operationId: decide_1
+      operationId: decide_2
       parameters:
       - name: id
         in: path
@@ -929,7 +956,7 @@ paths:
       - Approvals
       summary: Approve or reject
       description: A closed request answers 409.
-      operationId: decide_2
+      operationId: decide_3
       parameters:
       - name: id
         in: path
@@ -1531,12 +1558,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vacation"
+  /api/v1/me/purchase-requests:
+    get:
+      tags:
+      - Cabinet
+      summary: My purchase requests
+      operationId: mine_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PurchaseRequest"
+    post:
+      tags:
+      - Cabinet
+      summary: "Ask to buy a program, a subscription or an API, with the invoice or\
+        \ receipt"
+      operationId: ask_1
+      parameters:
+      - name: product
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: vendor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: amount
+        in: query
+        required: true
+        schema:
+          type: number
+      - name: currency
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: period
+        in: query
+        required: false
+        schema:
+          type: string
+          default: month
+          enum:
+          - once
+          - month
+          - year
+      - name: reason
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseRequest"
   /api/v1/me/license-requests:
     post:
       tags:
       - Cabinet
       summary: "Ask for a license: a free seat is given at once, otherwise IT decides"
-      operationId: ask_1
+      operationId: ask_2
       requestBody:
         content:
           application/json:
@@ -2385,6 +2485,42 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityEvent"
+  /api/v1/purchase-requests:
+    get:
+      tags:
+      - Cabinet
+      summary: Every purchase request of the company
+      operationId: all_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PurchaseRequest"
+  /api/v1/purchase-requests/{id}/file:
+    get:
+      tags:
+      - Cabinet
+      summary: The invoice or receipt of a request
+      operationId: file
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                format: byte
   /api/v1/products:
     get:
       tags:
@@ -2543,12 +2679,33 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vacation"
+  /api/v1/me/purchase-requests/{id}/file:
+    get:
+      tags:
+      - Cabinet
+      summary: The invoice or receipt of my request
+      operationId: myFile
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                format: byte
   /api/v1/me/payroll:
     get:
       tags:
       - Cabinet
       summary: "My pay: the pay days ahead and my payments of the last two years"
-      operationId: mine_1
+      operationId: mine_2
       responses:
         "200":
           description: OK
@@ -2575,7 +2732,7 @@ paths:
       - Cabinet
       summary: "My licenses, the company's pool with what is free or idle, and my\
         \ requests"
-      operationId: mine_2
+      operationId: mine_3
       responses:
         "200":
           description: OK
@@ -2588,7 +2745,7 @@ paths:
       tags:
       - Cabinet
       summary: "My documents: contract, agreements, orders and handover acts"
-      operationId: mine_3
+      operationId: mine_4
       responses:
         "200":
           description: OK
@@ -2603,7 +2760,7 @@ paths:
       tags:
       - Cabinet
       summary: The file of one of my documents
-      operationId: myFile
+      operationId: myFile_1
       parameters:
       - name: id
         in: path
@@ -2624,7 +2781,7 @@ paths:
       tags:
       - Cabinet
       summary: Every license request of the company
-      operationId: all_1
+      operationId: all_2
       responses:
         "200":
           description: OK
@@ -2855,7 +3012,7 @@ paths:
       tags:
       - Cabinet
       summary: The file of an employee's document
-      operationId: file
+      operationId: file_1
       parameters:
       - name: employeeId
         in: path
@@ -3453,12 +3610,28 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/purchase-requests/{id}:
+    delete:
+      tags:
+      - Cabinet
+      summary: Cancel my request that waits for finance
+      operationId: cancel_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/me/license-requests/{id}:
     delete:
       tags:
       - Cabinet
       summary: Cancel my request that waits for IT
-      operationId: cancel_1
+      operationId: cancel_2
       parameters:
       - name: id
         in: path
@@ -3735,6 +3908,56 @@ components:
         productId:
           type: string
           format: uuid
+    PurchaseDecision:
+      type: object
+      properties:
+        approve:
+          type: boolean
+        comment:
+          type: string
+          maxLength: 1000
+          minLength: 0
+    PurchaseRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        product:
+          type: string
+        vendor:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        period:
+          type: string
+        reason:
+          type: string
+        fileName:
+          type: string
+        status:
+          type: string
+        matchedProduct:
+          type: string
+        licenseStatus:
+          type: string
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        decisionComment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     ProductCategory:
       type: object
       properties:

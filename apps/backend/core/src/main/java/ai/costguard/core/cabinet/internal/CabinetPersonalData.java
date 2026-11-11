@@ -19,20 +19,28 @@ class CabinetPersonalData implements DataHolder {
 
     private final JdbcClient jdbc;
     private final DocumentRepository documents;
+    private final PurchaseRepository purchases;
+    private final ai.costguard.core.imports.StoredFiles files;
 
-    CabinetPersonalData(JdbcClient jdbc, DocumentRepository documents) {
+    CabinetPersonalData(JdbcClient jdbc, DocumentRepository documents, PurchaseRepository purchases,
+            ai.costguard.core.imports.StoredFiles files) {
         this.jdbc = jdbc;
         this.documents = documents;
+        this.purchases = purchases;
+        this.files = files;
     }
 
     @Override
     public List<String> tables() {
         return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
-                "payroll_tenant", "license_request");
+                "payroll_tenant", "license_request", "purchase_request");
     }
 
     @Override
     public void eraseEmployee(Subject subject, Retention retention, Report report) {
+        // the invoices and receipts of their purchase requests go with them
+        purchases.keysOf(subject.employeeId()).forEach(files::delete);
+        report.deleted("cabinet.purchase_request", purchases.deleteOf(subject.employeeId()));
         report.deleted("cabinet.license_request", jdbc.sql("delete from license_request where employee_id = ?")
                 .param(subject.employeeId()).update());
         int requests = jdbc.sql("select count(*) from vacation_request where employee_id = ?")
@@ -57,7 +65,7 @@ class CabinetPersonalData implements DataHolder {
     /** The files go with the company's uploads: they share its prefix in the storage (imports erases it). */
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "cabinet", "license_request", "payroll_payment", "payroll_schedule",
+        TenantRows.delete(jdbc, tenantId, report, "cabinet", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
                 "vacation_request", "employee_document");
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
     }
