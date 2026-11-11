@@ -798,6 +798,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
+  /api/v1/company/login:
+    get:
+      tags:
+      - Organisation
+      summary: "How the company's people log in: its Microsoft 365, if connected"
+      operationId: get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyLogin"
+    put:
+      tags:
+      - Organisation
+      summary: Connect or change the company's Microsoft 365 (Entra ID) login
+      operationId: save
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyLoginSettings"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyLogin"
+    delete:
+      tags:
+      - Organisation
+      summary: Disconnect the Microsoft 365 login; passwords still work
+      operationId: remove
+      responses:
+        "204":
+          description: No Content
   /api/v1/budgets/{id}/limit:
     put:
       tags:
@@ -2848,6 +2887,26 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/v1/login/hint:
+    get:
+      tags:
+      - Organisation
+      summary: "Before signing in: where a work e-mail logs in"
+      description: "Public: the login page asks."
+      operationId: hint
+      parameters:
+      - name: email
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginHint"
   /api/v1/license-requests:
     get:
       tags:
@@ -2955,7 +3014,7 @@ paths:
       tags:
       - Imports
       summary: Get an import with its review tasks
-      operationId: get
+      operationId: get_1
       parameters:
       - name: id
         in: path
@@ -2996,7 +3055,7 @@ paths:
       tags:
       - Findings
       summary: Get a finding with its history
-      operationId: get_1
+      operationId: get_2
       parameters:
       - name: id
         in: path
@@ -3392,7 +3451,7 @@ paths:
       tags:
       - Assets
       summary: Get an asset
-      operationId: get_2
+      operationId: get_3
       parameters:
       - name: id
         in: path
@@ -3534,7 +3593,7 @@ paths:
       tags:
       - Approvals
       summary: Get a request
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: id
         in: path
@@ -3768,7 +3827,7 @@ paths:
       tags:
       - Cabinet
       summary: Remove a document added by mistake
-      operationId: remove
+      operationId: remove_1
       parameters:
       - name: employeeId
         in: path
@@ -4609,6 +4668,49 @@ components:
         currency:
           type: string
         plan:
+          type: string
+    CompanyLoginSettings:
+      type: object
+      properties:
+        directoryId:
+          type: string
+          minLength: 1
+          pattern: "[A-Za-z0-9.-]{3,100}"
+        clientId:
+          type: string
+          maxLength: 100
+          minLength: 0
+        clientSecret:
+          type: string
+          maxLength: 500
+          minLength: 0
+        domains:
+          type: array
+          items:
+            type: string
+            pattern: "[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+          maxItems: 20
+          minItems: 0
+      required:
+      - clientId
+      - directoryId
+      - domains
+    CompanyLogin:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        provider:
+          type: string
+        directoryId:
+          type: string
+        clientId:
+          type: string
+        domains:
+          type: array
+          items:
+            type: string
+        redirectUri:
           type: string
     LimitChange:
       type: object
@@ -6324,6 +6426,13 @@ components:
         idle:
           type: integer
           format: int32
+    LoginHint:
+      type: object
+      properties:
+        provider:
+          type: string
+        alias:
+          type: string
     ChainVerification:
       type: object
       properties:

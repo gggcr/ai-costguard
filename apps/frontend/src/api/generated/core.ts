@@ -160,6 +160,22 @@ export type CompanyErasureRequest = {
   confirmName: string;
 };
 
+export type CompanyLogin = {
+  connected?: boolean;
+  provider?: string;
+  directoryId?: string;
+  clientId?: string;
+  domains?: Array<string>;
+  redirectUri?: string;
+};
+
+export type CompanyLoginSettings = {
+  directoryId: string;
+  clientId: string;
+  clientSecret?: string;
+  domains: Array<string>;
+};
+
 export type CompanySettings = {
   name: string;
   currency: string;
@@ -481,6 +497,11 @@ export type LicenseRequest = {
 
 export type LimitChange = {
   limit: number;
+};
+
+export type LoginHint = {
+  provider?: string;
+  alias?: string;
 };
 
 export type Mandate = {
@@ -1184,11 +1205,11 @@ export const operations = {
   analyticsScenario: { method: "POST", path: "/api/v1/analytics/scenarios" },
   analyticsSummary_1: { method: "GET", path: "/api/v1/analytics/summary" },
   approvalsList_4: { method: "GET", path: "/api/v1/approvals" },
-  approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
+  approvalsGet_4: { method: "GET", path: "/api/v1/approvals/{id}" },
   approvalsDecide_3: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
   assetsList_2: { method: "GET", path: "/api/v1/assets" },
   assetsCreate_2: { method: "POST", path: "/api/v1/assets" },
-  assetsGet_2: { method: "GET", path: "/api/v1/assets/{id}" },
+  assetsGet_3: { method: "GET", path: "/api/v1/assets/{id}" },
   assetsTakeBack: { method: "DELETE", path: "/api/v1/assets/{id}/assignment" },
   assetsAssign: { method: "PUT", path: "/api/v1/assets/{id}/assignment" },
   assetsHistory_1: { method: "GET", path: "/api/v1/assets/{id}/assignments" },
@@ -1213,6 +1234,9 @@ export const operations = {
   privacyCancelCompanyErasure: { method: "DELETE", path: "/api/v1/company/erasure" },
   privacyGetCompanyErasure: { method: "GET", path: "/api/v1/company/erasure" },
   privacyRequestCompanyErasure: { method: "POST", path: "/api/v1/company/erasure" },
+  organisationRemove: { method: "DELETE", path: "/api/v1/company/login" },
+  organisationGet: { method: "GET", path: "/api/v1/company/login" },
+  organisationSave: { method: "PUT", path: "/api/v1/company/login" },
   connectionsListConnections: { method: "GET", path: "/api/v1/connections" },
   connectionsConnectSystem: { method: "POST", path: "/api/v1/connections" },
   connectionsConnectorAgentSecrets: { method: "GET", path: "/api/v1/connections/agent-secrets" },
@@ -1232,7 +1256,7 @@ export const operations = {
   assetsHeldBy: { method: "GET", path: "/api/v1/employees/{employeeId}/assets" },
   cabinetOf: { method: "GET", path: "/api/v1/employees/{employeeId}/documents" },
   cabinetAdd: { method: "POST", path: "/api/v1/employees/{employeeId}/documents" },
-  cabinetRemove: { method: "DELETE", path: "/api/v1/employees/{employeeId}/documents/{id}" },
+  cabinetRemove_1: { method: "DELETE", path: "/api/v1/employees/{employeeId}/documents/{id}" },
   cabinetFile_1: { method: "GET", path: "/api/v1/employees/{employeeId}/documents/{id}/file" },
   organisationEmployee: { method: "GET", path: "/api/v1/employees/{id}" },
   organisationUpdateEmployee: { method: "PUT", path: "/api/v1/employees/{id}" },
@@ -1243,11 +1267,11 @@ export const operations = {
   privacyGetErasure: { method: "GET", path: "/api/v1/erasures/{id}" },
   findingsList_3: { method: "GET", path: "/api/v1/findings" },
   findingsTotals: { method: "GET", path: "/api/v1/findings/totals" },
-  findingsGet_1: { method: "GET", path: "/api/v1/findings/{id}" },
+  findingsGet_2: { method: "GET", path: "/api/v1/findings/{id}" },
   findingsAct: { method: "POST", path: "/api/v1/findings/{id}/actions" },
   importsList_1: { method: "GET", path: "/api/v1/imports" },
   importsUpload: { method: "POST", path: "/api/v1/imports" },
-  importsGet: { method: "GET", path: "/api/v1/imports/{id}" },
+  importsGet_1: { method: "GET", path: "/api/v1/imports/{id}" },
   importsMapping: { method: "PUT", path: "/api/v1/imports/{id}/mapping" },
   importsResolve: { method: "PUT", path: "/api/v1/imports/{id}/review-tasks/{taskId}" },
   registrationInvitations: { method: "GET", path: "/api/v1/invitations" },
@@ -1264,6 +1288,7 @@ export const operations = {
   cabinetDecide_2: { method: "PUT", path: "/api/v1/license-requests/{id}/decision" },
   softwareRevoke_1: { method: "DELETE", path: "/api/v1/licenses/{id}" },
   softwareActivity: { method: "PUT", path: "/api/v1/licenses/{id}/activity" },
+  organisationHint: { method: "GET", path: "/api/v1/login/hint" },
   agentsMandates: { method: "GET", path: "/api/v1/mandates" },
   agentsCreateMandate: { method: "POST", path: "/api/v1/mandates" },
   agentsDeleteMandate: { method: "DELETE", path: "/api/v1/mandates/{id}" },

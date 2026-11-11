@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { EmployeeDocumentsModal } from './cabinet/Documents';
+import { MicrosoftLoginCard } from './org/MicrosoftLogin';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
@@ -74,6 +75,7 @@ export function Org() {
         </>
       )}
 
+      {tab === 'users' && mode === 'api' && (user?.role === 'owner' || user?.role === 'it_admin') && <MicrosoftLoginCard owner={user?.role === 'owner'} />}
       {tab === 'users' && (
         <Card>
           <div className="table-wrap">

@@ -106,8 +106,11 @@ function store(body: { access_token: string; refresh_token?: string; id_token?: 
   listeners.forEach((fn) => fn());
 }
 
-/** Перейти на страницу входа Keycloak. */
-export async function login(returnTo = '/'): Promise<void> {
+/**
+ * Перейти на страницу входа Keycloak. {@code hint.idp} — сразу к Microsoft 365 компании (ADR 0058),
+ * {@code hint.email} — подставить рабочую почту.
+ */
+export async function login(returnTo = '/', hint: { idp?: string; email?: string } = {}): Promise<void> {
   const verifier = random(48);
   const state = random(16);
   sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state, returnTo }));
@@ -120,6 +123,8 @@ export async function login(returnTo = '/'): Promise<void> {
     code_challenge: await challenge(verifier),
     code_challenge_method: 'S256',
   });
+  if (hint.idp) params.set('kc_idp_hint', hint.idp);
+  if (hint.email) params.set('login_hint', hint.email);
   window.location.assign(`${base()}/auth?${params}`);
 }
 

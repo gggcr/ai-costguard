@@ -46,6 +46,8 @@ class SecurityConfig {
                         // Self-registration and payment provider notices come without a token (ADR 0036, 0038)
                         .requestMatchers(HttpMethod.POST, "/api/v1/registrations",
                                 "/api/v1/billing/notifications/*").permitAll()
+                        // the login page asks where a work e-mail logs in before anyone is signed in (ADR 0058)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/login/hint").permitAll()
                         // The employee's cabinet and their own delivery settings: any signed-in person (ADR 0051)
                         .requestMatchers("/api/v1/me", "/api/v1/me/**", "/api/v1/notifications/settings",
                                 "/api/v1/notifications/telegram-link", "/api/v1/notifications/telegram")

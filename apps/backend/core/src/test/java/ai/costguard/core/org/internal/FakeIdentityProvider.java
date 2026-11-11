@@ -15,6 +15,21 @@ public class FakeIdentityProvider implements IdentityProvider {
     }
 
     public final Map<String, Stored> accounts = new ConcurrentHashMap<>();
+    public final Map<String, MicrosoftLogin> logins = new ConcurrentHashMap<>();
+
+    @Override
+    public void saveMicrosoftLogin(MicrosoftLogin login) {
+        MicrosoftLogin before = logins.get(login.alias());
+        logins.put(login.alias(), login.clientSecret() == null && before != null
+                ? new MicrosoftLogin(login.alias(), login.tenantId(), login.directoryId(), login.clientId(),
+                        before.clientSecret(), login.displayName())
+                : login);
+    }
+
+    @Override
+    public void removeLogin(String alias) {
+        logins.remove(alias);
+    }
     public final List<String> setupEmails = new CopyOnWriteArrayList<>();
     public volatile boolean configured = true;
     public volatile boolean failEmails;

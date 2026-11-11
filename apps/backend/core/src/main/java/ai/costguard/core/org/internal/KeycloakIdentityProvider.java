@@ -95,6 +95,67 @@ class KeycloakIdentityProvider implements IdentityProvider {
     }
 
     @Override
+    public void saveMicrosoftLogin(MicrosoftLogin login) {
+        String token = token();
+        String instance = admin("/identity-provider/instances/" + encode(login.alias()));
+        HttpResponse<String> existing = send(authorized(token, instance).GET());
+        if (existing.statusCode() != 200 && existing.statusCode() != 404) {
+            throw new Unavailable("Keycloak identity provider: HTTP " + existing.statusCode());
+        }
+        String authority = "https://login.microsoftonline.com/" + login.directoryId();
+        ObjectNode config = JSON.createObjectNode()
+                .put("issuer", authority + "/v2.0")
+                .put("authorizationUrl", authority + "/oauth2/v2.0/authorize")
+                .put("tokenUrl", authority + "/oauth2/v2.0/token")
+                .put("logoutUrl", authority + "/oauth2/v2.0/logout")
+                .put("jwksUrl", authority + "/discovery/v2.0/keys")
+                .put("useJwksUrl", "true")
+                .put("validateSignature", "true")
+                .put("clientId", login.clientId())
+                .put("clientAuthMethod", "client_secret_post")
+                .put("defaultScope", "openid email profile")
+                .put("pkceEnabled", "true")
+                .put("pkceMethod", "S256")
+                .put("syncMode", "IMPORT")
+                .put("hideOnLoginPage", "true");
+        if (login.clientSecret() != null && !login.clientSecret().isBlank()) {
+            config.put("clientSecret", login.clientSecret());
+        } else if (existing.statusCode() == 200) {
+            // the masked value Keycloak returns keeps the stored secret
+            config.put("clientSecret", read(existing.body()).path("config").path("clientSecret").asText());
+        }
+        ObjectNode provider = JSON.createObjectNode()
+                .put("alias", login.alias())
+                .put("displayName", login.displayName())
+                .put("providerId", "oidc")
+                .put("enabled", true)
+                // not trusted: an existing account is linked only after its owner confirms by e-mail or password,
+                // so another company's directory cannot take an account by setting someone's address
+                .put("trustEmail", false)
+                .put("storeToken", false)
+                .put("hideOnLogin", true)
+                .put("firstBrokerLoginFlowAlias", "costguard first broker login")
+                .put("postBrokerLoginFlowAlias", "costguard post broker");
+        provider.set("config", config);
+        HttpResponse<String> saved = existing.statusCode() == 404
+                ? send(authorized(token, admin("/identity-provider/instances")).header("Content-Type",
+                        "application/json").POST(json(provider)))
+                : send(authorized(token, instance).header("Content-Type", "application/json").PUT(json(provider)));
+        if (saved.statusCode() / 100 != 2) {
+            throw new Unavailable("Keycloak identity provider save: HTTP " + saved.statusCode());
+        }
+    }
+
+    @Override
+    public void removeLogin(String alias) {
+        HttpResponse<String> r = send(authorized(token(), admin("/identity-provider/instances/" + encode(alias)))
+                .DELETE());
+        if (r.statusCode() / 100 != 2 && r.statusCode() != 404) {
+            throw new Unavailable("Keycloak identity provider delete: HTTP " + r.statusCode());
+        }
+    }
+
+    @Override
     public Optional<String> create(NewAccount account) {
         String token = token();
         ObjectNode user = JSON.createObjectNode()

@@ -39,6 +39,21 @@ interface IdentityProvider {
     record NewAccount(String email, String firstName, String lastName, UUID tenantId, String role) {
     }
 
+    /**
+     * Log in with the company's Microsoft Entra ID (ADR 0058): an OpenID Connect provider of the realm under
+     * {@code alias}, hidden on the login page (the work e-mail leads to it). It only logs in people who already have
+     * an account (invited); the first time the account is linked after a confirmation. {@code clientSecret} null
+     * keeps the one Keycloak has.
+     */
+    record MicrosoftLogin(String alias, UUID tenantId, String directoryId, String clientId, String clientSecret,
+            String displayName) {
+    }
+
+    void saveMicrosoftLogin(MicrosoftLogin login);
+
+    /** Removing a provider that is gone already is fine. */
+    void removeLogin(String alias);
+
     /** {@code tenantId} null: the account belongs to no company (an administrator, a broken attribute). */
     record Account(String id, String email, UUID tenantId, boolean emailVerified) {
     }

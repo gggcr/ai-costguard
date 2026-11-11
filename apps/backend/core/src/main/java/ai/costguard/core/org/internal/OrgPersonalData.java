@@ -48,7 +48,7 @@ class OrgPersonalData implements DataHolder, ErasureSubjects {
     @Override
     public List<String> tables() {
         return List.of("tenant", "department", "employee", "user_account", "registration", "registration_timer",
-                "invitation");
+                "invitation", "company_login", "login_domain");
     }
 
     private record Row(UUID id, String name, String email, LocalDate dismissedAt, boolean erased) {
@@ -106,8 +106,13 @@ class OrgPersonalData implements DataHolder, ErasureSubjects {
 
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "org", "invitation", "registration", "registration_timer",
-                "user_account", "employee", "department");
+        TenantRows.delete(jdbc, tenantId, report, "org", "company_login", "invitation", "registration",
+                "registration_timer", "user_account", "employee", "department");
+        report.deleted("org.login_domain", jdbc.sql("delete from login_domain where tenant_id = ?").param(tenantId)
+                .update());
+        // the company's Microsoft login in Keycloak (ADR 0058) goes too; Keycloak away: a step for a person
+        report.manual("keycloak", "remove identity provider " + CompanyLoginService.alias(tenantId)
+                + " if it is still there");
         report.deleted("org.tenant", jdbc.sql("delete from tenant where id = ?").param(tenantId).update());
     }
 }

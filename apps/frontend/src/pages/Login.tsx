@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../api/store';
 import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
-import { completeLogin, currentClaims } from '../auth/oidc';
+import { completeLogin, currentClaims, login as startLogin } from '../auth/oidc';
+import { api } from '../api/http';
 import { Button, Icon } from '../components/ui';
 
 export function Login() {
@@ -12,8 +13,10 @@ export function Login() {
 
 /** Вход через Keycloak: кнопка ведёт на страницу входа realm costguard, Keycloak возвращает сюда с ?code=. */
 function KeycloakLogin() {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
+  const [email, setEmail] = useState('');
+  const [checking, setChecking] = useState(false);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(() => new URLSearchParams(location.search).has('code'));
@@ -26,6 +29,18 @@ function KeycloakLogin() {
       .then((to) => navigate(to ?? '/', { replace: true }))
       .catch((e: unknown) => { setError(e instanceof Error ? e.message : 'Не удалось войти'); setBusy(false); });
   }, [location.search, navigate]);
+
+  /** Почта ведёт к Microsoft 365 компании, если она его подключила; иначе — обычная форма Keycloak. */
+  const next = async () => {
+    setChecking(true);
+    let idp: string | undefined;
+    try {
+      idp = (await api<{ alias: string }>('GET', '/api/v1/login/hint', undefined, { email: email.trim() })).alias;
+    } catch {
+      idp = undefined;
+    }
+    await startLogin('/', { idp, email: email.trim() });
+  };
 
   if (user) return <Navigate to="/" replace />;
   const noRole = !busy && !error && currentClaims() !== null;
@@ -41,10 +56,14 @@ function KeycloakLogin() {
         {busy && <p className="muted">Проверяем вход…</p>}
         {error && <p className="error-text" role="alert">{error}</p>}
         {noRole && <p className="error-text" role="alert">У вашей учётной записи нет роли CostGuard. Попросите владельца компании выдать доступ.</p>}
-        {!busy && <>
-          <p className="muted">Вход через единую учётную запись компании (Keycloak).</p>
-          <Button variant="primary" className="block-btn" onClick={() => login('')}>Войти через Keycloak</Button>
-        </>}
+        {!busy && <form onSubmit={(e) => { e.preventDefault(); void next(); }}>
+          <p className="muted">Введите рабочую почту. Если компания подключила Microsoft 365, вы войдёте рабочей учётной записью. Затем — код из Google Authenticator (при первом входе его нужно настроить).</p>
+          <label className="field"><span className="field-label">Рабочая почта</span>
+            <input className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ivanov@company.ru" />
+          </label>
+          <Button variant="primary" className="block-btn" type="submit" disabled={checking || !email.includes('@')}>{checking ? 'Проверяем…' : 'Продолжить'}</Button>
+          <Button variant="ghost" className="block-btn" type="button" onClick={() => { void startLogin('/', { email: email || undefined }); }}>Войти по логину и паролю</Button>
+        </form>}
       </div>
     </div>
   );

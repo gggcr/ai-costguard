@@ -15,6 +15,7 @@
 | [secrets.md](secrets.md) | Создать или сменить секреты |
 | [clickhouse-access.md](clickhouse-access.md) | Включить row policies в ClickHouse, читатель одной компании |
 | [keycloak.md](keycloak.md) | Включить Ingress и Keycloak в кластере, секрет Keycloak, сервисные аккаунты компаний |
+| [microsoft-login.md](microsoft-login.md) | Подключить вход через Microsoft 365 компании, первый вход, потерян телефон с кодами |
 | [terraform.md](terraform.md) | Поднять или изменить окружение в Yandex Cloud |
 | [deploy.md](deploy.md) | Выкатить релиз, откатить |
 | [mlflow.md](mlflow.md) | Модели детектора в MLflow: включить, посмотреть, откатить |
