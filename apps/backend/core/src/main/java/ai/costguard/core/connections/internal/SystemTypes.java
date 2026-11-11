@@ -25,6 +25,9 @@ final class SystemTypes {
 
     static {
         add("onec", "1С (OData)", "accounting", List.of("url", "user"), List.of(), List.of("ONEC_PASSWORD"));
+        // pay to «Мой кабинет», posted to the core over REST, not to Kafka (ADR 0054)
+        add("onec_zup", "1С:ЗУП (зарплата)", "hr", List.of("url", "user"), List.of("days"),
+                List.of("ONEC_ZUP_PASSWORD", "CORE_TOKEN"));
         add("moysklad", "МойСклад", "accounting", List.of(), List.of("url"), List.of("MOYSKLAD_TOKEN"));
         add("merge", "Merge (учёт и кадры)", "accounting", List.of(), List.of("url"),
                 List.of("MERGE_API_KEY", "MERGE_ACCOUNTING_TOKEN", "MERGE_HRIS_TOKEN"));

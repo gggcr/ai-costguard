@@ -500,6 +500,12 @@ export type MonthAmount = {
   amount: number;
 };
 
+export type MyPayroll = {
+  schedule?: PayrollSchedule;
+  upcoming?: Array<PayDate>;
+  payments?: Array<Payment>;
+};
+
 export type NewAsset = {
   inventoryNumber: string;
   model: string;
@@ -593,22 +599,37 @@ export type OperationView = {
   receipt?: "pending" | "anchored";
 };
 
+export type PayDate = {
+  kind?: string;
+  date?: string;  // date
+};
+
 export type Payment = {
   id?: string;  // uuid
-  vendorId?: string;  // uuid
-  invoiceId?: string;  // uuid
+  employeeId?: string;  // uuid
+  employeeName?: string;
+  kind?: string;
+  period?: string;  // date
+  payDate?: string;  // date
   amount?: number;
   currency?: string;
-  paidOn?: string;  // date
-  dated?: boolean;
-  purpose?: string;
-  kind?: string;
-  card?: string;
-  mcc?: string;
-  role?: string;
-  intermediary?: string;
   source?: string;
-  receivedAt?: string;  // date-time
+  createdAt?: string;  // date-time
+};
+
+export type PaymentBatch = {
+  source: string;
+  payments: Array<ReportedPayment>;
+};
+
+export type PayrollImport = {
+  stored?: number;
+  skipped?: Array<Skipped>;
+};
+
+export type PayrollSchedule = {
+  advanceDay?: number;
+  salaryDay?: number;
 };
 
 export type Plan = {
@@ -736,6 +757,17 @@ export type RegistrationRequest = {
   ownerLastName: string;
 };
 
+export type ReportedPayment = {
+  employeeEmail?: string;
+  employeeName?: string;
+  kind: "advance" | "salary" | "vacation_pay" | "bonus" | "other";
+  period: string;  // date
+  payDate: string;  // date
+  amount: number;
+  currency?: string;
+  externalKey?: string;
+};
+
 export type Request = {
   name: string;
   dismissOnDeactivate?: boolean;
@@ -854,6 +886,11 @@ export type SimulationResult = {
   denied?: number;
   requireApproval?: number;
   operations?: Array<SimulatedOperation>;
+};
+
+export type Skipped = {
+  row?: number;
+  reason?: string;
 };
 
 export type SseEmitter = {
@@ -1090,11 +1127,12 @@ export const operations = {
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
   cabinetMe: { method: "GET", path: "/api/v1/me" },
-  cabinetMine_1: { method: "GET", path: "/api/v1/me/documents" },
+  cabinetMine_2: { method: "GET", path: "/api/v1/me/documents" },
   cabinetMyFile: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
   cabinetPage_1: { method: "GET", path: "/api/v1/me/notifications" },
   cabinetReadAll_1: { method: "PUT", path: "/api/v1/me/notifications/read" },
   cabinetRead_1: { method: "PUT", path: "/api/v1/me/notifications/{id}/read" },
+  cabinetMine_1: { method: "GET", path: "/api/v1/me/payroll" },
   cabinetTeam: { method: "GET", path: "/api/v1/me/team/vacations" },
   cabinetDecide: { method: "PUT", path: "/api/v1/me/team/vacations/{id}/decision" },
   cabinetMine: { method: "GET", path: "/api/v1/me/vacations" },
@@ -1112,6 +1150,11 @@ export const operations = {
   journalOperations: { method: "GET", path: "/api/v1/operations" },
   journalReceipt: { method: "GET", path: "/api/v1/operations/{operationId}/receipt" },
   softwarePayments: { method: "GET", path: "/api/v1/payments" },
+  cabinetLoad: { method: "POST", path: "/api/v1/payroll/imports" },
+  cabinetOfMonth: { method: "GET", path: "/api/v1/payroll/payments" },
+  cabinetStore: { method: "POST", path: "/api/v1/payroll/payments" },
+  cabinetSchedule: { method: "GET", path: "/api/v1/payroll/schedule" },
+  cabinetSaveSchedule: { method: "PUT", path: "/api/v1/payroll/schedule" },
   softwarePlans: { method: "GET", path: "/api/v1/plans" },
   softwareCreatePlan: { method: "POST", path: "/api/v1/plans" },
   softwareDeletePlan: { method: "DELETE", path: "/api/v1/plans/{id}" },

@@ -48,14 +48,14 @@ export const ROLE_HINT: Record<Role, string> = {
 
 export type Section =
   | 'dashboard' | 'agents' | 'policies' | 'budgets' | 'approvals' | 'operations'
-  | 'software' | 'assets' | 'imports' | 'connections' | 'findings' | 'analytics' | 'org' | 'notifications' | 'cabinet';
+  | 'software' | 'assets' | 'imports' | 'connections' | 'findings' | 'analytics' | 'org' | 'notifications' | 'cabinet' | 'people';
 
-const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'org', 'notifications'];
+const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'org', 'notifications', 'people'];
 
 const VIEW: Record<Role, Section[]> = {
   owner: ALL,
-  finance: ['dashboard', 'agents', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'notifications'],
-  it_admin: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'org', 'notifications'],
+  finance: ['dashboard', 'agents', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'notifications', 'people'],
+  it_admin: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'org', 'notifications', 'people'],
   agent_owner: ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'assets', 'findings', 'notifications'],
   auditor: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'connections', 'findings', 'analytics', 'notifications'],
   // ни одного раздела с данными компании: ядро всё равно ответит 403 (ADR 0051)
@@ -64,9 +64,9 @@ const VIEW: Record<Role, Section[]> = {
 
 const EDIT: Record<Role, Section[]> = {
   owner: ALL,
-  finance: ['budgets', 'approvals', 'software', 'assets', 'imports', 'findings', 'analytics'],
+  finance: ['budgets', 'approvals', 'software', 'assets', 'imports', 'findings', 'analytics', 'people'],
   // Подключения меняют только owner и it_admin, как @ManagesConnections в ядре
-  it_admin: ['agents', 'policies', 'software', 'assets', 'imports', 'connections', 'findings', 'org'],
+  it_admin: ['agents', 'policies', 'software', 'assets', 'imports', 'connections', 'findings', 'org', 'people'],
   agent_owner: ['agents', 'approvals', 'findings'],
   auditor: ['analytics'],
   employee: ['cabinet'],

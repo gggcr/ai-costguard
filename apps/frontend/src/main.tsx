@@ -20,6 +20,7 @@ import { Analytics } from './pages/Analytics';
 import { Org } from './pages/Org';
 import { NotFound, Notifications } from './pages/Notifications';
 import { Cabinet } from './pages/Cabinet';
+import { People } from './pages/People';
 import './styles.css';
 
 function Protected() {
@@ -59,6 +60,7 @@ function App() {
         <Route path="findings/:id" element={<Guard section="findings"><FindingDetail /></Guard>} />
         <Route path="analytics" element={<Guard section="analytics"><Analytics /></Guard>} />
         <Route path="org" element={<Guard section="org"><Org /></Guard>} />
+        <Route path="people" element={<Guard section="people"><People /></Guard>} />
         <Route path="notifications" element={<Guard section="notifications"><Notifications /></Guard>} />
         <Route path="*" element={<NotFound />} />
       </Route>

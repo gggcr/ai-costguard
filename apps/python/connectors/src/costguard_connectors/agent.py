@@ -80,6 +80,7 @@ from costguard_connectors import (
     moysklad,
     okta,
     onec,
+    onec_zup,
     scim,
     signins,
     tbank,
@@ -90,7 +91,7 @@ log = logging.getLogger("costguard.connectors")
 
 # Sections of a tenant config the agent reads; Airflow adds its own [report].
 SECTIONS = ("onec", "moysklad", "bitrix24", "yandex360", "mail", "jamf", "intune", "google_workspace", "okta",
-            "entra", "merge", "tbank", "scim", "payments")
+            "entra", "merge", "tbank", "scim", "payments", "onec_zup")
 
 
 def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
@@ -219,7 +220,7 @@ def build_each(config: dict, env: dict[str, str]) -> tuple[list[contract.Connect
     found: list[contract.Connector] = []
     broken: dict[str, str] = {}
     for section in SECTIONS:
-        if section in ("mail", "payments") or section not in config:
+        if section in ("mail", "payments", "onec_zup") or section not in config:
             continue
         try:
             found.extend(build({section: config[section], "payments": config.get("payments", {})}, env))
@@ -239,10 +240,20 @@ def mail_inbox(config: dict, env: dict[str, str]) -> mail.MailInvoices:
         int(c.get("min_image_kb", mail.MIN_IMAGE_KB)), int(c.get("min_image_side", mail.MIN_IMAGE_SIDE)))
 
 
+def zup_payroll(config: dict, env: dict[str, str]) -> onec_zup.ZupPayroll:
+    c = config["onec_zup"]
+    return onec_zup.ZupPayroll(
+        httpx.Client(base_url=c["url"], auth=(c["user"], env.get("ONEC_ZUP_PASSWORD", "")), timeout=120),
+        httpx.Client(base_url=env["CORE_URL"], headers={"Authorization": f"Bearer {env['CORE_TOKEN']}"},
+                     timeout=120),
+        int(c.get("days", 62)))
+
+
 def round_(config: dict, env: dict[str, str], tenant: uuid.UUID, state: State,
            publish: Callable[[list[contract.Message]], None], report: Reporter,
            only: set[str] | None = None,
-           inbox: Callable[[dict, dict[str, str]], object] = mail_inbox) -> dict[str, str]:
+           inbox: Callable[[dict, dict[str, str]], object] = mail_inbox,
+           payroll: Callable[[dict, dict[str, str]], object] = zup_payroll) -> dict[str, str]:
     """One round over the systems of the config, or over only some of them. Returns the failures."""
     connectors, broken = build_each(config, env)
     if only is not None:
@@ -263,6 +274,17 @@ def round_(config: dict, env: dict[str, str], tenant: uuid.UUID, state: State,
             log.exception("Mail connector failed")
             failures["mail"] = str(e)
             report("mail", started, 0, f"{type(e).__name__}: {e}")
+    # pay goes to the core over REST, never to Kafka (ADR 0054)
+    if "onec_zup" in config and (only is None or "onec_zup" in only):
+        started = _now()
+        try:
+            stored = payroll(config, env).collect()
+            log.info("1С:ЗУП: %d payments stored", stored)
+            report("onec_zup", started, stored, None)
+        except Exception as e:  # ЗУП or the core is down; the next round reads the same days again
+            log.exception("1С:ЗУП connector failed")
+            failures["onec_zup"] = str(e)
+            report("onec_zup", started, 0, f"{type(e).__name__}: {e}")
     return failures
 
 

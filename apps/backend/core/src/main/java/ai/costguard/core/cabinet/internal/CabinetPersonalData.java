@@ -27,7 +27,8 @@ class CabinetPersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("employee_document", "vacation_request");
+        return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
+                "payroll_tenant");
     }
 
     @Override
@@ -37,6 +38,12 @@ class CabinetPersonalData implements DataHolder {
         if (requests > 0) {
             report.retained("cabinet.vacation_request", requests,
                     "vacation records the employer keeps by law (ТК РФ, ст. 123, 125-ФЗ)", null);
+        }
+        int pay = jdbc.sql("select count(*) from payroll_payment where employee_id = ?")
+                .param(subject.employeeId()).query(Integer.class).single();
+        if (pay > 0) {
+            report.retained("cabinet.payroll_payment", pay,
+                    "pay records the employer keeps by law (402-ФЗ, ст. 29; НК РФ, ст. 230)", null);
         }
         int kept = documents.countOf(subject.employeeId());
         if (kept > 0) {
@@ -48,6 +55,8 @@ class CabinetPersonalData implements DataHolder {
     /** The files go with the company's uploads: they share its prefix in the storage (imports erases it). */
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "cabinet", "vacation_request", "employee_document");
+        TenantRows.delete(jdbc, tenantId, report, "cabinet", "payroll_payment", "payroll_schedule",
+                "vacation_request", "employee_document");
+        jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
     }
 }

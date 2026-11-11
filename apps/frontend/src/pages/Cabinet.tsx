@@ -10,6 +10,7 @@ import { Badge, Card, Empty, PageHeader } from '../components/ui';
 import { ChannelSettings } from './ChannelSettings';
 import { MyDocuments, MyNotifications } from './cabinet/Documents';
 import { MyVacations } from './cabinet/Vacations';
+import { MyPay } from './cabinet/Payroll';
 
 /** Профиль того, кто вошёл: из ядра в режиме API, из демо-данных в демо. */
 export function useMe(): { me: Me | null; error: string | null } {
@@ -45,6 +46,7 @@ export const CABINET_TABS: { to: string; label: string; api: boolean }[] = [
   { to: 'notifications', label: 'Уведомления', api: true },
   { to: 'documents', label: 'Документы', api: true },
   { to: 'vacations', label: 'Отпуска', api: true },
+  { to: 'pay', label: 'Зарплата', api: true },
 ];
 
 function ApiOnly({ children }: { children: ReactNode }) {
@@ -71,6 +73,7 @@ export function Cabinet() {
         {me.employee && <Route path="notifications" element={<ApiOnly><MyNotifications /></ApiOnly>} />}
         {me.employee && <Route path="documents" element={<ApiOnly><MyDocuments /></ApiOnly>} />}
         {me.employee && <Route path="vacations" element={<ApiOnly><MyVacations /></ApiOnly>} />}
+        {me.employee && <Route path="pay" element={<ApiOnly><MyPay /></ApiOnly>} />}
       </Routes>
     </>
   );

@@ -23,7 +23,7 @@ RUNS = "connectors.runs.v1"
 # The connector's name where it differs from its section of the config
 TYPE_OF = {"1c": "onec"}
 LISTS = {"ignore", "accounts", "intermediaries"}
-NUMBERS = {"min_image_kb", "min_image_side"}
+NUMBERS = {"min_image_kb", "min_image_side", "days"}
 _SECRET_NAME = re.compile(r"(TOKEN|PASSWORD|SECRET|KEY|WEBHOOK)$")
 
 

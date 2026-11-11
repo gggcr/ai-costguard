@@ -287,6 +287,37 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/payroll/schedule:
+    get:
+      tags:
+      - Cabinet
+      summary: The days of the month the company pays the advance and the salary
+      operationId: schedule
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollSchedule"
+    put:
+      tags:
+      - Cabinet
+      summary: Set the pay days
+      operationId: saveSchedule
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayrollSchedule"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollSchedule"
   /api/v1/notifications/{id}/read:
     put:
       tags:
@@ -1356,6 +1387,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Plan"
+  /api/v1/payroll/payments:
+    get:
+      tags:
+      - Cabinet
+      summary: "Payments of a month (yyyy-MM), every employee"
+      operationId: ofMonth
+      parameters:
+      - name: month
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+    post:
+      tags:
+      - Cabinet
+      summary: Payments from a source such as the 1С:ЗУП connector; the same payment
+        again replaces it
+      operationId: store
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentBatch"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollImport"
+  /api/v1/payroll/imports:
+    post:
+      tags:
+      - Cabinet
+      summary: "A pay sheet, .xlsx or .csv: сотрудник, вид, период, дата выплаты,\
+        \ сумма"
+      operationId: load
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollImport"
   /api/v1/notifications/telegram-link:
     post:
       tags:
@@ -2389,6 +2485,19 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vacation"
+  /api/v1/me/payroll:
+    get:
+      tags:
+      - Cabinet
+      summary: "My pay: the pay days ahead and my payments of the last two years"
+      operationId: mine_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyPayroll"
   /api/v1/me/notifications:
     get:
       tags:
@@ -2407,7 +2516,7 @@ paths:
       tags:
       - Cabinet
       summary: "My documents: contract, agreements, orders and handover acts"
-      operationId: mine_1
+      operationId: mine_2
       responses:
         "200":
           description: OK
@@ -3626,6 +3735,19 @@ components:
           type: number
         priceYear:
           type: number
+    PayrollSchedule:
+      type: object
+      properties:
+        advanceDay:
+          type: integer
+          format: int32
+          maximum: 31
+          minimum: 1
+        salaryDay:
+          type: integer
+          format: int32
+          maximum: 31
+          minimum: 1
     SettingsChange:
       type: object
       properties:
@@ -4569,6 +4691,80 @@ components:
         publishedAt:
           type: string
           format: date-time
+    PaymentBatch:
+      type: object
+      properties:
+        source:
+          type: string
+          maxLength: 64
+          minLength: 0
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportedPayment"
+          maxItems: 10000
+          minItems: 0
+      required:
+      - payments
+      - source
+    ReportedPayment:
+      type: object
+      properties:
+        employeeEmail:
+          type: string
+          maxLength: 320
+          minLength: 0
+        employeeName:
+          type: string
+          maxLength: 300
+          minLength: 0
+        kind:
+          type: string
+          enum:
+          - advance
+          - salary
+          - vacation_pay
+          - bonus
+          - other
+        period:
+          type: string
+          format: date
+        payDate:
+          type: string
+          format: date
+        amount:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: "[A-Z]{3}"
+        externalKey:
+          type: string
+          maxLength: 300
+          minLength: 0
+      required:
+      - amount
+      - kind
+      - payDate
+      - period
+    PayrollImport:
+      type: object
+      properties:
+        stored:
+          type: integer
+          format: int32
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/Skipped"
+    Skipped:
+      type: object
+      properties:
+        row:
+          type: integer
+          format: int32
+        reason:
+          type: string
     TelegramLink:
       type: object
       properties:
@@ -5239,36 +5435,26 @@ components:
         id:
           type: string
           format: uuid
-        vendorId:
+        employeeId:
           type: string
           format: uuid
-        invoiceId:
+        employeeName:
           type: string
-          format: uuid
+        kind:
+          type: string
+        period:
+          type: string
+          format: date
+        payDate:
+          type: string
+          format: date
         amount:
           type: number
         currency:
           type: string
-        paidOn:
-          type: string
-          format: date
-        dated:
-          type: boolean
-        purpose:
-          type: string
-        kind:
-          type: string
-        card:
-          type: string
-        mcc:
-          type: string
-        role:
-          type: string
-        intermediary:
-          type: string
         source:
           type: string
-        receivedAt:
+        createdAt:
           type: string
           format: date-time
     OperationView:
@@ -5437,6 +5623,27 @@ components:
             $ref: "#/components/schemas/Vacation"
         hasHead:
           type: boolean
+    MyPayroll:
+      type: object
+      properties:
+        schedule:
+          $ref: "#/components/schemas/PayrollSchedule"
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayDate"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+    PayDate:
+      type: object
+      properties:
+        kind:
+          type: string
+        date:
+          type: string
+          format: date
     ChainVerification:
       type: object
       properties:

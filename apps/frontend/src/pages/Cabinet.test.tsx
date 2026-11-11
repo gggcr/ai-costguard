@@ -26,7 +26,7 @@ function open(userId: string, path = '/cabinet') {
 }
 
 const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'assets',
-  'imports', 'connections', 'findings', 'analytics', 'org', 'notifications', 'cabinet'];
+  'imports', 'connections', 'findings', 'analytics', 'org', 'notifications', 'cabinet', 'people'];
 
 function Sections() {
   const { canView } = useAuth();

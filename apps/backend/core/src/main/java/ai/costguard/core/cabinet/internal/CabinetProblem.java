@@ -16,7 +16,10 @@ enum CabinetProblem implements ProblemCode {
     VACATION_OVERLAP(HttpStatus.CONFLICT, "These dates overlap another request of yours"),
     VACATION_DAYS_EXCEEDED(HttpStatus.CONFLICT, "Not enough annual vacation days left this year"),
     VACATION_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
-    NOT_THE_HEAD(HttpStatus.FORBIDDEN, "Only the head of the employee's department decides on this request");
+    NOT_THE_HEAD(HttpStatus.FORBIDDEN, "Only the head of the employee's department decides on this request"),
+    PAYROLL_COLUMNS(HttpStatus.BAD_REQUEST,
+            "The sheet needs the columns: сотрудник (or e-mail), дата выплаты, сумма; вид and период are optional"),
+    PAYROLL_FILE(HttpStatus.BAD_REQUEST, "The file is not a readable .xlsx or .csv");
 
     private final HttpStatus status;
     private final String detail;

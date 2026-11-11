@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { EmployeeDocumentsModal } from './cabinet/Documents';
-import { EmployerVacations } from './cabinet/Vacations';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
@@ -14,7 +13,7 @@ export function Org() {
   const { user, canEdit } = useAuth();
   const L = useLookup();
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') as 'people' | 'users' | 'vacations') ?? 'people';
+  const tab = (params.get('tab') as 'people' | 'users') ?? 'people';
   const highlight = params.get('employee');
   const [dept, setDept] = useState('all');
   const [modal, setModal] = useState<'dept' | 'employee' | 'invite' | null>(null);
@@ -31,7 +30,7 @@ export function Org() {
           ? <><Button onClick={() => setModal('dept')}>Новый отдел</Button><Button variant="primary" icon="plus" onClick={() => { setEditEmployee(undefined); setModal('employee'); }}>Добавить сотрудника</Button></>
           : <Button variant="primary" icon="plus" onClick={() => setModal('invite')}>Пригласить пользователя</Button>)} />
       {!edit && <ReadOnlyNote />}
-      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={[{ id: 'people', label: `Сотрудники (${state.employees.length})` }, { id: 'users', label: `Пользователи CostGuard (${state.users.length})` }, ...(mode === 'api' ? [{ id: 'vacations', label: 'Отпуска' }] : [])]} />
+      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={[{ id: 'people', label: `Сотрудники (${state.employees.length})` }, { id: 'users', label: `Пользователи CostGuard (${state.users.length})` }]} />
 
       {tab === 'people' && (
         <>
@@ -74,7 +73,6 @@ export function Org() {
         </>
       )}
 
-      {tab === 'vacations' && mode === 'api' && <EmployerVacations canManageHeads={edit} />}
       {tab === 'users' && (
         <Card>
           <div className="table-wrap">
