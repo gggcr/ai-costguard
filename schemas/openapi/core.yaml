@@ -11,6 +11,8 @@ tags:
   description: Operations waiting for a human decision
 - name: Analytics
   description: Spending and savings for the dashboard
+- name: Cabinet
+  description: "The employee's own cabinet: only the person of the token"
 - name: Activity log
   description: "Who changed what: budgets, mandates, roles, connections, equipment,\
     \ erasures"
@@ -2113,6 +2115,19 @@ paths:
             text/event-stream:
               schema:
                 $ref: "#/components/schemas/SseEmitter"
+  /api/v1/me:
+    get:
+      tags:
+      - Cabinet
+      summary: "Who I am: name, roles and the employee record of the token"
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
   /api/v1/journal/verification:
     get:
       tags:
@@ -2969,6 +2984,7 @@ components:
           - it_admin
           - agent_owner
           - auditor
+          - employee
       required:
       - role
     UserAccount:
@@ -2989,6 +3005,7 @@ components:
           - it_admin
           - agent_owner
           - auditor
+          - employee
         employeeId:
           type: string
           format: uuid
@@ -3940,6 +3957,7 @@ components:
           - it_admin
           - agent_owner
           - auditor
+          - employee
         employeeId:
           type: string
           format: uuid
@@ -4146,6 +4164,7 @@ components:
           - it_admin
           - agent_owner
           - auditor
+          - employee
         employeeId:
           type: string
           format: uuid
@@ -4173,6 +4192,7 @@ components:
           - it_admin
           - agent_owner
           - auditor
+          - employee
         status:
           type: string
           enum:
@@ -4882,6 +4902,36 @@ components:
         timeout:
           type: integer
           format: int64
+    Me:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        employee:
+          $ref: "#/components/schemas/Profile"
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        email:
+          type: string
     ChainVerification:
       type: object
       properties:

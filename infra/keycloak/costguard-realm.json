@@ -24,6 +24,10 @@
         "description": "Read-only, verifies receipts"
       },
       {
+        "name": "employee",
+        "description": "Employee: only their own cabinet, no company data (ADR 0051)"
+      },
+      {
         "name": "connector",
         "description": "Service account of a company's connector agent: reads the secrets kept in the core (ADR 0030)"
       },

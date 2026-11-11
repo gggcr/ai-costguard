@@ -1,7 +1,7 @@
 // Хранилище в режиме API: состояние читается из ядра, действия — запросы к нему (remote-actions.ts),
 // новые уведомления приходят потоком SSE и перечитывают затронутые разделы.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AppState, Notification, SystemType } from './types';
+import { STAFF_ROLES, type AppState, type Notification, type SystemType } from './types';
 import { EMPTY_STATE, LOADERS, type Slice } from './remote';
 import { remoteActions } from './remote-actions';
 import { ApiError, subscribe } from './http';
@@ -47,6 +47,8 @@ export function ApiStoreProvider({ children }: { children: ReactNode }) {
   companyRef.current = company;
 
   useEffect(() => onTokensChange(() => setSignedIn(currentClaims() !== null)), []);
+  // Только «Мой кабинет»: роль employee без ролей персонала не читает данные компании (ядро ответит 403, ADR 0051)
+  const staff = signedIn && (currentClaims()?.realm_access?.roles ?? []).some((r) => (STAFF_ROLES as string[]).includes(r));
 
   const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
   const toast = useCallback((text: string, level: Notification['level'] = 'info') => {
@@ -102,15 +104,15 @@ export function ApiStoreProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    reload(ALL)
+    reload(staff ? ALL : [])
       .catch((e: unknown) => { if (!cancelled) setError(e instanceof ApiError ? e.message : 'Сервер CostGuard не отвечает'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [signedIn, reload]);
+  }, [signedIn, staff, reload]);
 
   // Поток уведомлений ядра: новое уведомление — сообщение и перечитывание связанных разделов
   useEffect(() => {
-    if (!signedIn || !live) return;
+    if (!signedIn || !live || !staff) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const pending = new Set<Slice>();
     return subscribe('/api/v1/notifications/stream', (name, data) => {
@@ -125,14 +127,14 @@ export function ApiStoreProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer);
       timer = setTimeout(() => { void reload([...pending]).catch(() => undefined); pending.clear(); }, 800);
     });
-  }, [signedIn, live, reload, toast]);
+  }, [signedIn, live, staff, reload, toast]);
 
   // Решения шлюза без уведомлений (обычные разрешённые операции) — перечитываем журнал раз в 30 секунд
   useEffect(() => {
-    if (!signedIn || !live) return;
+    if (!signedIn || !live || !staff) return;
     const t = setInterval(() => { void reload(['operations', 'budgets']).catch(() => undefined); }, 30_000);
     return () => clearInterval(t);
-  }, [signedIn, live, reload]);
+  }, [signedIn, live, staff, reload]);
 
   const actions = useMemo(() => remoteActions({
     getState: () => stateRef.current,

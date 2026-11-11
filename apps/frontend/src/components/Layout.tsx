@@ -7,6 +7,7 @@ import { Forbidden, Icon, Toasts } from './ui';
 import { fmtRelative } from '../lib';
 
 const NAV: { section: Section; to: string; label: string; group: string }[] = [
+  { section: 'cabinet', to: '/cabinet', label: 'Мой кабинет', group: '' },
   { section: 'dashboard', to: '/', label: 'Обзор', group: '' },
   { section: 'agents', to: '/agents', label: 'ИИ-агенты', group: 'Контур А: ИИ-агенты' },
   { section: 'policies', to: '/policies', label: 'Мандаты и правила', group: 'Контур А: ИИ-агенты' },

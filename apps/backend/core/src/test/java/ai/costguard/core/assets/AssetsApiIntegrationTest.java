@@ -148,7 +148,7 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"agent_owner", "auditor", "unknown"})
+    @ValueSource(strings = {"agent_owner", "auditor"})
     void otherRolesCanReadButNotChangeAssets(String role) throws Exception {
         String id = createAsset();
         assign(id, employee);
@@ -172,6 +172,19 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
     }
 
     @Test
+    void anUnknownRoleOrTheEmployeeRoleCanNeitherReadNorChangeAssets() throws Exception {
+        String id = createAsset();
+        for (String role : List.of("unknown", "employee")) {
+            mvc.perform(get("/api/v1/assets/{id}", id).with(as(tenant, role)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("role_required"));
+            mvc.perform(get("/api/v1/assets").with(as(tenant, role))).andExpect(status().isForbidden());
+            mvc.perform(json(post("/api/v1/assets"), laptop(inventoryNumber())).with(as(tenant, role)))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
     void tokenWithoutRolesCannotChangeAssets() throws Exception {
         mvc.perform(json(post("/api/v1/assets"), laptop(inventoryNumber())).with(as(tenant, new String[0])))
                 .andExpect(status().isForbidden())
@@ -180,14 +193,16 @@ class AssetsApiIntegrationTest extends PostgresTestSupport {
 
     @Test
     void tokenWithoutTenantIsForbidden() throws Exception {
-        mvc.perform(get("/api/v1/assets").with(jwt()))
+        mvc.perform(get("/api/v1/assets").with(jwt().authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_owner"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("tenant_missing"));
     }
 
     @Test
     void tokenWithMalformedTenantIsForbidden() throws Exception {
-        mvc.perform(get("/api/v1/assets").with(jwt().jwt(j -> j.claim("tenant_id", "not-a-uuid"))))
+        mvc.perform(get("/api/v1/assets").with(jwt().jwt(j -> j.claim("tenant_id", "not-a-uuid")).authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_owner"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("tenant_missing"));
     }

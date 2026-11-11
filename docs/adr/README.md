@@ -55,3 +55,4 @@
 | [0048](0048-observability-stack.md) | Prometheus, Grafana, Tempo и OpenTelemetry Collector в репозитории; трейсы ядра и шлюза | Принято |
 | [0049](0049-imports-in-s3.md) | Загруженные файлы ядро хранит в S3, в бакете, который читает ingest | Принято |
 | [0050](0050-python-traces.md) | Трейсы Python-сервисов и сквозной трейс через Kafka (traceparent) | Принято |
+| [0051](0051-employee-cabinet.md) | Личный кабинет сотрудника, роль employee; API компании закрыт для токенов без роли персонала | Принято |

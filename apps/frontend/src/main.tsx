@@ -19,6 +19,7 @@ import { FindingDetail, Findings } from './pages/Findings';
 import { Analytics } from './pages/Analytics';
 import { Org } from './pages/Org';
 import { NotFound, Notifications } from './pages/Notifications';
+import { Cabinet } from './pages/Cabinet';
 import './styles.css';
 
 function Protected() {
@@ -26,12 +27,19 @@ function Protected() {
   return user ? <Layout /> : <Navigate to="/login" replace />;
 }
 
+/** Сотрудник без ролей персонала начинает со своего кабинета, остальные — с обзора. */
+function Home() {
+  const { canView } = useAuth();
+  return canView('dashboard') ? <Dashboard /> : <Navigate to="/cabinet" replace />;
+}
+
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<Protected />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Home />} />
+        <Route path="cabinet" element={<Guard section="cabinet"><Cabinet /></Guard>} />
         <Route path="agents" element={<Guard section="agents"><Agents /></Guard>} />
         <Route path="agents/:id" element={<Guard section="agents"><AgentDetail /></Guard>} />
         <Route path="policies" element={<Guard section="policies"><Policies /></Guard>} />
@@ -51,7 +59,7 @@ function App() {
         <Route path="findings/:id" element={<Guard section="findings"><FindingDetail /></Guard>} />
         <Route path="analytics" element={<Guard section="analytics"><Analytics /></Guard>} />
         <Route path="org" element={<Guard section="org"><Org /></Guard>} />
-        <Route path="notifications" element={<Notifications />} />
+        <Route path="notifications" element={<Guard section="notifications"><Notifications /></Guard>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

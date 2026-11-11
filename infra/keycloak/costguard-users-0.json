@@ -8,9 +8,44 @@
       "lastName": "Владелец",
       "enabled": true,
       "emailVerified": true,
-      "attributes": { "tenant_id": ["0d6f8a1e-5b2c-4c3e-9a7d-1f2e3d4c5b6a"] },
-      "credentials": [{ "type": "password", "value": "demo", "temporary": false }],
-      "realmRoles": ["owner"]
+      "attributes": {
+        "tenant_id": [
+          "0d6f8a1e-5b2c-4c3e-9a7d-1f2e3d4c5b6a"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "owner"
+      ]
+    },
+    {
+      "username": "ivanov",
+      "email": "ivanov@romashka.example",
+      "firstName": "Иван",
+      "lastName": "Иванов",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "0d6f8a1e-5b2c-4c3e-9a7d-1f2e3d4c5b6a"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "employee"
+      ]
     }
   ]
 }

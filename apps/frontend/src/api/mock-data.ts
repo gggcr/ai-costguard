@@ -44,6 +44,7 @@ const users: User[] = [
   { id: 'u-it', name: 'Мария Соколова', email: 'm.sokolova@sever.demo', role: 'it_admin', employeeId: 'e-03' },
   { id: 'u-ao', name: 'Павел Орлов', email: 'p.orlov@sever.demo', role: 'agent_owner', employeeId: 'e-04' },
   { id: 'u-aud', name: 'Елена Миронова', email: 'e.mironova@sever.demo', role: 'auditor', employeeId: 'e-05' },
+  { id: 'u-emp', name: 'Ольга Новикова', email: 'o.novikova@sever.demo', role: 'employee', employeeId: 'e-07' },
 ];
 
 const mandates: Mandate[] = [

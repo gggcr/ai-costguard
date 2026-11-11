@@ -1,7 +1,9 @@
 // Типы повторяют модель данных с доски Miro (раздел «Модель данных»).
 // Когда в schemas/openapi появятся core.yaml и gateway.yaml, эти типы заменит сгенерированный клиент.
 
-export type Role = 'owner' | 'finance' | 'it_admin' | 'agent_owner' | 'auditor';
+export type Role = 'owner' | 'finance' | 'it_admin' | 'agent_owner' | 'auditor' | 'employee';
+/** Роли персонала: им видны данные компании. employee — только «Мой кабинет» (ADR 0051). */
+export const STAFF_ROLES: Role[] = ['owner', 'finance', 'it_admin', 'agent_owner', 'auditor'];
 
 export interface User {
   id: string;
@@ -311,4 +313,13 @@ export interface AppState {
   costHistory: CostPoint[];
   connections: Connection[];
   connectionRuns: ConnectionRun[];
+}
+
+/** GET /api/v1/me: кто вошёл. employee пуст, если человек не сотрудник компании (ADR 0051). */
+export interface Me {
+  userId: string | null;
+  name: string;
+  email: string;
+  roles: string[];
+  employee: { id: string; name: string; position: string; department: string; email: string } | null;
 }

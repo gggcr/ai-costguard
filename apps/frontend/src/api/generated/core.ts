@@ -372,7 +372,7 @@ export type Invitation = {
   id?: string;  // uuid
   userId?: string;  // uuid
   email?: string;
-  role?: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  role?: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor" | "employee";
   status?: "sent" | "accepted" | "revoked";
   createdAt?: string;  // date-time
   acceptedAt?: string;  // date-time
@@ -464,6 +464,14 @@ export type MappingRequest = {
   saveTemplate?: boolean;
 };
 
+export type Me = {
+  userId?: string;  // uuid
+  name?: string;
+  email?: string;
+  roles?: Array<string>;
+  employee?: Profile;
+};
+
 export type Month = {
   month?: string;
   amount?: number;
@@ -504,7 +512,7 @@ export type NewInvitation = {
   email: string;
   firstName: string;
   lastName: string;
-  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor" | "employee";
   employeeId?: string;  // uuid
 };
 
@@ -525,7 +533,7 @@ export type NewPrice = {
 export type NewUser = {
   name: string;
   email: string;
-  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor" | "employee";
   employeeId?: string;  // uuid
 };
 
@@ -656,6 +664,14 @@ export type ProductCategory = {
   category?: string;
 };
 
+export type Profile = {
+  id?: string;  // uuid
+  name?: string;
+  position?: string;
+  department?: string;
+  email?: string;
+};
+
 export type Publication = {
   version?: number;
   publishedAt?: string;  // date-time
@@ -715,7 +731,7 @@ export type ReviewTask = {
 };
 
 export type RoleChange = {
-  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor" | "employee";
 };
 
 export type RowError = {
@@ -883,7 +899,7 @@ export type UserAccount = {
   id?: string;  // uuid
   name?: string;
   email?: string;
-  role?: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor";
+  role?: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor" | "employee";
   employeeId?: string;  // uuid
 };
 
@@ -1012,6 +1028,7 @@ export const operations = {
   agentsMandate: { method: "GET", path: "/api/v1/mandates/{id}" },
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
+  cabinetMe: { method: "GET", path: "/api/v1/me" },
   notificationsClear: { method: "DELETE", path: "/api/v1/notifications" },
   notificationsPage: { method: "GET", path: "/api/v1/notifications" },
   notificationsReadAll: { method: "PUT", path: "/api/v1/notifications/read" },

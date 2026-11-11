@@ -88,8 +88,12 @@ def build(today: date) -> str:
         {"id": str(employees[email]), "tenant_id": t, "department_id": str(departments[dept]), "name": name,
          "email": email, "position": pos, "dismissed_at": None if left is None else left.isoformat()}
         for name, email, dept, pos, left in people]))
-    sql.append(insert("user_account", [{"id": str(uid("user", "demo")), "tenant_id": t, "name": "Демо Владелец",
-                                        "email": "demo@romashka.example", "role": "owner", "employee_id": None}]))
+    # demo / demo is the owner; ivanov / demo signs in to «Мой кабинет» as an employee (ADR 0051)
+    sql.append(insert("user_account", [
+        {"id": str(uid("user", "demo")), "tenant_id": t, "name": "Демо Владелец", "email": "demo@romashka.example",
+         "role": "owner", "employee_id": None},
+        {"id": str(uid("user", "ivanov")), "tenant_id": t, "name": "Иванов Иван", "email": "ivanov@romashka.example",
+         "role": "employee", "employee_id": str(employees["ivanov@romashka.example"])}]))
     sql.append(insert("vendor", [{"id": str(vendor_ids[n]), "tenant_id": t, "name": n, "inn": inn, "category": cat}
                                  for n, (inn, cat) in vendors.items()]))
     sql.append(insert("contract", [{

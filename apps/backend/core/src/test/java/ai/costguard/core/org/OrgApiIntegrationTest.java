@@ -109,9 +109,10 @@ class OrgApiIntegrationTest extends PostgresTestSupport {
         String id = employee();
         UUID other = UUID.randomUUID();
 
-        mvc.perform(get("/api/v1/employees/" + id).with(as(other))).andExpect(status().isNotFound());
-        mvc.perform(get("/api/v1/employees").with(as(other))).andExpect(jsonPath("$", hasSize(0)));
-        mvc.perform(get("/api/v1/departments").with(as(other))).andExpect(jsonPath("$", hasSize(0)));
+        // a role that may read (since ADR 0051 a token without a staff role reads nothing)
+        mvc.perform(get("/api/v1/employees/" + id).with(as(other, "auditor"))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/employees").with(as(other, "auditor"))).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/v1/departments").with(as(other, "auditor"))).andExpect(jsonPath("$", hasSize(0)));
         mvc.perform(put("/api/v1/employees/" + id + "/dismissal").with(as(other, "owner")))
                 .andExpect(status().isNotFound());
     }

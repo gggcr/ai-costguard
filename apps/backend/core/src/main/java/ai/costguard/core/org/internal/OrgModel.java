@@ -10,7 +10,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-enum UserRole { owner, finance, it_admin, agent_owner, auditor }
+/** {@code employee}: only «Мой кабинет», no company data (ADR 0051). */
+enum UserRole { owner, finance, it_admin, agent_owner, auditor, employee }
 
 record Company(UUID id, String name, String currency, String plan) {
 }
