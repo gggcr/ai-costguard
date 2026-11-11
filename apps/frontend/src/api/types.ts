@@ -16,6 +16,8 @@ export interface User {
 export interface Department {
   id: string;
   name: string;
+  /** Руководитель согласует отпуска отдела (ADR 0053) */
+  headEmployeeId?: string | null;
 }
 
 export interface Employee {

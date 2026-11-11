@@ -145,7 +145,7 @@ export const LOADERS: Partial<Record<Slice, (st: AppState) => Promise<Loaded>>> 
     return { company: { name: s(c.name), currency: c.currency ?? 'RUB' } };
   },
   users: async () => ({ users: (await api<Api.UserAccount[]>('GET', '/api/v1/users')).map(toUser) }),
-  departments: async () => ({ departments: (await api<Api.Department[]>('GET', '/api/v1/departments')).map((d) => ({ id: s(d.id), name: s(d.name) })) }),
+  departments: async () => ({ departments: (await api<Api.Department[]>('GET', '/api/v1/departments')).map((d) => ({ id: s(d.id), name: s(d.name), headEmployeeId: d.headEmployeeId ?? null })) }),
   employees: async () => ({ employees: (await api<Api.Employee[]>('GET', '/api/v1/employees')).map(toEmployee) }),
   agents: async () => {
     const agents = (await api<Api.Agent[]>('GET', '/api/v1/agents')).map(toAgent);

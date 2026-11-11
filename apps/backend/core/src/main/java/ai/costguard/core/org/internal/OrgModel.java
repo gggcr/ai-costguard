@@ -19,7 +19,11 @@ record Company(UUID id, String name, String currency, String plan) {
 record CompanySettings(@NotBlank String name, @NotNull @Pattern(regexp = "[A-Z]{3}") String currency) {
 }
 
-record Department(UUID id, String name) {
+/** {@code headEmployeeId}: who decides on the vacations of the department (ADR 0053); may be empty. */
+record Department(UUID id, String name, UUID headEmployeeId) {
+}
+
+record DepartmentHead(UUID employeeId) {
 }
 
 record NewDepartment(@NotBlank String name) {

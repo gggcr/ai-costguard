@@ -249,6 +249,11 @@ export type Decision = {
 export type Department = {
   id?: string;  // uuid
   name?: string;
+  headEmployeeId?: string;  // uuid
+};
+
+export type DepartmentHead = {
+  employeeId?: string;  // uuid
 };
 
 export type DismissalChecklist = {
@@ -548,6 +553,13 @@ export type NewUser = {
   email: string;
   role: "owner" | "finance" | "it_admin" | "agent_owner" | "auditor" | "employee";
   employeeId?: string;  // uuid
+};
+
+export type NewVacation = {
+  kind: "annual" | "unpaid" | "study" | "other";
+  startsOn: string;  // date
+  endsOn: string;  // date
+  comment?: string;
 };
 
 export type Notification = {
@@ -916,6 +928,37 @@ export type UserAccount = {
   employeeId?: string;  // uuid
 };
 
+export type Vacation = {
+  id?: string;  // uuid
+  employeeId?: string;  // uuid
+  employeeName?: string;
+  kind?: string;
+  startsOn?: string;  // date
+  endsOn?: string;  // date
+  days?: number;
+  comment?: string;
+  status?: string;
+  decidedBy?: string;
+  decidedAt?: string;  // date-time
+  decisionComment?: string;
+  createdAt?: string;  // date-time
+};
+
+export type VacationBalance = {
+  year?: number;
+  daysPerYear?: number;
+  used?: number;
+  pending?: number;
+  left?: number;
+  requests?: Array<Vacation>;
+  hasHead?: boolean;
+};
+
+export type VacationDecision = {
+  approve?: boolean;
+  comment?: string;
+};
+
 export type Vendor = {
   id?: string;  // uuid
   name?: string;
@@ -965,7 +1008,7 @@ export const operations = {
   analyticsSummary: { method: "GET", path: "/api/v1/analytics/summary" },
   approvalsList_4: { method: "GET", path: "/api/v1/approvals" },
   approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
-  approvalsDecide: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
+  approvalsDecide_1: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
   assetsList_2: { method: "GET", path: "/api/v1/assets" },
   assetsCreate_2: { method: "POST", path: "/api/v1/assets" },
   assetsGet_2: { method: "GET", path: "/api/v1/assets/{id}" },
@@ -1006,6 +1049,7 @@ export const operations = {
   softwareUpdateContract: { method: "PUT", path: "/api/v1/contracts/{id}" },
   organisationDepartments: { method: "GET", path: "/api/v1/departments" },
   organisationCreateDepartment: { method: "POST", path: "/api/v1/departments" },
+  organisationSetHead: { method: "PUT", path: "/api/v1/departments/{id}/head" },
   organisationEmployees: { method: "GET", path: "/api/v1/employees" },
   organisationCreateEmployee: { method: "POST", path: "/api/v1/employees" },
   assetsHeldBy: { method: "GET", path: "/api/v1/employees/{employeeId}/assets" },
@@ -1046,11 +1090,16 @@ export const operations = {
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
   cabinetMe: { method: "GET", path: "/api/v1/me" },
-  cabinetMine: { method: "GET", path: "/api/v1/me/documents" },
+  cabinetMine_1: { method: "GET", path: "/api/v1/me/documents" },
   cabinetMyFile: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
   cabinetPage_1: { method: "GET", path: "/api/v1/me/notifications" },
   cabinetReadAll_1: { method: "PUT", path: "/api/v1/me/notifications/read" },
   cabinetRead_1: { method: "PUT", path: "/api/v1/me/notifications/{id}/read" },
+  cabinetTeam: { method: "GET", path: "/api/v1/me/team/vacations" },
+  cabinetDecide: { method: "PUT", path: "/api/v1/me/team/vacations/{id}/decision" },
+  cabinetMine: { method: "GET", path: "/api/v1/me/vacations" },
+  cabinetAsk: { method: "POST", path: "/api/v1/me/vacations" },
+  cabinetCancel: { method: "DELETE", path: "/api/v1/me/vacations/{id}" },
   notificationsClear: { method: "DELETE", path: "/api/v1/notifications" },
   notificationsPage: { method: "GET", path: "/api/v1/notifications" },
   notificationsReadAll: { method: "PUT", path: "/api/v1/notifications/read" },
@@ -1091,6 +1140,8 @@ export const operations = {
   organisationCreateUser: { method: "POST", path: "/api/v1/users" },
   organisationRemoveUser: { method: "DELETE", path: "/api/v1/users/{id}" },
   organisationChangeRole: { method: "PUT", path: "/api/v1/users/{id}/role" },
+  cabinetAll: { method: "GET", path: "/api/v1/vacations" },
+  cabinetDecideAsEmployer: { method: "PUT", path: "/api/v1/vacations/{id}/decision" },
   softwareVendors: { method: "GET", path: "/api/v1/vendors" },
   softwareCreateVendor: { method: "POST", path: "/api/v1/vendors" },
   softwareUpdateVendor: { method: "PUT", path: "/api/v1/vendors/{id}" },

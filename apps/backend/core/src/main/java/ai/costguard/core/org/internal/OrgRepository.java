@@ -20,7 +20,8 @@ class OrgRepository {
             rs.getString("name"), rs.getString("currency"), rs.getString("plan"));
 
     private static final RowMapper<Department> DEPARTMENT = (rs, n) ->
-            new Department(rs.getObject("id", UUID.class), rs.getString("name"));
+            new Department(rs.getObject("id", UUID.class), rs.getString("name"),
+                    rs.getObject("head_employee_id", UUID.class));
 
     private static final RowMapper<Employee> EMPLOYEE = (rs, n) -> {
         LocalDate dismissedAt = rs.getObject("dismissed_at", LocalDate.class);
@@ -51,7 +52,11 @@ class OrgRepository {
     }
 
     List<Department> departments() {
-        return jdbc.sql("select id, name from department order by name").query(DEPARTMENT).list();
+        return jdbc.sql("select id, name, head_employee_id from department order by name").query(DEPARTMENT).list();
+    }
+
+    void setHead(UUID departmentId, UUID employeeId) {
+        jdbc.sql("update department set head_employee_id = ? where id = ?").params(employeeId, departmentId).update();
     }
 
     boolean departmentExists(UUID id) {

@@ -59,6 +59,13 @@ class OrgController {
         return ResponseEntity.created(URI.create("/api/v1/departments/" + created.id())).body(created);
     }
 
+    @PutMapping("/departments/{id}/head")
+    @ManagesOrg
+    @Operation(summary = "Set the head of a department", description = "The head decides on vacations. Null clears it.")
+    Department setHead(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody DepartmentHead request) {
+        return service.setHead(TenantClaim.of(jwt), id, request.employeeId());
+    }
+
     @GetMapping("/employees")
     @Operation(summary = "List employees, optionally of one department")
     List<Employee> employees(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) UUID departmentId) {

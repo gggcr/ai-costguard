@@ -74,7 +74,24 @@ class OrgService {
             throw OrgProblem.DEPARTMENT_NAME_TAKEN.failure();
         }
         events.publishEvent(ActionTaken.of(tenantId, "department.created", "department", id, Map.of()));
-        return new Department(id, request.name());
+        return new Department(id, request.name(), null);
+    }
+
+    /** The head decides on the vacations of the department (ADR 0053); null clears it. */
+    @Transactional
+    Department setHead(UUID tenantId, UUID departmentId, UUID employeeId) {
+        session.bind(tenantId);
+        requireDepartment(departmentId);
+        if (employeeId != null) {
+            Employee head = found(employeeId);
+            if (!head.active()) {
+                throw OrgProblem.EMPLOYEE_NOT_FOUND.failure();
+            }
+        }
+        org.setHead(departmentId, employeeId);
+        events.publishEvent(ActionTaken.of(tenantId, "department.head", "department", departmentId,
+                ActionTaken.details("employeeId", employeeId)));
+        return org.departments().stream().filter(d -> d.id().equals(departmentId)).findFirst().orElseThrow();
     }
 
     @Transactional(readOnly = true)
