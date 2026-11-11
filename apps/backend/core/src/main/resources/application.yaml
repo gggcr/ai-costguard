@@ -34,6 +34,13 @@ spring:
       enabled: ${VAULT_ENABLED:false}
 
 costguard:
+  # Сверка покупок моделью через шлюз (ADR 0062): без ключа и модели — только названия, синонимы и опечатки.
+  purchases:
+    llm:
+      gateway-url: ${PURCHASES_LLM_GATEWAY_URL:http://gateway:8081}
+      api-key: ${PURCHASES_LLM_API_KEY:}
+      provider: ${PURCHASES_LLM_PROVIDER:openai}
+      model: ${PURCHASES_LLM_MODEL:}
   events:
     kafka:
       enabled: ${CORE_EVENTS_KAFKA_ENABLED:true}

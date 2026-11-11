@@ -29,6 +29,7 @@ class PurchaseService {
 
     private final PurchaseRepository purchases;
     private final LicensePool pool;
+    private final ProgramMatcher matcher;
     private final LicenseService licenses;
     private final StoredFiles files;
     private final PersonalNotices notices;
@@ -42,8 +43,9 @@ class PurchaseService {
 
     PurchaseService(PurchaseRepository purchases, LicensePool pool, LicenseService licenses, StoredFiles files,
             PersonalNotices notices, DepartmentHeads heads, EmployeeDirectory employees, Whoami whoami,
-            TenantSession session, ApplicationEventPublisher events, Clock clock,
+            TenantSession session, ApplicationEventPublisher events, Clock clock, ProgramMatcher matcher,
             @Value("${costguard.audit.unused-days:30}") int idleDays) {
+        this.matcher = matcher;
         this.purchases = purchases;
         this.pool = pool;
         this.licenses = licenses;
@@ -80,8 +82,8 @@ class PurchaseService {
         }
         String currency = a.currency() == null || a.currency().isBlank()
                 ? employees.company().map(EmployeeDirectory.CompanyCard::currency).orElse("RUB") : a.currency();
-        Optional<LicensePool.Offer> offer = pool.match(a.product(), idleDays)
-                .or(() -> a.vendor() == null ? Optional.empty() : pool.match(a.vendor(), idleDays));
+        Optional<LicensePool.Offer> offer = matcher.match(pool, idleDays, a.product(), a.vendor())
+                .map(ProgramMatcher.Match::offer);
 
         String status = "pending";
         String comment = null;
