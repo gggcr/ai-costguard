@@ -195,6 +195,10 @@ services:
       # decision of the trace they continue.
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACE_SAMPLING:-1.0}
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      # `make demo-lite` runs without Kafka: consumers do not start, events wait in the outbox (ADR 0064)
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: ${KAFKA_LISTENERS:-true}
+      # a heap limit for small machines; empty — the JVM default
+      JAVA_TOOL_OPTIONS: ${CORE_JAVA_OPTS:-}
     healthcheck:
       # Tomcat opens the port after Flyway has migrated, so an open port means the tables exist.
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]

@@ -1,6 +1,6 @@
 COMPOSE = docker compose -f infra/local/docker-compose.yml $(if $(wildcard .env),--env-file .env)
 
-.PHONY: up down logs build test demo airflow codegen seed clickhouse observability
+.PHONY: up down logs build test demo demo-lite airflow codegen seed clickhouse observability
 
 up:
 	$(COMPOSE) up -d --wait
@@ -48,3 +48,12 @@ demo:
 	@echo "Keycloak http://localhost:8180  (demo / demo)"
 	@echo "Frontend http://localhost:3000 (demo / demo); for development: cd apps/frontend && npm install && npm run dev"
 	@echo "Findings of the audit appear within a minute."
+
+# The employee cabinet and the org on a small machine (ADR 0064): PostgreSQL, Keycloak, Mailpit, S3, the core and the
+# web client; no Kafka, ClickHouse, gateway or ingest. Spend charts and the AI gateway stay empty. ~2 GB of memory.
+demo-lite:
+	./gradlew :core:bootJar
+	$(COMPOSE) up -d --wait postgres keycloak mailpit s3
+	KAFKA_LISTENERS=false CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC" $(COMPOSE) --profile demo up -d --build --no-deps --wait core frontend
+	$(MAKE) seed
+	@echo "Frontend http://localhost:3000 (demo / demo — owner, ivanov / demo — employee)"

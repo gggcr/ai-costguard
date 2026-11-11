@@ -54,6 +54,7 @@ git clone -b goidochka https://github.com/gggcr/ai-costguard.git
 cd ai-costguard
 cp .env.example .env
 make demo               # инфраструктура, ядро и шлюз в Docker, демо-компания ООО «Ромашка»
+make demo-lite          # на слабой машине: только кабинет и оргструктура (без Kafka, ClickHouse, шлюза), ~2 ГБ
 ```
 
 Нужны JDK 25, Docker, Python 3.12+ с [uv](https://docs.astral.sh/uv/) и Node.js 20+. После `make demo`:
