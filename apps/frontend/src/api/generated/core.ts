@@ -105,6 +105,17 @@ export type Budget = {
   version?: number;
 };
 
+export type CabinetSavings = {
+  since?: string;  // date
+  seatsFromPool?: number;
+  reassignedIdle?: number;
+  seatsMonthly?: number;
+  purchasesRefused?: number;
+  purchasesMonthly?: number;
+  totalMonthly?: number;
+  byMonth?: Array<Month>;
+};
+
 export type ChainVerification = {
   valid?: boolean;
   receipts?: number;
@@ -549,7 +560,7 @@ export type Me = {
 
 export type Month = {
   month?: string;
-  amount?: number;
+  saved?: number;
 };
 
 export type MonthAmount = {
@@ -1252,6 +1263,7 @@ export const operations = {
   ledgerBudget: { method: "GET", path: "/api/v1/budgets/{id}" },
   ledgerEntries: { method: "GET", path: "/api/v1/budgets/{id}/entries" },
   ledgerSetLimit: { method: "PUT", path: "/api/v1/budgets/{id}/limit" },
+  cabinetSavings: { method: "GET", path: "/api/v1/cabinet/savings" },
   catalogConvert: { method: "GET", path: "/api/v1/catalog/fx-conversion" },
   catalogRates: { method: "GET", path: "/api/v1/catalog/fx-rates" },
   catalogPrices: { method: "GET", path: "/api/v1/catalog/prices" },

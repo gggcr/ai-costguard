@@ -34,6 +34,9 @@ public interface LicensePool {
     /** The subscription whose product or vendor this text names (cleaned, either way round), if exactly one. */
     Optional<Offer> match(String text, int idleDays);
 
+    /** What one seat of each subscription costs a month (a yearly price divided by 12): what a seat not bought saves. */
+    java.util.Map<UUID, java.math.BigDecimal> monthlySeatPrices();
+
     record Held(UUID licenseId, UUID subscriptionId, String vendor, String product, LocalDate lastActive) {
     }
 

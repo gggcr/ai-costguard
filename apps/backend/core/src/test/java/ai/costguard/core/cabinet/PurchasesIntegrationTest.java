@@ -103,6 +103,15 @@ class PurchasesIntegrationTest extends PostgresTestSupport {
                         Matchers.startsWith("Отклонено: В компании есть свободная лицензия"))));
         mvc.perform(get("/api/v1/me/purchase-requests/{id}/file", id).with(as(worker, "employee")))
                 .andExpect(status().isOk()).andExpect(content().bytes("чек".getBytes(StandardCharsets.UTF_8)));
+
+        // the purchase not made is a saving, counted once (not again as the seat given)
+        mvc.perform(get("/api/v1/cabinet/savings").with(as("f@corp.ru", "finance")))
+                .andExpect(jsonPath("$.purchasesRefused").value(1))
+                .andExpect(jsonPath("$.purchasesMonthly").value(1200.0))
+                .andExpect(jsonPath("$.seatsFromPool").value(0))
+                .andExpect(jsonPath("$.totalMonthly").value(1200.0))
+                .andExpect(jsonPath("$.byMonth.length()").value(12));
+        mvc.perform(get("/api/v1/cabinet/savings").with(as(worker, "employee"))).andExpect(status().isForbidden());
     }
 
     @Test

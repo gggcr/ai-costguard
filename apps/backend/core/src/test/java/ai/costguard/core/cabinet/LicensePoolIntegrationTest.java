@@ -137,6 +137,13 @@ class LicensePoolIntegrationTest extends PostgresTestSupport {
         mvc.perform(get("/api/v1/me/licenses").with(as(worker, "employee")))
                 .andExpect(jsonPath("$.requests[0].employeeName").value(worker));
         org.assertj.core.api.Assertions.assertThat(workerId).isNotBlank();
+
+        // a seat not bought: its price a month is the saving
+        mvc.perform(get("/api/v1/cabinet/savings").with(it()))
+                .andExpect(jsonPath("$.seatsFromPool").value(1))
+                .andExpect(jsonPath("$.reassignedIdle").value(1))
+                .andExpect(jsonPath("$.seatsMonthly").value(1500.0))
+                .andExpect(jsonPath("$.totalMonthly").value(1500.0));
     }
 
     @Test

@@ -119,6 +119,18 @@ class RepositoryLicensePool implements LicensePool {
     }
 
     @Override
+    public java.util.Map<UUID, java.math.BigDecimal> monthlySeatPrices() {
+        java.util.Map<UUID, java.math.BigDecimal> prices = new java.util.HashMap<>();
+        jdbc.sql("select id, price_per_seat, billing_period from subscription").query((rs, i) -> {
+            java.math.BigDecimal price = rs.getBigDecimal("price_per_seat");
+            prices.put(rs.getObject("id", UUID.class), "year".equals(rs.getString("billing_period"))
+                    ? price.divide(java.math.BigDecimal.valueOf(12), 2, java.math.RoundingMode.HALF_UP) : price);
+            return null;
+        }).list();
+        return prices;
+    }
+
+    @Override
     public Optional<Offer> match(String text, int idleDays) {
         String wanted = Names.clean(text);
         if (wanted.isBlank()) {

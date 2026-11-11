@@ -7,6 +7,7 @@ import { EmployerLicenses } from './cabinet/Licenses';
 import { EmployerPayroll } from './cabinet/Payroll';
 import { EmployerPurchases } from './cabinet/Purchases';
 import { ShadowSummaryCard } from './cabinet/Shadow';
+import { SavingsCard } from './cabinet/Savings';
 import { EmployerVacations } from './cabinet/Vacations';
 
 type Tab = 'vacations' | 'payroll' | 'licenses' | 'purchases' | 'spend';
@@ -26,6 +27,7 @@ export function People() {
   return (
     <>
       <PageHeader title="Запросы сотрудников" subtitle="Что сотрудники просят и сообщают в своих кабинетах" />
+      <SavingsCard />
       <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={items} />
       {tab === 'vacations' && <EmployerVacations canManageHeads={canEdit('org')} />}
       {tab === 'payroll' && pay && <EmployerPayroll />}

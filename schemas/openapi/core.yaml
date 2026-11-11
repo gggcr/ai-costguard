@@ -3402,6 +3402,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Conversion"
+  /api/v1/cabinet/savings:
+    get:
+      tags:
+      - Cabinet
+      summary: "What the license pool and purchase checks saved, a month, by month"
+      operationId: savings
+      parameters:
+      - name: months
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 12
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CabinetSavings"
   /api/v1/budgets/{id}:
     get:
       tags:
@@ -6723,6 +6744,38 @@ components:
           format: date
         rub:
           type: number
+    CabinetSavings:
+      type: object
+      properties:
+        since:
+          type: string
+          format: date
+        seatsFromPool:
+          type: integer
+          format: int32
+        reassignedIdle:
+          type: integer
+          format: int32
+        seatsMonthly:
+          type: number
+        purchasesRefused:
+          type: integer
+          format: int32
+        purchasesMonthly:
+          type: number
+        totalMonthly:
+          type: number
+        byMonth:
+          type: array
+          items:
+            $ref: "#/components/schemas/Month"
+    Month:
+      type: object
+      properties:
+        month:
+          type: string
+        saved:
+          type: number
     LedgerEntry:
       type: object
       properties:
@@ -6771,13 +6824,6 @@ components:
           type: string
         limits:
           $ref: "#/components/schemas/PlanLimitsView"
-    Month:
-      type: object
-      properties:
-        month:
-          type: string
-        amount:
-          type: number
     Summary:
       type: object
       properties:
