@@ -6,7 +6,8 @@ import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
 import type { Employee, Role } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Field, Modal, PageHeader, ReadOnlyNote, Tabs } from '../components/ui';
 
-const ROLES: Role[] = ['owner', 'finance', 'it_admin', 'agent_owner', 'auditor'];
+// employee — только «Мой кабинет» (ADR 0051): так приглашают рядовых сотрудников
+const ROLES: Role[] = ['employee', 'owner', 'finance', 'it_admin', 'agent_owner', 'auditor'];
 
 export function Org() {
   const { state, actions, mode } = useStore();
@@ -144,7 +145,7 @@ function EmployeeForm({ employee, onClose }: { employee?: Employee; onClose: () 
 function InviteForm({ onClose }: { onClose: () => void }) {
   const { state, actions } = useStore();
   const [employeeId, setEmployeeId] = useState('');
-  const [role, setRole] = useState<Role>('agent_owner');
+  const [role, setRole] = useState<Role>('employee');
   const candidates = state.employees.filter((e) => e.active && !state.users.some((u) => u.employeeId === e.id));
   const emp = state.employees.find((e) => e.id === employeeId);
   return (
