@@ -191,6 +191,9 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-costguard-secret}
       # Traces go to the OpenTelemetry Collector of the observability profile; off unless TRACING=true (ADR 0048).
       MANAGEMENT_TRACING_EXPORT_ENABLED: ${TRACING:-false}
+      # locally every trace is kept; in a cluster TRACE_SAMPLING of the chart (0.1). Python services follow the
+      # decision of the trace they continue.
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACE_SAMPLING:-1.0}
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
     healthcheck:
       # Tomcat opens the port after Flyway has migrated, so an open port means the tables exist.
@@ -233,6 +236,9 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       INGEST_S3_BUCKET: costguard-imports
+      # traces to the collector of the observability profile when started with TRACING=true (ADR 0050)
+      COSTGUARD_TRACING: ${TRACING:-false}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
       S3_ENDPOINT: http://s3:8333
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-costguard}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-costguard-secret}

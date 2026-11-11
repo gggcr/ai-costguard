@@ -22,6 +22,7 @@ from decimal import ROUND_HALF_EVEN, Decimal
 
 import httpx
 
+from costguard_common import tracing
 from costguard_reports import agents, baseline, reconcile, savings, tracking
 from costguard_reports.forecast import Forecast, forecast
 
@@ -152,6 +153,7 @@ def fetch_agent_spend(clickhouse: httpx.Client, tenant: str, currency: str, tena
     return out
 
 
+@tracing.job("costguard-forecast", "forecast")
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="costguard-forecast")
     parser.add_argument("--tenant", required=True, help="tenant id: whose spend to read from ClickHouse")

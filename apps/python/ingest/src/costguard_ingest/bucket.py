@@ -34,6 +34,7 @@ from typing import Protocol
 
 import httpx
 
+from costguard_common import tracing
 from costguard_ingest import mapping
 
 log = logging.getLogger(__name__)
@@ -218,6 +219,7 @@ def pull(bucket: Bucket, core: httpx.Client, prefix: str, state: State, since: d
     return summary
 
 
+@tracing.job("costguard-focus-pull", "focus pull")
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(prog="costguard-focus-pull")

@@ -20,7 +20,7 @@ from costguard_anomaly import models as modelling
 from costguard_anomaly.detector import Anomaly, Detector
 from costguard_anomaly.risk import Rules, Score
 from costguard_anomaly.scorer import Scorer, signal
-from costguard_common import consuming, logs
+from costguard_common import consuming, logs, tracing
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
@@ -90,7 +90,8 @@ def run(settings: AnomalySettings) -> None:
     def publish(scores: list[Score], now: datetime) -> None:
         for s in scores:
             if worth_signalling(s, now):
-                producer.produce(SIGNALS, key=signal_key(s).encode(), value=codec.encode(SIGNALS, signal(s)))
+                producer.produce(SIGNALS, key=signal_key(s).encode(), value=codec.encode(SIGNALS, signal(s)),
+                                 headers=tracing.headers())
 
     try:
         while True:
@@ -99,14 +100,16 @@ def run(settings: AnomalySettings) -> None:
             if msg is not None and msg.error() and consuming.skip(msg.error(), log):
                 msg = None
             if msg is not None:
-                record = codec.decode(msg.topic(), msg.value())
-                if msg.topic() == COSTS:
-                    for a in detector.add(record):
-                        if worth_reporting(a, now):
-                            producer.produce(FINDINGS, key=a.fingerprint.encode(),
-                                             value=codec.encode(FINDINGS, finding(a, now)))
-                else:
-                    publish(risk.add(record), now)
+                with tracing.consumed(msg):
+                    record = codec.decode(msg.topic(), msg.value())
+                    if msg.topic() == COSTS:
+                        for a in detector.add(record):
+                            if worth_reporting(a, now):
+                                producer.produce(FINDINGS, key=a.fingerprint.encode(),
+                                                 value=codec.encode(FINDINGS, finding(a, now)),
+                                                 headers=tracing.headers())
+                    else:
+                        publish(risk.add(record), now)
             if now - last_tick > timedelta(seconds=30):
                 publish(risk.tick(now), now)
                 last_tick = now
@@ -126,7 +129,11 @@ def run(settings: AnomalySettings) -> None:
 
 def main() -> None:
     logs.configure()
-    run(AnomalySettings())
+    tracing.setup("costguard-anomaly")
+    try:
+        run(AnomalySettings())
+    finally:
+        tracing.shutdown()
 
 
 if __name__ == "__main__":

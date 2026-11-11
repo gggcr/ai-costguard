@@ -16,5 +16,5 @@ runbook [observability.md](../../docs/runbooks/observability.md)).
 The dashboard and alerts stay in the Helm chart: they are released with the services they watch, and their
 thresholds are values of the chart.
 
-Traces: the core and the gateway export OTLP when `tracing.enabled` is on in the chart, or with `TRACING=true`
-locally. The collector drops attributes that may carry personal data before anything is stored (ADR 0023).
+Traces: the core, the gateway and the Python services export OTLP when `tracing.enabled` is on in the chart, or
+with `TRACING=true` locally (ADR 0050); the trace crosses Kafka in the `traceparent` header. The collector drops attributes that may carry personal data before anything is stored (ADR 0023).

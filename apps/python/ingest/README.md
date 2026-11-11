@@ -55,6 +55,10 @@ Helm chart runs `python /app/schemas/clickhouse/apply.py` from it.
 | `INGEST_LLM_GATEWAY_URL`, `INGEST_LLM_PROVIDER`, `INGEST_LLM_FOLDER_ID`, `INGEST_LLM_CONFIDENCE`, `INGEST_LLM_TIMEOUT_SECONDS` | `http://localhost:8081`, `openai`, … | |
 | `INGEST_PAYMENT_INTERMEDIARIES`, `INGEST_PAYMENT_SERVICES` | empty | payment agents and extra services to look for in purposes |
 
+
+Traces (ADR 0050): with `COSTGUARD_TRACING=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` the service sends spans to the
+OpenTelemetry Collector; the chart sets both with `tracing.enabled`.
+
 ## Tests
 
 ```sh

@@ -49,6 +49,10 @@ The models, the boosting among them, are plain Python (ADR 0034, 0045): the imag
 | `REPORTS_LLM_API_KEY`, `REPORTS_LLM_MODEL` | explanations of a report are written when both are set; the key is a virtual key of the gateway |
 | `REPORTS_LLM_GATEWAY_URL`, `REPORTS_LLM_PROVIDER`, `REPORTS_LLM_FOLDER_ID` | |
 
+
+Traces (ADR 0050): with `COSTGUARD_TRACING=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` the service sends spans to the
+OpenTelemetry Collector; the chart sets both with `tracing.enabled`.
+
 ## Tests
 
 ```sh

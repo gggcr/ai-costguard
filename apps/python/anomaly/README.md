@@ -30,6 +30,10 @@ docker build -f apps/python/anomaly/Dockerfile -t costguard-anomaly .
 | `ANOMALY_TIME_ZONE` | `Europe/Moscow` | the day of a spike and the «night» of the risk rules |
 | `ANOMALY_MODELS_SAVE_EVERY` | `5000` | operations between saves of the models to MLflow |
 
+
+Traces (ADR 0050): with `COSTGUARD_TRACING=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` the service sends spans to the
+OpenTelemetry Collector; the chart sets both with `tracing.enabled`.
+
 ## Tests
 
 ```sh

@@ -148,6 +148,10 @@ def test_the_java_services_export_traces_only_when_asked():
     on = env("tracing.enabled=true")
     assert on["MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT"].endswith(":4318/v1/traces")
     assert "MANAGEMENT_TRACING_EXPORT_ENABLED" not in on
+    # the Python services read the standard OpenTelemetry variable and a switch of their own (ADR 0050)
+    assert on["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] == on["MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT"]
+    assert on["COSTGUARD_TRACING"] == "true"
+    assert "COSTGUARD_TRACING" not in off
 
 
 def test_the_local_stack_uses_the_same_config_and_dashboard():

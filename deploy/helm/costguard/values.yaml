@@ -207,7 +207,7 @@ logging:
 imports:
   bucket: costguard-imports
 
-# Traces (ADR 0048): the core and the gateway send spans over OTLP to the OpenTelemetry Collector of
+# Traces (ADR 0048, 0050): the core, the gateway and the Python services send spans over OTLP to the OpenTelemetry Collector of
 # deploy/argocd/observability.yaml, which forwards them to Tempo; Grafana shows them next to the logs. Off, the
 # services still put a trace id into errors and logs, but export nothing. TRACE_SAMPLING of the core sets the share.
 tracing:

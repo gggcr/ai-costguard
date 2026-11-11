@@ -36,5 +36,6 @@ Grafana http://localhost:3001 (admin / admin), Prometheus http://localhost:9090.
 | Дашборд пустой | Prometheus → Status → Targets: есть ли `costguard-core`, `costguard-gateway`. Нет — у Prometheus не сняты селекторы (`*SelectorNilUsesHelmValues: false`) или `monitoring.serviceMonitor` выключен |
 | Алерты не приходят | [alerting.md](alerting.md); метка `alertmanagerConfig: costguard` у AlertmanagerConfig должна совпадать с селектором Alertmanager |
 | Трейсов нет | `tracing.enabled` в values; в поде ядра `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT`; `kubectl -n observability logs deploy/otel-collector` — ошибки экспорта в Tempo |
-| Трейсов мало | Доля задаётся `TRACE_SAMPLING` ядра (по умолчанию 0.1) |
+| Трейсов мало | Доля задаётся `TRACE_SAMPLING` ядра (по умолчанию 0.1); Python-сервисы пишут только записанные трейсы (ADR 0050) |
+| Нет спанов Python-сервиса | В его поде `COSTGUARD_TRACING=true` и `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`; в логе при старте строка «Traces of costguard-… go to …» |
 | Логов нет | [ADR 0035](../adr/0035-ingress-keycloak-logs-row-policies.md): Alloy видит только поды с `app.kubernetes.io/part-of=costguard` в `costguard` и `costguard-staging` |

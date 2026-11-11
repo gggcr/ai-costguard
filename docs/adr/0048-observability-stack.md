@@ -36,6 +36,5 @@
 
 - Перед первой синхронизацией в `observability` нужны секреты `loki-s3` и `grafana-admin`
   (docs/runbooks/observability.md).
-- Python-сервисы трейсы пока не отправляют: в них нет инструментирования OpenTelemetry. Collector их примет, когда
-  оно появится.
+- Python-сервисы отправляют трейсы с ADR 0050, и трейс идёт сквозь Kafka.
 - Проекту Argo CD `observability` разрешены CRD и вебхуки. Они нужны оператору Prometheus.

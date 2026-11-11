@@ -26,7 +26,10 @@ class OutboxConfig {
         config.put("value.serializer", ByteArraySerializer.class);
         config.put("acks", "all");
         config.put("enable.idempotence", true);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(config));
+        var template = new KafkaTemplate<String, byte[]>(new DefaultKafkaProducerFactory<>(config));
+        // a producer span and the W3C traceparent header: the Python services continue the trace (ADR 0050)
+        template.setObservationEnabled(true);
+        return template;
     }
 
     @Bean

@@ -58,3 +58,6 @@ docker build -f apps/python/connectors/Dockerfile -t costguard-connectors .   # 
 ```
 
 The Helm CronJob `costguard-connectors` and the agent inside a client's network run `costguard-connector-agent` from it.
+
+Traces (ADR 0050): with `COSTGUARD_TRACING=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` every run of the agent is a span,
+and its calls are child spans; the chart sets both with `tracing.enabled`.

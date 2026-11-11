@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from costguard_common import consuming, llm, logs
+from costguard_common import consuming, llm, logs, tracing
 from costguard_common import payments as paying
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
@@ -174,23 +174,34 @@ def run(settings: IngestSettings) -> None:
             if msg.error():
                 if consuming.skip(msg.error(), log):
                     continue
-            record = codec.decode(msg.topic(), msg.value())
-            out = handler.on_file(record) if msg.topic() == FILES else handler.on_accepted(record)
-            failed: list[str] = []
-            for m in out:
-                producer.produce(m.topic, key=m.key.encode(), value=codec.encode(m.topic, m.value),
-                                 on_delivery=lambda err, _m, failed=failed: failed.append(str(err)) if err else None)
-            producer.flush(30)
-            if failed or len(producer):
-                raise RuntimeError(f"Output not delivered, the input will be read again: {failed[:3]}")
-            consumer.commit(message=msg, asynchronous=False)
+            with tracing.consumed(msg) as span:
+                record = codec.decode(msg.topic(), msg.value())
+                out = handler.on_file(record) if msg.topic() == FILES else handler.on_accepted(record)
+                span.set_attribute("costguard.outputs", len(out))
+                failed: list[str] = []
+
+                def delivered(err, _m, failed=failed):
+                    if err:
+                        failed.append(str(err))
+
+                for m in out:
+                    producer.produce(m.topic, key=m.key.encode(), value=codec.encode(m.topic, m.value),
+                                     headers=tracing.headers(), on_delivery=delivered)
+                producer.flush(30)
+                if failed or len(producer):
+                    raise RuntimeError(f"Output not delivered, the input will be read again: {failed[:3]}")
+                consumer.commit(message=msg, asynchronous=False)
     finally:
         consumer.close()
 
 
 def main() -> None:
     logs.configure()
-    run(IngestSettings())
+    tracing.setup("costguard-ingest")
+    try:
+        run(IngestSettings())
+    finally:
+        tracing.shutdown()
 
 
 if __name__ == "__main__":

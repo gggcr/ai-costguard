@@ -29,6 +29,10 @@ docker build -f apps/python/notary/Dockerfile -t costguard-notary .
 | `NOTARY_BATCH_SIZE`, `NOTARY_INTERVAL_SECONDS` | `1000`, `600` | |
 | `NOTARY_GROUP_ID`, `NOTARY_REQUESTS_GROUP_ID` | `notary`, `notary-requests` | |
 
+
+Traces (ADR 0050): with `COSTGUARD_TRACING=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` the service sends spans to the
+OpenTelemetry Collector; the chart sets both with `tracing.enabled`.
+
 ## Tests
 
 ```sh

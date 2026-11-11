@@ -60,10 +60,14 @@ https://{{ required "ingress.hosts.keycloak is required with keycloak.enabled" .
   value: {{ .Values.imports.bucket | quote }}
 - name: INGEST_S3_BUCKET
   value: {{ .Values.imports.bucket | quote }}
-{{- /* Traces of the Java services (ADR 0048): to the OpenTelemetry Collector, or nowhere. */}}
+{{- /* Traces (ADR 0048, 0050): Java and Python services to the OpenTelemetry Collector, or nowhere. */}}
 {{- if .Values.tracing.enabled }}
 - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
   value: {{ .Values.tracing.otlpEndpoint | quote }}
+- name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+  value: {{ .Values.tracing.otlpEndpoint | quote }}
+- name: COSTGUARD_TRACING
+  value: "true"
 {{- else }}
 - name: MANAGEMENT_TRACING_EXPORT_ENABLED
   value: "false"

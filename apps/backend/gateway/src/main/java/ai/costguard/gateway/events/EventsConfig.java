@@ -45,7 +45,10 @@ class EventsConfig {
         config.put("max.block.ms", 2000);
         config.put("delivery.timeout.ms", 15000);
         config.put("request.timeout.ms", 5000);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(config));
+        var template = new KafkaTemplate<String, byte[]>(new DefaultKafkaProducerFactory<>(config));
+        // a producer span and the W3C traceparent header: the Python services continue the trace (ADR 0050)
+        template.setObservationEnabled(true);
+        return template;
     }
 
     @Bean

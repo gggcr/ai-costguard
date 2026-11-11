@@ -65,7 +65,7 @@ from pathlib import Path
 
 import httpx
 
-from costguard_common import logs, payments
+from costguard_common import logs, payments, tracing
 from costguard_connectors import (
     banks,
     bitrix24,
@@ -288,6 +288,7 @@ def kafka_publisher(bootstrap: str, registry_url: str) -> Callable[[list[contrac
     return publish
 
 
+@tracing.job("costguard-connectors", "connectors run")
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="costguard-connector-agent")
     parser.add_argument("config", type=Path)

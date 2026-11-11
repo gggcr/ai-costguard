@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from costguard_common import consuming, logs
+from costguard_common import consuming, logs, tracing
 from costguard_common.registry import SchemaRegistry
 from costguard_common.settings import Settings
 from costguard_common.wire import Codec
@@ -72,6 +72,7 @@ def run(settings: NotarySettings) -> None:
         def publish(value: dict) -> None:
             failed: list[str] = []
             producer.produce(topic, key=value[key].encode(), value=codec.encode(topic, value),
+                             headers=tracing.headers(),
                              on_delivery=lambda err, _m: failed.append(str(err)) if err else None)
             producer.flush(30)
             if failed or len(producer):
@@ -101,8 +102,9 @@ def run(settings: NotarySettings) -> None:
                 pending.append(receipt(codec.decode(RECEIPTS, msg.value())))
             due = time.monotonic() - since >= settings.notary_interval_seconds
             if pending and (len(pending) >= settings.notary_batch_size or due):
-                n = batches.anchor(pending, call, publish_anchor, lambda: datetime.now(UTC),
-                                   settings.notary_batch_size)
+                with tracing.span("notary anchor", **{"costguard.receipts": len(pending)}):
+                    n = batches.anchor(pending, call, publish_anchor, lambda: datetime.now(UTC),
+                                       settings.notary_batch_size)
                 receipts.commit(asynchronous=False)
                 log.info("Anchored %d receipts in %d batches", len(pending), n)
                 pending = []
@@ -112,9 +114,10 @@ def run(settings: NotarySettings) -> None:
 
             msg = polled(requests, 0.5)
             if msg is not None:
-                notarize.handle(codec.decode(REQUESTS, msg.value()), call, publish_confirmation,
-                                lambda: datetime.now(UTC))
-                requests.commit(message=msg, asynchronous=False)
+                with tracing.consumed(msg):
+                    notarize.handle(codec.decode(REQUESTS, msg.value()), call, publish_confirmation,
+                                    lambda: datetime.now(UTC))
+                    requests.commit(message=msg, asynchronous=False)
     finally:
         receipts.close()
         requests.close()
@@ -122,7 +125,11 @@ def run(settings: NotarySettings) -> None:
 
 def main() -> None:
     logs.configure()
-    run(NotarySettings())
+    tracing.setup("costguard-notary")
+    try:
+        run(NotarySettings())
+    finally:
+        tracing.shutdown()
 
 
 if __name__ == "__main__":

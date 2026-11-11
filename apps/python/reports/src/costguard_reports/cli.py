@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-from costguard_common import llm
+from costguard_common import llm, tracing
 from costguard_reports import explain, report
 
 
@@ -51,6 +51,7 @@ def fetch_clickhouse(clickhouse: httpx.Client, tenant: str, currency: str, month
     return out
 
 
+@tracing.job("costguard-report", "report")
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="costguard-report")
     parser.add_argument("--format", choices=["xlsx", "pdf"], required=True)
