@@ -146,7 +146,8 @@ export function ApiStoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreValue>(() => ({
     state, actions, toasts, dismissToast, toast, live, setLive, mode: 'api', loading, error, systemTypes, company,
-  }), [state, actions, toasts, dismissToast, toast, live, loading, error, systemTypes, company]);
+    reloadOrg: () => reload(['users', 'departments', 'employees']),
+  }), [state, actions, toasts, dismissToast, toast, live, loading, error, systemTypes, company, reload]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

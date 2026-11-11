@@ -167,6 +167,9 @@ export type CompanyLogin = {
   clientId?: string;
   domains?: Array<string>;
   redirectUri?: string;
+  createMailboxes?: boolean;
+  licenseSkuId?: string;
+  usageLocation?: string;
 };
 
 export type CompanyLoginSettings = {
@@ -174,6 +177,9 @@ export type CompanyLoginSettings = {
   clientId: string;
   clientSecret?: string;
   domains: Array<string>;
+  createMailboxes?: boolean;
+  licenseSkuId?: string;
+  usageLocation?: string;
 };
 
 export type CompanySettings = {
@@ -564,6 +570,12 @@ export type MyPayroll = {
   payments?: Array<PayrollPayment>;
 };
 
+export type MySignIn = {
+  otp?: boolean;
+  otpFirst?: boolean;
+  setupUrl?: string;
+};
+
 export type NewAsset = {
   inventoryNumber: string;
   model: string;
@@ -588,6 +600,15 @@ export type NewBudget = {
 
 export type NewDepartment = {
   name: string;
+};
+
+export type NewEmployee = {
+  firstName: string;
+  lastName: string;
+  departmentId: string;  // uuid
+  position: string;
+  email?: string;
+  createMailbox?: boolean;
 };
 
 export type NewInvitation = {
@@ -661,6 +682,13 @@ export type Offer = {
   assigned?: number;
   free?: number;
   idle?: number;
+};
+
+export type Onboarded = {
+  employee?: Employee;
+  email?: string;
+  password?: string;
+  mailboxCreated?: boolean;
 };
 
 export type OperationView = {
@@ -1227,7 +1255,7 @@ export const operations = {
   catalogConvert: { method: "GET", path: "/api/v1/catalog/fx-conversion" },
   catalogRates: { method: "GET", path: "/api/v1/catalog/fx-rates" },
   catalogPrices: { method: "GET", path: "/api/v1/catalog/prices" },
-  catalogAdd_1: { method: "POST", path: "/api/v1/catalog/prices" },
+  catalogAdd_2: { method: "POST", path: "/api/v1/catalog/prices" },
   catalogHistory: { method: "GET", path: "/api/v1/catalog/prices/{skuId}/history" },
   organisationCompany: { method: "GET", path: "/api/v1/company" },
   organisationSaveCompany: { method: "PUT", path: "/api/v1/company" },
@@ -1253,6 +1281,7 @@ export const operations = {
   organisationSetHead: { method: "PUT", path: "/api/v1/departments/{id}/head" },
   organisationEmployees: { method: "GET", path: "/api/v1/employees" },
   organisationCreateEmployee: { method: "POST", path: "/api/v1/employees" },
+  organisationAdd_1: { method: "POST", path: "/api/v1/employees/onboarding" },
   assetsHeldBy: { method: "GET", path: "/api/v1/employees/{employeeId}/assets" },
   cabinetOf: { method: "GET", path: "/api/v1/employees/{employeeId}/documents" },
   cabinetAdd: { method: "POST", path: "/api/v1/employees/{employeeId}/documents" },
@@ -1313,6 +1342,8 @@ export const operations = {
   cabinetReport: { method: "POST", path: "/api/v1/me/shadow-spend" },
   cabinetLoad_1: { method: "POST", path: "/api/v1/me/shadow-spend/imports" },
   cabinetDelete_2: { method: "DELETE", path: "/api/v1/me/shadow-spend/{id}" },
+  organisationSignIn: { method: "GET", path: "/api/v1/me/sign-in" },
+  organisationOtpFirst: { method: "PUT", path: "/api/v1/me/sign-in/otp-first" },
   cabinetTeam: { method: "GET", path: "/api/v1/me/team/vacations" },
   cabinetDecide_1: { method: "PUT", path: "/api/v1/me/team/vacations/{id}/decision" },
   cabinetMine: { method: "GET", path: "/api/v1/me/vacations" },

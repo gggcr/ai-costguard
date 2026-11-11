@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EmployeeDocumentsModal } from './cabinet/Documents';
 import { MicrosoftLoginCard } from './org/MicrosoftLogin';
+import { OnboardForm } from './org/Onboard';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
@@ -104,7 +105,9 @@ export function Org() {
       )}
 
       {modal === 'dept' && <DeptForm onClose={() => setModal(null)} />}
-      {modal === 'employee' && <EmployeeForm employee={editEmployee} onClose={() => setModal(null)} />}
+      {modal === 'employee' && (mode === 'api' && !editEmployee
+        ? <OnboardForm onClose={() => setModal(null)} />
+        : <EmployeeForm employee={editEmployee} onClose={() => setModal(null)} />)}
       {modal === 'invite' && <InviteForm onClose={() => setModal(null)} />}
       {docsOf && <EmployeeDocumentsModal employeeId={docsOf.id} name={docsOf.name} onClose={() => setDocsOf(null)} />}
     </>

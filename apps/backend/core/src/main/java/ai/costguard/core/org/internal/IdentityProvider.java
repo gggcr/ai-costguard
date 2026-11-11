@@ -51,6 +51,21 @@ interface IdentityProvider {
 
     void saveMicrosoftLogin(MicrosoftLogin login);
 
+    /**
+     * An account that can log in right away (ADR 0059): the address is the company's own (its mailbox was just made
+     * or an owner typed it), so it is verified; the password is the one the person is given.
+     */
+    Optional<String> createWithPassword(NewAccount account, String password);
+
+    /** How the account logs in: whether it has a code of an authenticator app, and whether the code comes first. */
+    record SignIn(boolean otp, boolean otpFirst) {
+    }
+
+    SignIn signIn(String id);
+
+    /** The code of the authenticator app is asked first on the login page; the password stays another way. */
+    void preferOtp(String id);
+
     /** Removing a provider that is gone already is fine. */
     void removeLogin(String alias);
 

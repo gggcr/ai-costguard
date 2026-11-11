@@ -14,6 +14,7 @@ import { MyPay } from './cabinet/Payroll';
 import { MyLicenses } from './cabinet/Licenses';
 import { MyPurchases } from './cabinet/Purchases';
 import { MyShadowSpend } from './cabinet/Shadow';
+import { SignInCard } from './cabinet/SignIn';
 
 /** Профиль того, кто вошёл: из ядра в режиме API, из демо-данных в демо. */
 export function useMe(): { me: Me | null; error: string | null } {
@@ -107,6 +108,7 @@ function Profile({ me }: { me: Me }) {
           <Empty>Вы не числитесь сотрудником компании в CostGuard. Если это ошибка, напишите администратору.</Empty>
         )}
       </Card>
+      {mode === 'api' && <SignInCard />}
       {mode === 'api' && <ChannelSettings />}
     </>
   );

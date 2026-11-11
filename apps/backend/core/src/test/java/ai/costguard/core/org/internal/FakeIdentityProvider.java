@@ -16,6 +16,32 @@ public class FakeIdentityProvider implements IdentityProvider {
 
     public final Map<String, Stored> accounts = new ConcurrentHashMap<>();
     public final Map<String, MicrosoftLogin> logins = new ConcurrentHashMap<>();
+    public final Map<String, String> passwords = new ConcurrentHashMap<>();
+    public final Map<String, SignIn> signIns = new ConcurrentHashMap<>();
+
+    @Override
+    public Optional<String> createWithPassword(NewAccount account, String password) {
+        if (byEmail(account.email()).isPresent()) {
+            return Optional.empty();
+        }
+        String id = UUID.randomUUID().toString();
+        accounts.put(id, new Stored(id, account.email(), account.firstName(), account.lastName(), account.tenantId(),
+                account.role(), true));
+        passwords.put(id, password);
+        return Optional.of(id);
+    }
+
+    @Override
+    public SignIn signIn(String id) {
+        return signIns.getOrDefault(id, new SignIn(false, false));
+    }
+
+    @Override
+    public void preferOtp(String id) {
+        if (signIn(id).otp()) {
+            signIns.put(id, new SignIn(true, true));
+        }
+    }
 
     @Override
     public void saveMicrosoftLogin(MicrosoftLogin login) {

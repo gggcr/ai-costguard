@@ -710,6 +710,8 @@ export interface StoreValue {
   error: string | null;
   systemTypes: SystemType[];
   company: { name: string; currency: string };
+  /** api: перечитать оргструктуру после действий вне actions (добавление сотрудника с почтой, ADR 0059) */
+  reloadOrg?: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);

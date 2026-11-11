@@ -146,6 +146,39 @@ class KeycloakIdentityProvider implements IdentityProvider {
         }
     }
 
+    private JsonNode credentials(String token, String id) {
+        HttpResponse<String> r = send(authorized(token, admin("/users/" + encode(id) + "/credentials")).GET());
+        if (r.statusCode() != 200) {
+            throw new Unavailable("Keycloak credentials: HTTP " + r.statusCode());
+        }
+        return read(r.body());
+    }
+
+    @Override
+    public SignIn signIn(String id) {
+        JsonNode list = credentials(token(), id);
+        boolean otp = false;
+        for (JsonNode c : list) {
+            otp |= "otp".equals(c.path("type").asText());
+        }
+        return new SignIn(otp, list.size() > 0 && "otp".equals(list.get(0).path("type").asText()));
+    }
+
+    @Override
+    public void preferOtp(String id) {
+        String token = token();
+        for (JsonNode c : credentials(token, id)) {
+            if ("otp".equals(c.path("type").asText())) {
+                HttpResponse<String> r = send(authorized(token, admin("/users/" + encode(id) + "/credentials/"
+                        + encode(c.path("id").asText()) + "/moveToFirst")).POST(HttpRequest.BodyPublishers.noBody()));
+                if (r.statusCode() / 100 != 2) {
+                    throw new Unavailable("Keycloak credential order: HTTP " + r.statusCode());
+                }
+                return;
+            }
+        }
+    }
+
     @Override
     public void removeLogin(String alias) {
         HttpResponse<String> r = send(authorized(token(), admin("/identity-provider/instances/" + encode(alias)))
@@ -157,6 +190,15 @@ class KeycloakIdentityProvider implements IdentityProvider {
 
     @Override
     public Optional<String> create(NewAccount account) {
+        return create(account, null);
+    }
+
+    @Override
+    public Optional<String> createWithPassword(NewAccount account, String password) {
+        return create(account, password);
+    }
+
+    private Optional<String> create(NewAccount account, String password) {
         String token = token();
         ObjectNode user = JSON.createObjectNode()
                 .put("username", account.email())
@@ -164,11 +206,16 @@ class KeycloakIdentityProvider implements IdentityProvider {
                 .put("firstName", account.firstName())
                 .put("lastName", account.lastName())
                 .put("enabled", true)
-                .put("emailVerified", false);
+                .put("emailVerified", password != null);
         user.putObject("attributes").putArray("tenant_id").add(account.tenantId().toString());
         ArrayNode actions = user.putArray("requiredActions");
-        for (String action : SETUP_ACTIONS) {
-            actions.add(action);
+        if (password == null) {
+            for (String action : SETUP_ACTIONS) {
+                actions.add(action);
+            }
+        } else {
+            user.putArray("credentials").addObject().put("type", "password").put("value", password)
+                    .put("temporary", false);
         }
         HttpResponse<String> created = send(authorized(token, admin("/users"))
                 .header("Content-Type", "application/json").POST(json(user)));

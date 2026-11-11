@@ -429,6 +429,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vacation"
+  /api/v1/me/sign-in/otp-first:
+    put:
+      tags:
+      - Organisation
+      summary: "Ask the code of the authenticator app first, the password stays another\
+        \ way"
+      operationId: otpFirst
+      responses:
+        "204":
+          description: No Content
   /api/v1/me/notifications/{id}/read:
     put:
       tags:
@@ -2059,6 +2069,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmployeeDocument"
+  /api/v1/employees/onboarding:
+    post:
+      tags:
+      - Organisation
+      summary: Add an employee with a Microsoft 365 mailbox (if connected) and a CostGuard
+        account
+      description: "The password is in this answer only: give it to the person."
+      operationId: add_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewEmployee"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Onboarded"
   /api/v1/departments:
     get:
       tags:
@@ -2262,7 +2293,7 @@ paths:
       - Catalog
       summary: Set a price from a date
       description: Earlier prices stay for past operations.
-      operationId: add_1
+      operationId: add_2
       requestBody:
         content:
           application/json:
@@ -2790,6 +2821,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vacation"
+  /api/v1/me/sign-in:
+    get:
+      tags:
+      - Organisation
+      summary: "My way of logging in: a code of an authenticator app instead of the\
+        \ password"
+      operationId: signIn
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MySignIn"
   /api/v1/me/purchase-requests/{id}/file:
     get:
       tags:
@@ -4691,6 +4736,14 @@ components:
             pattern: "[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
           maxItems: 20
           minItems: 0
+        createMailboxes:
+          type: boolean
+        licenseSkuId:
+          type: string
+          pattern: "[0-9a-fA-F-]{36}"
+        usageLocation:
+          type: string
+          pattern: "[A-Za-z]{2}"
       required:
       - clientId
       - directoryId
@@ -4711,6 +4764,12 @@ components:
           items:
             type: string
         redirectUri:
+          type: string
+        createMailboxes:
+          type: boolean
+        licenseSkuId:
+          type: string
+        usageLocation:
           type: string
     LimitChange:
       type: object
@@ -5657,6 +5716,44 @@ components:
         returnedOn:
           type: string
           format: date
+    NewEmployee:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        lastName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        departmentId:
+          type: string
+          format: uuid
+        position:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        createMailbox:
+          type: boolean
+      required:
+      - departmentId
+      - firstName
+      - lastName
+      - position
+    Onboarded:
+      type: object
+      properties:
+        employee:
+          $ref: "#/components/schemas/Employee"
+        email:
+          type: string
+        password:
+          type: string
+        mailboxCreated:
+          type: boolean
     NewDepartment:
       type: object
       properties:
@@ -6349,6 +6446,15 @@ components:
             $ref: "#/components/schemas/Vacation"
         hasHead:
           type: boolean
+    MySignIn:
+      type: object
+      properties:
+        otp:
+          type: boolean
+        otpFirst:
+          type: boolean
+        setupUrl:
+          type: string
     MyPayroll:
       type: object
       properties:

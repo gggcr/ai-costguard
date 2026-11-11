@@ -185,13 +185,75 @@
     },
     {
       "alias": "costguard browser forms",
-      "description": "Password and a code of an authenticator app, set up on the first login",
+      "description": "Work e-mail, then the password or a code of an authenticator app (ADR 0059)",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
         {
-          "authenticator": "auth-username-password-form",
+          "authenticator": "auth-username-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "costguard sign-in way",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "costguard sign-in way",
+      "description": "The password or, once set up, a code of an authenticator app: \"Try another way\"",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-password-form",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "costguard post broker",
+      "description": "After Microsoft 365: a code of the authenticator app, if the person set one up",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "costguard post broker code",
+          "requirement": "CONDITIONAL",
+          "priority": 10,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "costguard post broker code",
+      "description": "Only for people with an authenticator app",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 10,
@@ -202,23 +264,7 @@
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 20,
-          "userSetupAllowed": true
-        }
-      ]
-    },
-    {
-      "alias": "costguard post broker",
-      "description": "After Microsoft 365: a code of an authenticator app, set up on the first login",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticator": "auth-otp-form",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "userSetupAllowed": true
+          "userSetupAllowed": false
         }
       ]
     },
