@@ -201,7 +201,7 @@ SeaweedFS); дополнительные топики и таблицы; стр�
 | `apps/backend/gateway`, `apps/backend/core` | там же | сделано |
 | `apps/backend/{detector,notary,ingest,connectors,audit,forecast}` | `apps/python/{anomaly,notary,ingest,connectors,reports}`; audit в ядре | сделано, доска приведена к коду 11.11.2026: Python-сервисы лежат в `apps/python` (ADR нет); audit в ядре (ADR 0005); forecast — `reports` |
 | `apps/backend/airflow` | `infra/airflow` | сделано, доска приведена к коду 11.11.2026: ADR нет |
-| `apps/frontend` — зона фронтенд-команды | `apps/frontend`, строка в `CODEOWNERS` с плейсхолдером владельца | сделано |
+| `apps/frontend` — зона фронтенд-команды | `apps/frontend`, строка в `CODEOWNERS` (`@melanxolia801`) | сделано |
 | `smart-contracts/costguard-notary` | `contracts/notary` | сделано, доска приведена к коду 11.11.2026: ADR нет |
 | `libs/java`: platform-starter (tenant и RLS, RFC 9457, трассировка), events | `libs/java/platform-starter`, `libs/java/events` | сделано |
 | `libs/python`: costguard-common, costguard-events, costguard-storage, costguard-llm | `libs/python/costguard-common` (схемы, wire, normalized, payments) | сделано, доска приведена к коду 11.11.2026: ADR нет: одна библиотека вместо четырёх |
@@ -280,7 +280,7 @@ SeaweedFS); дополнительные топики и таблицы; стр�
 |---|---|---|
 | `make up` поднимает инфраструктуру из `infra/local`, `make demo` загружает демо-компанию из `tools/seed`, `make test` запускает тесты всех языков | `Makefile` (`up`, `demo`, `seed`, `test`) | сделано |
 | Фронтенд связан с бэкендом только контрактом; клиент генерируется из той же спецификации | `tools/codegen/openapi_ts.py` → `apps/frontend/src/api/generated` | сделано |
-| `apps/frontend` принадлежит фронтенд-команде | `CODEOWNERS` | сделано иначе: владелец — плейсхолдер `@frontend-owner-placeholder`, его нужно заменить на реальный логин |
+| `apps/frontend` принадлежит фронтенд-команде | `CODEOWNERS` | сделано: владелец `@melanxolia801` |
 | CI по изменённым путям; правка в `schemas/` запускает всех, кто использует схему | `paths` в `.github/workflows/*.yml`, `contracts.yml` | сделано (у `load.yml` фильтра нет: запускается вручную или по расписанию) |
 | Argo CD разворачивает готовые образы по окружениям | `deploy/argocd/{staging,prod}.yaml`, `deploy.yml` | сделано, доска приведена к коду 11.11.2026: ADR нет: окружения staging и prod, отдельного dev нет |
 | Границы модулей ядра проверяет тест; модули общаются через события | `ModuleBoundariesTest` | сделано |
@@ -295,5 +295,4 @@ SeaweedFS); дополнительные топики и таблицы; стр�
 
 Расходится с доской: ничего — 11.11.2026 доска приведена к коду (см. начало документа).
 
-Открытым осталось одно: в `CODEOWNERS` владелец `apps/frontend` — плейсхолдер `@frontend-owner-placeholder`, его
-нужно заменить на реальный логин или команду фронтенда.
+Открытых пунктов нет.
