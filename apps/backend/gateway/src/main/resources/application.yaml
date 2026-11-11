@@ -59,6 +59,12 @@ costguard:
     #       - { path: "/v1/companies/{inn}/report", method: GET, product: report, price: 450 }
 
 management:
+  # Metrics are scraped by Prometheus (/actuator/prometheus); the OTLP push of spring-boot-starter-opentelemetry
+  # would only fail every minute against a collector that takes traces, not metrics (ADR 0048).
+  otlp:
+    metrics:
+      export:
+        enabled: false
   endpoints:
     web:
       exposure:

@@ -24,6 +24,13 @@ dependencies {
     implementation(libs.spring.modulith.events.kafka)
     implementation(libs.springdoc.webmvc)
     implementation(libs.pdfbox)
+    implementation(platform(libs.aws.sdk.bom))
+    // the JDK's HTTP client is enough for a file per upload: no Netty or Apache client in the image
+    implementation(libs.aws.s3) {
+        exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+        exclude(group = "software.amazon.awssdk", module = "apache-client")
+    }
+    implementation(libs.aws.url.connection.client)
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)
@@ -37,6 +44,7 @@ dependencies {
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.core)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

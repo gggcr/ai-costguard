@@ -140,6 +140,9 @@ services:
     profiles: [demo]
     build: ../../apps/backend/core
     depends_on:
+      # consumers subscribe at start: the topics must exist by then
+      topics: { condition: service_completed_successfully }
+      s3: { condition: service_started }
       postgres: { condition: service_healthy }
       kafka: { condition: service_started }
       schema-registry: { condition: service_started }
@@ -179,15 +182,16 @@ services:
       AIRFLOW_URL: ${AIRFLOW_URL:-}
       AIRFLOW_USERNAME: admin
       AIRFLOW_PASSWORD: ${AIRFLOW_PASSWORD:-}
-      # Uploaded files, shared with the ingest service below: the core keeps them on disk (FileStore)
-      COSTGUARD_IMPORTS_STORAGE_DIR: /var/costguard/imports
+      # Uploaded files go to S3 (SeaweedFS here), where the ingest service below reads them, as in the cloud (ADR 0049).
+      # The core creates the bucket here; in the cloud Terraform does.
+      COSTGUARD_IMPORTS_S3_BUCKET: costguard-imports
+      COSTGUARD_IMPORTS_S3_CREATE_BUCKET: "true"
+      S3_ENDPOINT: http://s3:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-costguard}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-costguard-secret}
       # Traces go to the OpenTelemetry Collector of the observability profile; off unless TRACING=true (ADR 0048).
       MANAGEMENT_TRACING_EXPORT_ENABLED: ${TRACING:-false}
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
-    # The imports volume is new and belongs to root; on a laptop only
-    user: "0"
-    volumes:
-      - imports:/var/costguard/imports
     healthcheck:
       # Tomcat opens the port after Flyway has migrated, so an open port means the tables exist.
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
@@ -198,6 +202,8 @@ services:
     profiles: [demo]
     build: ../../apps/backend/gateway
     depends_on:
+      # consumers subscribe at start: the topics must exist by then
+      topics: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       kafka: { condition: service_started }
       schema-registry: { condition: service_started }
@@ -208,7 +214,7 @@ services:
       interval: 5s
       retries: 60
 
-  # The ingest pipeline for `make demo` (apps/python/ingest): reads what is uploaded to «Импорт» from the volume the
+  # The ingest pipeline for `make demo` (apps/python/ingest): reads what is uploaded to «Импорт» from the bucket the
   # core writes to, suggests the mapping, and writes cost records, devices and people. Without it uploads wait forever.
   ingest:
     profiles: [demo]
@@ -216,17 +222,20 @@ services:
       context: ../..
       dockerfile: apps/python/ingest/Dockerfile
     depends_on:
+      # consumers subscribe at start: the topics must exist by then
+      topics: { condition: service_completed_successfully }
+      core: { condition: service_healthy }
       kafka: { condition: service_started }
       schema-registry: { condition: service_started }
-    user: "0"        # reads the root-owned imports volume; on a laptop only
-    # it stops when its topics do not exist yet (`make clickhouse` creates them): start again until they do
+    # start again if Kafka or the schema registry is not up yet
     restart: on-failure
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      INGEST_STORAGE_DIR: /var/costguard/imports
-    volumes:
-      - imports:/var/costguard/imports:ro
+      INGEST_S3_BUCKET: costguard-imports
+      S3_ENDPOINT: http://s3:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-costguard}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-costguard-secret}
 
   # Metrics, dashboards and traces (infra/observability, ADR 0048). Not started by `make up`: `make observability`
   # starts them; Grafana is on http://localhost:3001 (admin / admin), Prometheus on http://localhost:9090.
@@ -315,4 +324,3 @@ volumes:
   s3:
   mlflow:
   tempo:
-  imports:

@@ -53,3 +53,4 @@
 | [0046](0046-focus-from-bucket.md) | FOCUS-выгрузки облаков из бакета компании каждый час, автоподтверждение без человека, роль importer | Принято |
 | [0047](0047-image-per-python-service.md) | Свой образ, Dockerfile и README у каждого Python-сервиса вместо общего образа | Принято |
 | [0048](0048-observability-stack.md) | Prometheus, Grafana, Tempo и OpenTelemetry Collector в репозитории; трейсы ядра и шлюза | Принято |
+| [0049](0049-imports-in-s3.md) | Загруженные файлы ядро хранит в S3, в бакете, который читает ingest | Принято |

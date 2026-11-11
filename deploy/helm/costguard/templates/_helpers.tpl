@@ -54,6 +54,12 @@ https://{{ required "ingress.hosts.keycloak is required with keycloak.enabled" .
   value: "true"
 - name: KEYCLOAK_ISSUER_URI
   value: {{ include "costguard.keycloakIssuer" . | quote }}
+{{- /* Uploaded files (ADR 0049): the core writes and the ingest pipeline reads the same bucket. */}}
+{{- if not .Values.imports.bucket }}{{ fail "imports.bucket is required: terraform output imports_bucket" }}{{ end }}
+- name: COSTGUARD_IMPORTS_S3_BUCKET
+  value: {{ .Values.imports.bucket | quote }}
+- name: INGEST_S3_BUCKET
+  value: {{ .Values.imports.bucket | quote }}
 {{- /* Traces of the Java services (ADR 0048): to the OpenTelemetry Collector, or nowhere. */}}
 {{- if .Values.tracing.enabled }}
 - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

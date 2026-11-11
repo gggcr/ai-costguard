@@ -201,6 +201,12 @@ logging:
   enabled: false
   lokiUrl: http://loki-gateway.observability.svc.cluster.local
 
+# Uploaded files (ADR 0049): the bucket of `terraform output imports_bucket`, costguard-<environment>-imports. The
+# core writes every upload there and the ingest pipeline reads it from there; both use S3_ACCESS_KEY and
+# S3_SECRET_KEY of the secret. Without it the core would keep files on the disk of its pod, which ingest never sees.
+imports:
+  bucket: costguard-imports
+
 # Traces (ADR 0048): the core and the gateway send spans over OTLP to the OpenTelemetry Collector of
 # deploy/argocd/observability.yaml, which forwards them to Tempo; Grafana shows them next to the logs. Off, the
 # services still put a trace id into errors and logs, but export nothing. TRACE_SAMPLING of the core sets the share.

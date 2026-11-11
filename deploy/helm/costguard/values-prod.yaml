@@ -11,3 +11,6 @@ backups:
   enabled: false
   bucket: costguard-prod-backups
   filesBucket: costguard-prod-imports
+# terraform output imports_bucket (ADR 0049); backups.filesBucket copies the same bucket
+imports:
+  bucket: costguard-prod-imports

@@ -1,5 +1,5 @@
-"""Where uploaded files are. The core writes them to local disk today (costguard.imports.storage-dir) and to S3 on
-the board; the pipeline reads either, chosen by INGEST_STORAGE_DIR.
+"""Where uploaded files are: the S3 bucket the core writes them to (INGEST_S3_BUCKET, the same bucket as the core's
+costguard.imports.s3-bucket, ADR 0049), or a local folder (INGEST_STORAGE_DIR) for tests and local runs.
 
 The pipeline writes only its own files next to them: what LLM extraction read from a document, and the examples
 people corrected (ADR 0013). It never changes an uploaded file."""

@@ -8,12 +8,14 @@ cel = "0.15.0"
 springdoc = "3.0.0"
 embedded-postgres = "2.1.0"
 pdfbox = "3.0.5"
+aws-sdk = "2.30.0"
 
 [libraries]
 # BOMs: versions of everything below without an explicit version come from these
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
 spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+aws-sdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-sdk" }
 
 # Spring Boot
 spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
@@ -48,6 +50,10 @@ spring-modulith-starter-core = { module = "org.springframework.modulith:spring-m
 spring-modulith-starter-jdbc = { module = "org.springframework.modulith:spring-modulith-starter-jdbc" }
 spring-modulith-events-kafka = { module = "org.springframework.modulith:spring-modulith-events-kafka" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
+
+# S3: uploaded files of the core (Yandex Object Storage, SeaweedFS locally)
+aws-s3 = { module = "software.amazon.awssdk:s3" }
+aws-url-connection-client = { module = "software.amazon.awssdk:url-connection-client" }
 
 # Databases
 postgresql = { module = "org.postgresql:postgresql" }

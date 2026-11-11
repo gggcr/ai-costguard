@@ -38,7 +38,7 @@
 | Прогнозы и отчёты (Python): расходы, экономия, сценарии, XLSX и PDF | `apps/python/reports` (`models`, `backtest`, `baseline`, `reconcile`, `savings`, `publish`, `report`), сценарии в `core/analytics` | сделано иначе (ADR 0034): модели на чистом Python вместо statsforecast; сценарии считает ядро |
 | MLflow: модели прогнозов | `deploy/mlflow`, Helm `mlflow.yaml` | сделано иначе (ADR 0016, 0017): в MLflow лежат модели детектора аномалий, моделей прогноза там нет |
 | ClickHouse: единый реестр затрат, витрины | `schemas/clickhouse/migrations` 001–003 | сделано (ADR 0007) |
-| S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано иначе, ADR нет: локально SeaweedFS вместо MinIO. В ядре файлы импорта пишутся на локальный диск (`FileStore`) |
+| S3 (MinIO): исходные файлы, отчёты | SeaweedFS в `infra/local`, бакеты в Terraform | сделано иначе, ADR нет: локально SeaweedFS вместо MinIO (MinIO не публикует образы). Файлы импорта ядро пишет в бакет `costguard-<env>-imports`, ingest читает оттуда же (ADR 0049) |
 | Фронтенд: отдельная команда, REST API и SSE | `apps/frontend` (`api/remote*.ts`, `api/api-store.tsx`, `auth/oidc.ts`), `schemas/openapi`, `/api/v1/notifications/stream` | сделано: вход через Keycloak (PKCE), все страницы на API ядра, уведомления по SSE; журнал операций — `GET /api/v1/operations` из ClickHouse |
 | Синхронно в момент операции работают только шлюз и Redis | Лестница шлюза; ядро получает операции из `agent.operations.v1` | сделано (ADR 0004) |
 
@@ -100,7 +100,7 @@
 |---|---|---|
 | Учёт, кадры, SSO, банки, облака → коннекторы, агент у клиента, Airflow | `apps/python/connectors`, `infra/airflow/dags/connectors_hourly.py` | сделано |
 | Excel, CSV, выписки, PDF, счета с почты → API импорта ядра | `core/imports`, `connectors/mail.py` | сделано |
-| Bronze: файл в S3 по sha256 | `core/imports` (`tenant/sha256`), `ingest/storage.py` | сделано иначе, ADR нет: в ядре файлы лежат на локальном диске, S3 — только у ingest |
+| Bronze: файл в S3 по sha256 | `core/imports` (`tenant/sha256`), `ingest/storage.py` | сделано (ADR 0049): ядро кладёт файл в S3 под `tenant/sha256` (`S3FileStore`), ingest читает его из того же бакета |
 | Разбор: шаблон, поиск колонок, OCR, LLM | `ingest/mapping.py`, `tables.py`, `ocr.py`, `extraction.py` | сделано (ADR 0012, 0013) |
 | Проверки пройдены и уверенность выше порога? Нет → ручная проверка, исправления становятся шаблоном | `ingest.results.v1` → `core/imports` (подтверждение сопоставления), шаблоны поставщика | сделано |
 | Нормализация и склейка: поставщик, сотрудник, валюта, период → `ingest.normalized.v1` → справочники ядра | `costguard_common.normalized`, `core/imports` `NormalizedEntities` | сделано (ADR 0008) |
@@ -289,7 +289,7 @@
 Сделано иначе, ADR нет:
 - раскладка папок: `apps/python/*` вместо `apps/backend/*`, `infra/airflow`, `contracts/notary`, `deploy/*`,
   SDK в `libs/`, одна `costguard-common` вместо четырёх библиотек;
-- SeaweedFS вместо MinIO; файлы импорта ядра на локальном диске;
+- SeaweedFS вместо MinIO;
 - ingest без FastStream и pandera;
 - контракт NEAR в одном `lib.rs` с unit-тестами вместо near-workspaces;
 - топики `approvals.decisions.v1`, `assets.assignments.v1`, `ingest.results.v1`;

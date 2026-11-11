@@ -162,6 +162,12 @@ springdoc:
   default-produces-media-type: application/json
 
 management:
+  # Metrics are scraped by Prometheus (/actuator/prometheus); the OTLP push of spring-boot-starter-opentelemetry
+  # would only fail every minute against a collector that takes traces, not metrics (ADR 0048).
+  otlp:
+    metrics:
+      export:
+        enabled: false
   tracing:
     sampling:
       probability: ${TRACE_SAMPLING:0.1}
