@@ -23,11 +23,11 @@ record PayrollSchedule(@Min(1) @Max(31) int advanceDay, @Min(1) @Max(31) int sal
 record PayDate(String kind, LocalDate date) {
 }
 
-record Payment(UUID id, UUID employeeId, String employeeName, String kind, LocalDate period, LocalDate payDate,
+record PayrollPayment(UUID id, UUID employeeId, String employeeName, String kind, LocalDate period, LocalDate payDate,
         BigDecimal amount, String currency, String source, Instant createdAt) {
 }
 
-record MyPayroll(PayrollSchedule schedule, List<PayDate> upcoming, List<Payment> payments) {
+record MyPayroll(PayrollSchedule schedule, List<PayDate> upcoming, List<PayrollPayment> payments) {
 }
 
 /**

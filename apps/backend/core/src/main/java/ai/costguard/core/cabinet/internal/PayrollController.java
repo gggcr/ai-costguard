@@ -57,7 +57,7 @@ class PayrollController {
     @GetMapping("/payroll/payments")
     @PreAuthorize("hasAnyRole('owner', 'finance')")
     @Operation(summary = "Payments of a month (yyyy-MM), every employee")
-    List<Payment> ofMonth(@AuthenticationPrincipal Jwt jwt, @RequestParam String month) {
+    List<PayrollPayment> ofMonth(@AuthenticationPrincipal Jwt jwt, @RequestParam String month) {
         return service.ofMonth(TenantClaim.of(jwt), YearMonth.parse(month));
     }
 

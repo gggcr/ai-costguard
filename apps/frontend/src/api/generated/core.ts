@@ -503,7 +503,7 @@ export type MonthAmount = {
 export type MyPayroll = {
   schedule?: PayrollSchedule;
   upcoming?: Array<PayDate>;
-  payments?: Array<Payment>;
+  payments?: Array<PayrollPayment>;
 };
 
 export type NewAsset = {
@@ -606,15 +606,20 @@ export type PayDate = {
 
 export type Payment = {
   id?: string;  // uuid
-  employeeId?: string;  // uuid
-  employeeName?: string;
-  kind?: string;
-  period?: string;  // date
-  payDate?: string;  // date
+  vendorId?: string;  // uuid
+  invoiceId?: string;  // uuid
   amount?: number;
   currency?: string;
+  paidOn?: string;  // date
+  dated?: boolean;
+  purpose?: string;
+  kind?: string;
+  card?: string;
+  mcc?: string;
+  role?: string;
+  intermediary?: string;
   source?: string;
-  createdAt?: string;  // date-time
+  receivedAt?: string;  // date-time
 };
 
 export type PaymentBatch = {
@@ -625,6 +630,19 @@ export type PaymentBatch = {
 export type PayrollImport = {
   stored?: number;
   skipped?: Array<Skipped>;
+};
+
+export type PayrollPayment = {
+  id?: string;  // uuid
+  employeeId?: string;  // uuid
+  employeeName?: string;
+  kind?: string;
+  period?: string;  // date
+  payDate?: string;  // date
+  amount?: number;
+  currency?: string;
+  source?: string;
+  createdAt?: string;  // date-time
 };
 
 export type PayrollSchedule = {

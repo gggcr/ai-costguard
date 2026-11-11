@@ -1407,7 +1407,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Payment"
+                  $ref: "#/components/schemas/PayrollPayment"
     post:
       tags:
       - Cabinet
@@ -5429,7 +5429,7 @@ components:
           type: string
         source:
           type: string
-    Payment:
+    PayrollPayment:
       type: object
       properties:
         id:
@@ -5455,6 +5455,44 @@ components:
         source:
           type: string
         createdAt:
+          type: string
+          format: date-time
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorId:
+          type: string
+          format: uuid
+        invoiceId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        paidOn:
+          type: string
+          format: date
+        dated:
+          type: boolean
+        purpose:
+          type: string
+        kind:
+          type: string
+        card:
+          type: string
+        mcc:
+          type: string
+        role:
+          type: string
+        intermediary:
+          type: string
+        source:
+          type: string
+        receivedAt:
           type: string
           format: date-time
     OperationView:
@@ -5635,7 +5673,7 @@ components:
         payments:
           type: array
           items:
-            $ref: "#/components/schemas/Payment"
+            $ref: "#/components/schemas/PayrollPayment"
     PayDate:
       type: object
       properties:

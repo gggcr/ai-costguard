@@ -120,7 +120,7 @@ class PayrollService {
     }
 
     @Transactional(readOnly = true)
-    List<Payment> ofMonth(UUID tenantId, YearMonth month) {
+    List<PayrollPayment> ofMonth(UUID tenantId, YearMonth month) {
         session.bind(tenantId);
         return payroll.ofPeriod(month.atDay(1));
     }
@@ -209,7 +209,7 @@ class PayrollService {
     int tellDue(UUID tenantId) {
         session.bind(tenantId);
         int told = 0;
-        for (Payment p : payroll.due(today())) {
+        for (PayrollPayment p : payroll.due(today())) {
             notices.send(tenantId, p.employeeId(), text(p), "/cabinet/pay", "good");
             payroll.notified(p.id());
             told++;
@@ -227,7 +227,7 @@ class PayrollService {
         return new DecimalFormat("#,##0.00", symbols);
     }
 
-    private static String text(Payment p) {
+    private static String text(PayrollPayment p) {
         String what = switch (p.kind()) {
             case "advance" -> "Аванс";
             case "salary" -> "Зарплата";

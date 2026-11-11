@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 class PayrollRepository {
 
-    private static final RowMapper<Payment> ROW = (rs, i) -> new Payment(rs.getObject("id", UUID.class),
+    private static final RowMapper<PayrollPayment> ROW = (rs, i) -> new PayrollPayment(rs.getObject("id", UUID.class),
             rs.getObject("employee_id", UUID.class), rs.getString("employee_name"), rs.getString("kind"),
             rs.getObject("period", LocalDate.class), rs.getObject("pay_date", LocalDate.class),
             rs.getBigDecimal("amount"), rs.getString("currency"), rs.getString("source"),
@@ -65,18 +65,18 @@ class PayrollRepository {
         jdbc.sql("insert into payroll_tenant (tenant_id) values (?) on conflict do nothing").param(tenantId).update();
     }
 
-    List<Payment> of(UUID employeeId, LocalDate since) {
+    List<PayrollPayment> of(UUID employeeId, LocalDate since) {
         return jdbc.sql(SELECT + " where p.employee_id = ? and p.pay_date >= ? order by p.pay_date desc, p.kind")
                 .params(employeeId, since).query(ROW).list();
     }
 
-    List<Payment> ofPeriod(LocalDate period) {
+    List<PayrollPayment> ofPeriod(LocalDate period) {
         return jdbc.sql(SELECT + " where p.period = ? order by e.name, p.pay_date, p.kind").param(period)
                 .query(ROW).list();
     }
 
     /** Payments of the day nobody was told about yet, locked so two nodes do not both tell. */
-    List<Payment> due(LocalDate day) {
+    List<PayrollPayment> due(LocalDate day) {
         return jdbc.sql(SELECT + " where p.pay_date <= ? and not p.notified for update of p skip locked")
                 .param(day).query(ROW).list();
     }
