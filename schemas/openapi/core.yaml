@@ -1558,12 +1558,70 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vacation"
+  /api/v1/me/shadow-spend:
+    get:
+      tags:
+      - Cabinet
+      summary: My reports
+      operationId: mine_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShadowSpend"
+    post:
+      tags:
+      - Cabinet
+      summary: Report software I paid for with my own card; management sees only aggregates
+      operationId: report
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewShadowSpend"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShadowSpend"
+  /api/v1/me/shadow-spend/imports:
+    post:
+      tags:
+      - Cabinet
+      summary: "Report several purchases from .xlsx or .csv: сервис, сумма, дата,\
+        \ назначение"
+      operationId: load_1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShadowImport"
   /api/v1/me/purchase-requests:
     get:
       tags:
       - Cabinet
       summary: My purchase requests
-      operationId: mine_1
+      operationId: mine_2
       responses:
         "200":
           description: OK
@@ -2485,6 +2543,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityEvent"
+  /api/v1/shadow-spend/summary:
+    get:
+      tags:
+      - Cabinet
+      summary: "What people pay for themselves, by service; only where at least 3\
+        \ people reported"
+      operationId: summary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShadowSummary"
   /api/v1/purchase-requests:
     get:
       tags:
@@ -2705,7 +2777,7 @@ paths:
       tags:
       - Cabinet
       summary: "My pay: the pay days ahead and my payments of the last two years"
-      operationId: mine_2
+      operationId: mine_3
       responses:
         "200":
           description: OK
@@ -2732,7 +2804,7 @@ paths:
       - Cabinet
       summary: "My licenses, the company's pool with what is free or idle, and my\
         \ requests"
-      operationId: mine_3
+      operationId: mine_4
       responses:
         "200":
           description: OK
@@ -2745,7 +2817,7 @@ paths:
       tags:
       - Cabinet
       summary: "My documents: contract, agreements, orders and handover acts"
-      operationId: mine_4
+      operationId: mine_5
       responses:
         "200":
           description: OK
@@ -3482,7 +3554,7 @@ paths:
       tags:
       - Analytics
       summary: Agent spend per month and findings totals
-      operationId: summary
+      operationId: summary_1
       parameters:
       - name: months
         in: query
@@ -3600,6 +3672,22 @@ paths:
       - Cabinet
       summary: "Cancel my request, or my approved vacation that has not started"
       operationId: cancel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/me/shadow-spend/{id}:
+    delete:
+      tags:
+      - Cabinet
+      summary: Delete one of my reports
+      operationId: delete_2
       parameters:
       - name: id
         in: path
@@ -5184,6 +5272,62 @@ components:
       - endsOn
       - kind
       - startsOn
+    NewShadowSpend:
+      type: object
+      properties:
+        service:
+          type: string
+          maxLength: 200
+          minLength: 0
+        amount:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: "[A-Z]{3}"
+        paidOn:
+          type: string
+          format: date
+        purpose:
+          type: string
+          maxLength: 1000
+          minLength: 0
+      required:
+      - amount
+      - paidOn
+      - service
+    ShadowSpend:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        service:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        paidOn:
+          type: string
+          format: date
+        purpose:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ShadowImport:
+      type: object
+      properties:
+        stored:
+          type: integer
+          format: int32
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/Skipped"
     NewLicenseRequest:
       type: object
       properties:
@@ -5834,6 +5978,43 @@ components:
           type: string
         source:
           type: string
+    Service:
+      type: object
+      properties:
+        service:
+          type: string
+        category:
+          type: string
+        people:
+          type: integer
+          format: int32
+        reports:
+          type: integer
+          format: int32
+        total:
+          type: number
+        currency:
+          type: string
+        lastPaid:
+          type: string
+          format: date
+        departments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Department"
+    ShadowSummary:
+      type: object
+      properties:
+        minPeople:
+          type: integer
+          format: int32
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/Service"
+        hiddenServices:
+          type: integer
+          format: int32
     PayrollPayment:
       type: object
       properties:

@@ -29,7 +29,9 @@ enum CabinetProblem implements ProblemCode {
     PURCHASE_NOT_FOUND(HttpStatus.NOT_FOUND, "Purchase request not found"),
     PURCHASE_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
     PURCHASE_PRODUCT(HttpStatus.BAD_REQUEST, "Name the program, subscription or API"),
-    PURCHASE_AMOUNT(HttpStatus.BAD_REQUEST, "The amount cannot be negative");
+    PURCHASE_AMOUNT(HttpStatus.BAD_REQUEST, "The amount cannot be negative"),
+    SHADOW_NOT_FOUND(HttpStatus.NOT_FOUND, "Report not found"),
+    SHADOW_COLUMNS(HttpStatus.BAD_REQUEST, "The sheet needs the columns: сервис, сумма, дата; назначение is optional");
 
     private final HttpStatus status;
     private final String detail;

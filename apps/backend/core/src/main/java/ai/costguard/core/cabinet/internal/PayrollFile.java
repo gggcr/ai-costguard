@@ -50,8 +50,13 @@ final class PayrollFile {
     private PayrollFile() {
     }
 
+    /** Every row of the first sheet of an .xlsx, or of a .csv, as text cells. */
+    static List<List<String>> table(String fileName, byte[] content) {
+        return fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? xlsx(content) : csv(content);
+    }
+
     static List<Row> read(String fileName, byte[] content) {
-        List<List<String>> table = fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? xlsx(content) : csv(content);
+        List<List<String>> table = table(fileName, content);
         if (table.isEmpty()) {
             return List.of();
         }

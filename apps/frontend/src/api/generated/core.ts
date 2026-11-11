@@ -596,6 +596,14 @@ export type NewPrice = {
   validFrom: string;  // date
 };
 
+export type NewShadowSpend = {
+  service: string;
+  amount: number;
+  currency?: string;
+  paidOn: string;  // date
+  purpose?: string;
+};
+
 export type NewUser = {
   name: string;
   email: string;
@@ -948,6 +956,17 @@ export type ScenarioResult = {
   onForecast?: boolean;
 };
 
+export type Service = {
+  service?: string;
+  category?: string;
+  people?: number;
+  reports?: number;
+  total?: number;
+  currency?: string;
+  lastPaid?: string;  // date
+  departments?: Array<Department>;
+};
+
 export type SettingsChange = {
   emailLevel: "off" | "info" | "warning" | "critical";
   telegramLevel: "off" | "info" | "warning" | "critical";
@@ -961,6 +980,28 @@ export type SettingsView = {
   telegramLinked?: boolean;
   telegramLinkedAt?: string;  // date-time
   telegramAvailable?: boolean;
+};
+
+export type ShadowImport = {
+  stored?: number;
+  skipped?: Array<Skipped>;
+};
+
+export type ShadowSpend = {
+  id?: string;  // uuid
+  service?: string;
+  category?: string;
+  amount?: number;
+  currency?: string;
+  paidOn?: string;  // date
+  purpose?: string;
+  createdAt?: string;  // date-time
+};
+
+export type ShadowSummary = {
+  minPeople?: number;
+  services?: Array<Service>;
+  hiddenServices?: number;
 };
 
 export type SigningKey = {
@@ -1141,7 +1182,7 @@ export const operations = {
   analyticsForecast: { method: "GET", path: "/api/v1/analytics/forecast" },
   analyticsPublish: { method: "PUT", path: "/api/v1/analytics/forecast" },
   analyticsScenario: { method: "POST", path: "/api/v1/analytics/scenarios" },
-  analyticsSummary: { method: "GET", path: "/api/v1/analytics/summary" },
+  analyticsSummary_1: { method: "GET", path: "/api/v1/analytics/summary" },
   approvalsList_4: { method: "GET", path: "/api/v1/approvals" },
   approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
   approvalsDecide_3: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
@@ -1230,19 +1271,23 @@ export const operations = {
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
   cabinetMe: { method: "GET", path: "/api/v1/me" },
-  cabinetMine_4: { method: "GET", path: "/api/v1/me/documents" },
+  cabinetMine_5: { method: "GET", path: "/api/v1/me/documents" },
   cabinetMyFile_1: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
   cabinetAsk_2: { method: "POST", path: "/api/v1/me/license-requests" },
   cabinetCancel_2: { method: "DELETE", path: "/api/v1/me/license-requests/{id}" },
-  cabinetMine_3: { method: "GET", path: "/api/v1/me/licenses" },
+  cabinetMine_4: { method: "GET", path: "/api/v1/me/licenses" },
   cabinetPage_1: { method: "GET", path: "/api/v1/me/notifications" },
   cabinetReadAll_1: { method: "PUT", path: "/api/v1/me/notifications/read" },
   cabinetRead_1: { method: "PUT", path: "/api/v1/me/notifications/{id}/read" },
-  cabinetMine_2: { method: "GET", path: "/api/v1/me/payroll" },
-  cabinetMine_1: { method: "GET", path: "/api/v1/me/purchase-requests" },
+  cabinetMine_3: { method: "GET", path: "/api/v1/me/payroll" },
+  cabinetMine_2: { method: "GET", path: "/api/v1/me/purchase-requests" },
   cabinetAsk_1: { method: "POST", path: "/api/v1/me/purchase-requests" },
   cabinetCancel_1: { method: "DELETE", path: "/api/v1/me/purchase-requests/{id}" },
   cabinetMyFile: { method: "GET", path: "/api/v1/me/purchase-requests/{id}/file" },
+  cabinetMine_1: { method: "GET", path: "/api/v1/me/shadow-spend" },
+  cabinetReport: { method: "POST", path: "/api/v1/me/shadow-spend" },
+  cabinetLoad_1: { method: "POST", path: "/api/v1/me/shadow-spend/imports" },
+  cabinetDelete_2: { method: "DELETE", path: "/api/v1/me/shadow-spend/{id}" },
   cabinetTeam: { method: "GET", path: "/api/v1/me/team/vacations" },
   cabinetDecide_1: { method: "PUT", path: "/api/v1/me/team/vacations/{id}/decision" },
   cabinetMine: { method: "GET", path: "/api/v1/me/vacations" },
@@ -1285,6 +1330,7 @@ export const operations = {
   sCIMList: { method: "GET", path: "/api/v1/scim/tokens" },
   sCIMIssue: { method: "POST", path: "/api/v1/scim/tokens" },
   sCIMRevoke: { method: "DELETE", path: "/api/v1/scim/tokens/{id}" },
+  cabinetSummary: { method: "GET", path: "/api/v1/shadow-spend/summary" },
   softwareSubscriptions: { method: "GET", path: "/api/v1/subscriptions" },
   softwareCreateSubscription: { method: "POST", path: "/api/v1/subscriptions" },
   softwareSubscription: { method: "GET", path: "/api/v1/subscriptions/{id}" },

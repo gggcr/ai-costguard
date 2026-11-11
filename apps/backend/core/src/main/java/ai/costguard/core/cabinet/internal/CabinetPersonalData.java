@@ -22,6 +22,13 @@ class CabinetPersonalData implements DataHolder {
     private final PurchaseRepository purchases;
     private final ai.costguard.core.imports.StoredFiles files;
 
+    private ShadowService shadow;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void shadow(ShadowService shadow) {
+        this.shadow = shadow;
+    }
+
     CabinetPersonalData(JdbcClient jdbc, DocumentRepository documents, PurchaseRepository purchases,
             ai.costguard.core.imports.StoredFiles files) {
         this.jdbc = jdbc;
@@ -33,11 +40,12 @@ class CabinetPersonalData implements DataHolder {
     @Override
     public List<String> tables() {
         return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
-                "payroll_tenant", "license_request", "purchase_request");
+                "payroll_tenant", "license_request", "purchase_request", "shadow_spend");
     }
 
     @Override
     public void eraseEmployee(Subject subject, Retention retention, Report report) {
+        report.deleted("cabinet.shadow_spend", shadow.erase(subject.tenantId(), subject.employeeId()));
         // the invoices and receipts of their purchase requests go with them
         purchases.keysOf(subject.employeeId()).forEach(files::delete);
         report.deleted("cabinet.purchase_request", purchases.deleteOf(subject.employeeId()));
@@ -65,7 +73,7 @@ class CabinetPersonalData implements DataHolder {
     /** The files go with the company's uploads: they share its prefix in the storage (imports erases it). */
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "cabinet", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
+        TenantRows.delete(jdbc, tenantId, report, "cabinet", "shadow_spend", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
                 "vacation_request", "employee_document");
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
     }

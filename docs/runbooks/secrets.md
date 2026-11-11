@@ -14,6 +14,7 @@
 | `JOURNAL_PRIVATE_KEY`, `JOURNAL_PUBLIC_KEY` | Ключ подписи квитанций, создаёт владелец (ниже); меняется раз в год |
 | `JOURNAL_PREVIOUS_PUBLIC_KEYS` | Публичные ключи прежних ключей подписи через запятую: старые квитанции проверяются ими (ADR 0028) |
 | `CONNECTIONS_ENCRYPTION_KEY` | `openssl rand -base64 32`, один раз, хранится вечно: им зашифрованы секреты подключённых систем, которые компания решила хранить в ядре (ADR 0030). Потерян — эти секреты придётся ввести заново |
+| `CABINET_PSEUDONYM_KEY` | Необязателен: по умолчанию берётся `CONNECTIONS_ENCRYPTION_KEY`. Ключ псевдонимов теневых трат (ADR 0057); менять нельзя, иначе авторы не найдут свои старые сообщения |
 | `AIRFLOW_URL`, `AIRFLOW_USERNAME`, `AIRFLOW_PASSWORD` | Необязательно: пользователь Airflow с правом запускать DAG `costguard_connector_sync`, чтобы «Синхронизировать сейчас» шло сразу (ADR 0019, дополнение) |
 | `NEAR_ACCOUNT_ID`, `NEAR_PRIVATE_KEY` | Аккаунт нотариуса, `near generate-key` |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GIGACHAT_AUTH_KEY`, `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | Договоры с провайдерами |
