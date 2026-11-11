@@ -19,7 +19,13 @@ enum CabinetProblem implements ProblemCode {
     NOT_THE_HEAD(HttpStatus.FORBIDDEN, "Only the head of the employee's department decides on this request"),
     PAYROLL_COLUMNS(HttpStatus.BAD_REQUEST,
             "The sheet needs the columns: сотрудник (or e-mail), дата выплаты, сумма; вид and период are optional"),
-    PAYROLL_FILE(HttpStatus.BAD_REQUEST, "The file is not a readable .xlsx or .csv");
+    PAYROLL_FILE(HttpStatus.BAD_REQUEST, "The file is not a readable .xlsx or .csv"),
+    SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "The company has no such subscription"),
+    LICENSE_HELD(HttpStatus.CONFLICT, "You already hold this license"),
+    LICENSE_ASKED(HttpStatus.CONFLICT, "You already asked for this license"),
+    LICENSE_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "License request not found"),
+    LICENSE_REQUEST_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
+    NO_FREE_SEAT(HttpStatus.CONFLICT, "No free seat and no idle license: add seats to the subscription first");
 
     private final HttpStatus status;
     private final String detail;

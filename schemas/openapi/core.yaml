@@ -536,6 +536,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/License"
+  /api/v1/license-requests/{id}/decision:
+    put:
+      tags:
+      - Cabinet
+      summary: Approve (an idle license goes back to the pool first) or reject a request
+      operationId: decide_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LicenseDecision"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseRequest"
   /api/v1/imports/{id}/review-tasks/{taskId}:
     put:
       tags:
@@ -903,7 +929,7 @@ paths:
       - Approvals
       summary: Approve or reject
       description: A closed request answers 409.
-      operationId: decide_1
+      operationId: decide_2
       parameters:
       - name: id
         in: path
@@ -1505,6 +1531,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vacation"
+  /api/v1/me/license-requests:
+    post:
+      tags:
+      - Cabinet
+      summary: "Ask for a license: a free seat is given at once, otherwise IT decides"
+      operationId: ask_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewLicenseRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseRequest"
   /api/v1/mandates:
     get:
       tags:
@@ -1538,6 +1583,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Mandate"
+  /api/v1/license-pool/reclaim:
+    post:
+      tags:
+      - Cabinet
+      summary: Take every idle license back into the pool; the holders are told
+      operationId: reclaim
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reclaimed"
   /api/v1/invitations:
     get:
       tags:
@@ -2511,12 +2569,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NotificationPage"
+  /api/v1/me/licenses:
+    get:
+      tags:
+      - Cabinet
+      summary: "My licenses, the company's pool with what is free or idle, and my\
+        \ requests"
+      operationId: mine_2
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyLicenses"
   /api/v1/me/documents:
     get:
       tags:
       - Cabinet
       summary: "My documents: contract, agreements, orders and handover acts"
-      operationId: mine_2
+      operationId: mine_3
       responses:
         "200":
           description: OK
@@ -2547,6 +2619,36 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/v1/license-requests:
+    get:
+      tags:
+      - Cabinet
+      summary: Every license request of the company
+      operationId: all_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LicenseRequest"
+  /api/v1/license-pool:
+    get:
+      tags:
+      - Cabinet
+      summary: "Seats, free seats and idle licenses of every subscription"
+      operationId: pool
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
   /api/v1/journal/verification:
     get:
       tags:
@@ -3351,6 +3453,22 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/license-requests/{id}:
+    delete:
+      tags:
+      - Cabinet
+      summary: Cancel my request that waits for IT
+      operationId: cancel_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/licenses/{id}:
     delete:
       tags:
@@ -3891,6 +4009,52 @@ components:
         lastActive:
           type: string
           format: date
+    LicenseDecision:
+      type: object
+      properties:
+        approve:
+          type: boolean
+        comment:
+          type: string
+          maxLength: 1000
+          minLength: 0
+    LicenseRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        subscriptionId:
+          type: string
+          format: uuid
+        product:
+          type: string
+        vendor:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+        takesIdle:
+          type: boolean
+        idleSince:
+          type: string
+          format: date
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        decisionComment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     Resolution:
       type: object
       properties:
@@ -4797,6 +4961,24 @@ components:
       - endsOn
       - kind
       - startsOn
+    NewLicenseRequest:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 0
+      required:
+      - subscriptionId
+    Reclaimed:
+      type: object
+      properties:
+        licenses:
+          type: integer
+          format: int32
     NewInvitation:
       type: object
       properties:
@@ -5682,6 +5864,62 @@ components:
         date:
           type: string
           format: date
+    Held:
+      type: object
+      properties:
+        licenseId:
+          type: string
+          format: uuid
+        subscriptionId:
+          type: string
+          format: uuid
+        vendor:
+          type: string
+        product:
+          type: string
+        lastActive:
+          type: string
+          format: date
+    MyLicenses:
+      type: object
+      properties:
+        held:
+          type: array
+          items:
+            $ref: "#/components/schemas/Held"
+        pool:
+          type: array
+          items:
+            $ref: "#/components/schemas/Offer"
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/LicenseRequest"
+        idleDays:
+          type: integer
+          format: int32
+    Offer:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+        vendor:
+          type: string
+        product:
+          type: string
+        seats:
+          type: integer
+          format: int32
+        assigned:
+          type: integer
+          format: int32
+        free:
+          type: integer
+          format: int32
+        idle:
+          type: integer
+          format: int32
     ChainVerification:
       type: object
       properties:

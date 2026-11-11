@@ -3,10 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import { Empty, PageHeader, Tabs } from '../components/ui';
+import { EmployerLicenses } from './cabinet/Licenses';
 import { EmployerPayroll } from './cabinet/Payroll';
 import { EmployerVacations } from './cabinet/Vacations';
 
-type Tab = 'vacations' | 'payroll';
+type Tab = 'vacations' | 'payroll' | 'licenses';
 
 export function People() {
   const { mode } = useStore();
@@ -16,6 +17,7 @@ export function People() {
   const pay = user?.role === 'owner' || user?.role === 'finance';
   const items: { id: Tab; label: string }[] = [{ id: 'vacations', label: 'Отпуска' }];
   if (pay) items.push({ id: 'payroll', label: 'Зарплата' });
+  items.push({ id: 'licenses', label: 'Лицензии' });
   const asked = params.get('tab') as Tab | null;
   const tab: Tab = asked && items.some((i) => i.id === asked) ? asked : 'vacations';
   if (mode !== 'api') return <Empty>Раздел работает при подключении к серверу CostGuard</Empty>;
@@ -25,6 +27,7 @@ export function People() {
       <Tabs value={tab} onChange={(t) => setParams({ tab: t })} items={items} />
       {tab === 'vacations' && <EmployerVacations canManageHeads={canEdit('org')} />}
       {tab === 'payroll' && pay && <EmployerPayroll />}
+      {tab === 'licenses' && <EmployerLicenses canDecide={user?.role === 'owner' || user?.role === 'it_admin'} />}
     </>
   );
 }

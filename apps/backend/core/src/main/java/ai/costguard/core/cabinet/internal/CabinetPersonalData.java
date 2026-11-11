@@ -28,11 +28,13 @@ class CabinetPersonalData implements DataHolder {
     @Override
     public List<String> tables() {
         return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
-                "payroll_tenant");
+                "payroll_tenant", "license_request");
     }
 
     @Override
     public void eraseEmployee(Subject subject, Retention retention, Report report) {
+        report.deleted("cabinet.license_request", jdbc.sql("delete from license_request where employee_id = ?")
+                .param(subject.employeeId()).update());
         int requests = jdbc.sql("select count(*) from vacation_request where employee_id = ?")
                 .param(subject.employeeId()).query(Integer.class).single();
         if (requests > 0) {
@@ -55,7 +57,7 @@ class CabinetPersonalData implements DataHolder {
     /** The files go with the company's uploads: they share its prefix in the storage (imports erases it). */
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "cabinet", "payroll_payment", "payroll_schedule",
+        TenantRows.delete(jdbc, tenantId, report, "cabinet", "license_request", "payroll_payment", "payroll_schedule",
                 "vacation_request", "employee_document");
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
     }

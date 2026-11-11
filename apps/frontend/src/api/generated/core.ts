@@ -367,6 +367,14 @@ export type FxRate = {
   rate?: number;
 };
 
+export type Held = {
+  licenseId?: string;  // uuid
+  subscriptionId?: string;  // uuid
+  vendor?: string;
+  product?: string;
+  lastActive?: string;  // date
+};
+
 export type ImportJob = {
   id?: string;  // uuid
   fileName?: string;
@@ -449,6 +457,28 @@ export type License = {
   lastActive?: string;  // date
 };
 
+export type LicenseDecision = {
+  approve?: boolean;
+  comment?: string;
+};
+
+export type LicenseRequest = {
+  id?: string;  // uuid
+  employeeId?: string;  // uuid
+  employeeName?: string;
+  subscriptionId?: string;  // uuid
+  product?: string;
+  vendor?: string;
+  reason?: string;
+  status?: string;
+  takesIdle?: boolean;
+  idleSince?: string;  // date
+  decidedBy?: string;
+  decidedAt?: string;  // date-time
+  decisionComment?: string;
+  createdAt?: string;  // date-time
+};
+
 export type LimitChange = {
   limit: number;
 };
@@ -500,6 +530,13 @@ export type MonthAmount = {
   amount: number;
 };
 
+export type MyLicenses = {
+  held?: Array<Held>;
+  pool?: Array<Offer>;
+  requests?: Array<LicenseRequest>;
+  idleDays?: number;
+};
+
 export type MyPayroll = {
   schedule?: PayrollSchedule;
   upcoming?: Array<PayDate>;
@@ -544,6 +581,11 @@ export type NewLicense = {
   employeeId: string;  // uuid
 };
 
+export type NewLicenseRequest = {
+  subscriptionId: string;  // uuid
+  reason?: string;
+};
+
 export type NewPrice = {
   skuId: string;
   vendor: string;
@@ -580,6 +622,16 @@ export type Notification = {
 export type NotificationPage = {
   items?: Array<Notification>;
   unread?: number;
+};
+
+export type Offer = {
+  subscriptionId?: string;  // uuid
+  vendor?: string;
+  product?: string;
+  seats?: number;
+  assigned?: number;
+  free?: number;
+  idle?: number;
 };
 
 export type OperationView = {
@@ -760,6 +812,10 @@ export type ReceiptView = {
   merkleRoot?: string;
   txHash?: string;
   merklePath?: Array<string>;
+};
+
+export type Reclaimed = {
+  licenses?: number;
 };
 
 export type RegistrationAccepted = {
@@ -1063,7 +1119,7 @@ export const operations = {
   analyticsSummary: { method: "GET", path: "/api/v1/analytics/summary" },
   approvalsList_4: { method: "GET", path: "/api/v1/approvals" },
   approvalsGet_3: { method: "GET", path: "/api/v1/approvals/{id}" },
-  approvalsDecide_1: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
+  approvalsDecide_2: { method: "PUT", path: "/api/v1/approvals/{id}/decision" },
   assetsList_2: { method: "GET", path: "/api/v1/assets" },
   assetsCreate_2: { method: "POST", path: "/api/v1/assets" },
   assetsGet_2: { method: "GET", path: "/api/v1/assets/{id}" },
@@ -1136,6 +1192,10 @@ export const operations = {
   journalKey: { method: "GET", path: "/api/v1/journal/signing-key" },
   journalKeys_1: { method: "GET", path: "/api/v1/journal/signing-keys" },
   journalVerify: { method: "GET", path: "/api/v1/journal/verification" },
+  cabinetPool: { method: "GET", path: "/api/v1/license-pool" },
+  cabinetReclaim: { method: "POST", path: "/api/v1/license-pool/reclaim" },
+  cabinetAll_1: { method: "GET", path: "/api/v1/license-requests" },
+  cabinetDecide_1: { method: "PUT", path: "/api/v1/license-requests/{id}/decision" },
   softwareRevoke_1: { method: "DELETE", path: "/api/v1/licenses/{id}" },
   softwareActivity: { method: "PUT", path: "/api/v1/licenses/{id}/activity" },
   agentsMandates: { method: "GET", path: "/api/v1/mandates" },
@@ -1145,8 +1205,11 @@ export const operations = {
   agentsUpdateMandate: { method: "PUT", path: "/api/v1/mandates/{id}" },
   agentsPublishMandate: { method: "PUT", path: "/api/v1/mandates/{id}/publication" },
   cabinetMe: { method: "GET", path: "/api/v1/me" },
-  cabinetMine_2: { method: "GET", path: "/api/v1/me/documents" },
+  cabinetMine_3: { method: "GET", path: "/api/v1/me/documents" },
   cabinetMyFile: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
+  cabinetAsk_1: { method: "POST", path: "/api/v1/me/license-requests" },
+  cabinetCancel_1: { method: "DELETE", path: "/api/v1/me/license-requests/{id}" },
+  cabinetMine_2: { method: "GET", path: "/api/v1/me/licenses" },
   cabinetPage_1: { method: "GET", path: "/api/v1/me/notifications" },
   cabinetReadAll_1: { method: "PUT", path: "/api/v1/me/notifications/read" },
   cabinetRead_1: { method: "PUT", path: "/api/v1/me/notifications/{id}/read" },
