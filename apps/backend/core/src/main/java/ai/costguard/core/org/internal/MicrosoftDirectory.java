@@ -26,4 +26,7 @@ interface MicrosoftDirectory {
     Mailbox create(App app, NewMailbox mailbox);
 
     void delete(App app, String id);
+
+    /** Dismissal (ADR 0060): the account can no longer sign in, its open sessions end; the mailbox stays. */
+    void disable(App app, String address);
 }

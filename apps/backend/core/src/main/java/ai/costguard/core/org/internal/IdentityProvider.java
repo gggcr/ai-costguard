@@ -66,6 +66,9 @@ interface IdentityProvider {
     /** The code of the authenticator app is asked first on the login page; the password stays another way. */
     void preferOtp(String id);
 
+    /** Dismissal (ADR 0060): the account stays (history, erasure later) but cannot log in. */
+    void disable(String id);
+
     /** Removing a provider that is gone already is fine. */
     void removeLogin(String alias);
 

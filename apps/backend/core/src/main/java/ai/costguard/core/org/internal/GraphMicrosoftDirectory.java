@@ -121,6 +121,21 @@ class GraphMicrosoftDirectory implements MicrosoftDirectory {
     }
 
     @Override
+    public void disable(App app, String address) {
+        String token = token(app);
+        String user = "/users/" + URLEncoder.encode(address, StandardCharsets.UTF_8);
+        HttpResponse<String> r = send(graph(token, user).header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString("{\"accountEnabled\":false}")).build());
+        if (r.statusCode() == 404) {
+            return;
+        }
+        if (r.statusCode() != 204) {
+            throw new Unavailable("Microsoft disable user: HTTP " + r.statusCode());
+        }
+        send(graph(token, user + "/revokeSignInSessions").POST(HttpRequest.BodyPublishers.noBody()).build());
+    }
+
+    @Override
     public void delete(App app, String id) {
         HttpResponse<String> r = send(graph(token(app), "/users/" + id).DELETE().build());
         if (r.statusCode() != 204 && r.statusCode() != 404) {

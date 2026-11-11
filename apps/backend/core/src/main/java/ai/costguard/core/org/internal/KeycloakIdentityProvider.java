@@ -180,6 +180,18 @@ class KeycloakIdentityProvider implements IdentityProvider {
     }
 
     @Override
+    public void disable(String id) {
+        String token = token();
+        HttpResponse<String> r = send(authorized(token, admin("/users/" + encode(id)))
+                .header("Content-Type", "application/json")
+                .PUT(json(JSON.createObjectNode().put("enabled", false))));
+        if (r.statusCode() != 204 && r.statusCode() != 404) {
+            throw new Unavailable("Keycloak disable: HTTP " + r.statusCode());
+        }
+        send(authorized(token, admin("/users/" + encode(id) + "/logout")).POST(HttpRequest.BodyPublishers.noBody()));
+    }
+
+    @Override
     public void removeLogin(String alias) {
         HttpResponse<String> r = send(authorized(token(), admin("/identity-provider/instances/" + encode(alias)))
                 .DELETE());

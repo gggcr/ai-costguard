@@ -31,6 +31,13 @@ public class FakeIdentityProvider implements IdentityProvider {
         return Optional.of(id);
     }
 
+    public final java.util.Set<String> disabled = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public void disable(String id) {
+        disabled.add(id);
+    }
+
     @Override
     public SignIn signIn(String id) {
         return signIns.getOrDefault(id, new SignIn(false, false));

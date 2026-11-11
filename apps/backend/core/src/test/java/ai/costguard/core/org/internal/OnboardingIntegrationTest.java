@@ -176,4 +176,20 @@ class OnboardingIntegrationTest extends PostgresTestSupport {
         mvc.perform(put("/api/v1/me/sign-in/otp-first").with(me)).andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/me/sign-in").with(me)).andExpect(jsonPath("$.otpFirst").value(true));
     }
+
+    @Test
+    void aDismissalClosesTheAccountAndTheMicrosoftAccount() throws Exception {
+        connect(true);
+        String body = add(department(), null, true).andExpect(status().isCreated()).andReturn().getResponse()
+                .getContentAsString();
+        String email = JsonPath.read(body, "$.email");
+        String employee = JsonPath.read(body, "$.employee.id");
+        String account = ACCOUNTS.stored(email).orElseThrow().id();
+        mvc.perform(put("/api/v1/employees/{id}/dismissal", employee).with(as("owner"))).andExpect(status().isOk());
+        for (int i = 0; i < 100 && !(ACCOUNTS.disabled.contains(account) && MICROSOFT.disabled.contains(email)); i++) {
+            Thread.sleep(100);
+        }
+        assertThat(ACCOUNTS.disabled).contains(account);
+        assertThat(MICROSOFT.disabled).contains(email);
+    }
 }

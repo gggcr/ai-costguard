@@ -29,6 +29,16 @@ public class FakeMicrosoftDirectory implements MicrosoftDirectory {
         }
     }
 
+    public final java.util.Set<String> disabled = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public void disable(App app, String address) {
+        if (down) {
+            throw new Unavailable("down");
+        }
+        disabled.add(address);
+    }
+
     @Override
     public void delete(App app, String id) {
         String address = ids.remove(id);
