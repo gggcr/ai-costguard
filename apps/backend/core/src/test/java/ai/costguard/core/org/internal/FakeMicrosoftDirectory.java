@@ -48,6 +48,30 @@ public class FakeMicrosoftDirectory implements MicrosoftDirectory {
         disabled.add(address);
     }
 
+    public final java.util.List<EnterpriseApp> apps = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public final java.util.Set<String> assigned = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public java.util.List<EnterpriseApp> enterpriseApps(App app) {
+        return apps;
+    }
+
+    @Override
+    public void assign(App app, String sp, String email) {
+        if (down) {
+            throw new Unavailable("down");
+        }
+        assigned.add(sp + "|" + email);
+    }
+
+    @Override
+    public void unassign(App app, String sp, String email) {
+        if (down) {
+            throw new Unavailable("down");
+        }
+        assigned.remove(sp + "|" + email);
+    }
+
     @Override
     public void delete(App app, String id) {
         String address = ids.remove(id);

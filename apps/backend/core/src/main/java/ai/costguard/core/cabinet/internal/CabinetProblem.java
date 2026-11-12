@@ -32,6 +32,18 @@ enum CabinetProblem implements ProblemCode {
     PURCHASE_AMOUNT(HttpStatus.BAD_REQUEST, "The amount cannot be negative"),
     SHADOW_NOT_FOUND(HttpStatus.NOT_FOUND, "Report not found"),
     SHADOW_COLUMNS(HttpStatus.BAD_REQUEST, "The sheet needs the columns: сервис, сумма, дата; назначение is optional"),
+    ACCESS_SETTINGS(HttpStatus.BAD_REQUEST,
+            "Entra needs the enterprise app; SCIM needs the https address and, the first time, the token"),
+    ENCRYPTION_KEY_MISSING(HttpStatus.SERVICE_UNAVAILABLE,
+            "The server has no encryption key (CONNECTIONS_ENCRYPTION_KEY) to keep the SCIM token"),
+    LICENSE_NOT_FOUND(HttpStatus.NOT_FOUND, "You hold no such license"),
+    AGENT_NOT_FOUND(HttpStatus.NOT_FOUND, "You own no such agent"),
+    AGENT_NO_BUDGET(HttpStatus.CONFLICT, "The agent has no budget of its own: ask finance to create one"),
+    LIMIT_ASKED(HttpStatus.CONFLICT, "You already asked to raise this agent's limit"),
+    LIMIT_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Limit request not found"),
+    LIMIT_REQUEST_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
+    OPERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "No such operation of your agents waits for you"),
+    OPERATION_DECIDED(HttpStatus.CONFLICT, "The operation is already decided or its time is over"),
     MICROSOFT_UNAVAILABLE(HttpStatus.BAD_GATEWAY,
             "Microsoft did not give the sign-in log: check the app's permission AuditLog.Read.All and Entra ID P1");
 

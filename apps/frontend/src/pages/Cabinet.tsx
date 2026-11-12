@@ -14,6 +14,7 @@ import { MyPay } from './cabinet/Payroll';
 import { MyLicenses } from './cabinet/Licenses';
 import { MyPurchases } from './cabinet/Purchases';
 import { MyShadowSpend } from './cabinet/Shadow';
+import { MyAgents } from './cabinet/Agents';
 import { SignInCard } from './cabinet/SignIn';
 
 /** Профиль того, кто вошёл: из ядра в режиме API, из демо-данных в демо. */
@@ -54,6 +55,7 @@ export const CABINET_TABS: { to: string; label: string; api: boolean }[] = [
   { to: 'licenses', label: 'Лицензии', api: true },
   { to: 'purchases', label: 'Покупка ПО', api: true },
   { to: 'spend', label: 'Свои траты', api: true },
+  { to: 'agents', label: 'Агенты', api: true },
 ];
 
 function ApiOnly({ children }: { children: ReactNode }) {
@@ -84,6 +86,7 @@ export function Cabinet() {
         {me.employee && <Route path="licenses" element={<ApiOnly><MyLicenses /></ApiOnly>} />}
         {me.employee && <Route path="purchases" element={<ApiOnly><MyPurchases /></ApiOnly>} />}
         {me.employee && <Route path="spend" element={<ApiOnly><MyShadowSpend /></ApiOnly>} />}
+        {me.employee && <Route path="agents" element={<ApiOnly><MyAgents /></ApiOnly>} />}
       </Routes>
     </>
   );

@@ -163,6 +163,87 @@ class GraphMicrosoftDirectory implements MicrosoftDirectory {
     }
 
     @Override
+    public java.util.List<EnterpriseApp> enterpriseApps(App app) {
+        String token = token(app);
+        java.util.List<EnterpriseApp> out = new java.util.ArrayList<>();
+        String next = graph + "/v1.0/servicePrincipals?$top=999&$select=id,displayName&$filter="
+                + URLEncoder.encode("tags/any(t:t eq 'WindowsAzureActiveDirectoryIntegratedApp')", StandardCharsets.UTF_8);
+        for (int page = 0; next != null && page < 50; page++) {
+            HttpResponse<String> r = send(HttpRequest.newBuilder(URI.create(next)).timeout(Duration.ofSeconds(30))
+                    .header("Authorization", "Bearer " + token).header("ConsistencyLevel", "eventual").GET().build());
+            if (r.statusCode() != 200) {
+                throw new Unavailable("Microsoft apps: HTTP " + r.statusCode());
+            }
+            JsonNode body = read(r.body());
+            body.path("value").forEach(s -> out.add(new EnterpriseApp(s.path("id").asText(),
+                    s.path("displayName").asText())));
+            next = body.hasNonNull("@odata.nextLink") ? body.path("@odata.nextLink").asText() : null;
+        }
+        out.sort(java.util.Comparator.comparing(EnterpriseApp::name, String.CASE_INSENSITIVE_ORDER));
+        return out;
+    }
+
+    private String userId(String token, String email) {
+        HttpResponse<String> r = send(graph(token, "/users/" + URLEncoder.encode(email, StandardCharsets.UTF_8)
+                + "?$select=id").GET().build());
+        if (r.statusCode() == 404) {
+            throw new Unavailable("Microsoft: no user " + email);
+        }
+        if (r.statusCode() != 200) {
+            throw new Unavailable("Microsoft user: HTTP " + r.statusCode());
+        }
+        return read(r.body()).path("id").asText();
+    }
+
+    @Override
+    public void assign(App app, String sp, String email) {
+        String token = token(app);
+        String user = userId(token, email);
+        HttpResponse<String> roles = send(graph(token, "/servicePrincipals/" + sp + "?$select=appRoles").GET().build());
+        if (roles.statusCode() != 200) {
+            throw new Unavailable("Microsoft app: HTTP " + roles.statusCode());
+        }
+        // the app's role for users, or the default access when it has none
+        String role = "00000000-0000-0000-0000-000000000000";
+        for (JsonNode r : read(roles.body()).path("appRoles")) {
+            boolean forUsers = false;
+            for (JsonNode t : r.path("allowedMemberTypes")) {
+                forUsers |= "User".equals(t.asText());
+            }
+            if (forUsers && r.path("isEnabled").asBoolean(true)) {
+                role = r.path("id").asText();
+                break;
+            }
+        }
+        ObjectNode body = JSON.createObjectNode().put("principalId", user).put("resourceId", sp).put("appRoleId", role);
+        HttpResponse<String> r = send(graph(token, "/servicePrincipals/" + sp + "/appRoleAssignedTo")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString())).build());
+        // 400 with "already exists" is an assignment made before
+        if (r.statusCode() != 201 && !(r.statusCode() == 400 && r.body().contains("already exists"))) {
+            throw new Unavailable("Microsoft assign: HTTP " + r.statusCode() + " " + r.body());
+        }
+    }
+
+    @Override
+    public void unassign(App app, String sp, String email) {
+        String token = token(app);
+        String user = userId(token, email);
+        HttpResponse<String> list = send(graph(token, "/servicePrincipals/" + sp + "/appRoleAssignedTo?$filter="
+                + URLEncoder.encode("principalId eq " + user, StandardCharsets.UTF_8)).GET().build());
+        if (list.statusCode() != 200) {
+            throw new Unavailable("Microsoft assignments: HTTP " + list.statusCode());
+        }
+        for (JsonNode a : read(list.body()).path("value")) {
+            HttpResponse<String> r = send(graph(token, "/servicePrincipals/" + sp + "/appRoleAssignedTo/"
+                    + a.path("id").asText()).DELETE().build());
+            if (r.statusCode() != 204 && r.statusCode() != 404) {
+                throw new Unavailable("Microsoft unassign: HTTP " + r.statusCode());
+            }
+        }
+    }
+
+    @Override
     public void delete(App app, String id) {
         HttpResponse<String> r = send(graph(token(app), "/users/" + id).DELETE().build());
         if (r.statusCode() != 204 && r.statusCode() != 404) {

@@ -40,7 +40,20 @@ public interface LicensePool {
     /** The person with this e-mail used the subscription's program that day: their license is not idle. */
     boolean used(UUID subscriptionId, String email, LocalDate day);
 
-    record Held(UUID licenseId, UUID subscriptionId, String vendor, String product, LocalDate lastActive) {
+    /**
+     * Licenses idle for {@code idleDays} whose subscription renews between {@code from} and {@code to} and will renew
+     * by itself (no contract, or a contract with auto-renewal): the holders are reminded (ADR 0066).
+     */
+    List<Renewing> renewing(LocalDate from, LocalDate to, int idleDays);
+
+    /** {@code renewalDate}: when the company pays for the seat again. */
+    record Held(UUID licenseId, UUID subscriptionId, String vendor, String product, LocalDate lastActive,
+            LocalDate renewalDate) {
+    }
+
+    /** {@code monthlyPrice}: what one seat costs a month (a yearly price divided by 12). */
+    record Renewing(UUID licenseId, UUID subscriptionId, UUID employeeId, String product, LocalDate renewalDate,
+            LocalDate lastActive, java.math.BigDecimal monthlyPrice) {
     }
 
     /** {@code free}: seats nobody holds; {@code idle}: licenses nobody used for the idle days. */

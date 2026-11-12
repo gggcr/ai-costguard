@@ -39,12 +39,31 @@ class RepositoryLicensePool implements LicensePool {
     @Override
     public List<Held> heldBy(UUID employeeId) {
         return jdbc.sql("""
-                select l.id, l.subscription_id, v.name as vendor, s.product, l.last_active
+                select l.id, l.subscription_id, v.name as vendor, s.product, l.last_active, s.renewal_date
                 from license_assignment l join subscription s on s.id = l.subscription_id
                 join vendor v on v.id = s.vendor_id
                 where l.employee_id = ? order by s.product""").param(employeeId)
                 .query((rs, i) -> new Held(rs.getObject("id", UUID.class), rs.getObject("subscription_id", UUID.class),
-                        rs.getString("vendor"), rs.getString("product"), rs.getObject("last_active", LocalDate.class)))
+                        rs.getString("vendor"), rs.getString("product"), rs.getObject("last_active", LocalDate.class),
+                        rs.getObject("renewal_date", LocalDate.class)))
+                .list();
+    }
+
+    @Override
+    public List<Renewing> renewing(LocalDate from, LocalDate to, int idleDays) {
+        return jdbc.sql("""
+                select l.id, l.subscription_id, l.employee_id, s.product, s.renewal_date, l.last_active,
+                       case when s.billing_period = 'year' then round(s.price_per_seat / 12, 2)
+                            else s.price_per_seat end as monthly
+                from license_assignment l join subscription s on s.id = l.subscription_id
+                left join contract c on c.id = s.contract_id
+                where s.renewal_date between ? and ? and (c.id is null or c.auto_renew)
+                  and (l.last_active is null or l.last_active < ?)
+                order by s.renewal_date, s.product""").params(from, to, since(idleDays))
+                .query((rs, i) -> new Renewing(rs.getObject("id", UUID.class),
+                        rs.getObject("subscription_id", UUID.class), rs.getObject("employee_id", UUID.class),
+                        rs.getString("product"), rs.getObject("renewal_date", LocalDate.class),
+                        rs.getObject("last_active", LocalDate.class), rs.getBigDecimal("monthly")))
                 .list();
     }
 

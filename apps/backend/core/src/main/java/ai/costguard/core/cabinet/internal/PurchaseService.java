@@ -95,7 +95,7 @@ class PurchaseService {
             if (held) {
                 comment = "У вас уже есть лицензия " + o.product();
             } else if (o.free() > 0 || o.idle() > 0) {
-                LicenseRequest r = licenses.ask(tenantId, me, o.subscriptionId(), "Вместо покупки: " + a.product());
+                LicenseRequest r = licenses.ask(tenantId, me, o.subscriptionId(), "Вместо покупки: " + a.product(), null);
                 licenseRequest = r.id();
                 comment = "granted".equals(r.status())
                         ? "В компании есть свободная лицензия " + o.product() + ": она выдана вам из пула"

@@ -30,6 +30,15 @@ interface MicrosoftDirectory {
     record SignIn(String email, String app, java.time.Instant at) {
     }
 
+    record EnterpriseApp(String id, String name) {
+    }
+
+    java.util.List<EnterpriseApp> enterpriseApps(App app);
+
+    void assign(App app, String servicePrincipalId, String email);
+
+    void unassign(App app, String servicePrincipalId, String email);
+
     /** The sign-in log since {@code from} (AuditLog.Read.All; Entra ID P1 or higher keeps 30 days). */
     java.util.List<SignIn> signIns(App app, java.time.Instant from);
 

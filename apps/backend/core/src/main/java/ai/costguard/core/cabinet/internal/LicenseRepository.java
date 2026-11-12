@@ -16,7 +16,7 @@ class LicenseRepository {
     private static final String SELECT = """
             select r.id, r.employee_id, e.name as employee_name, r.subscription_id, s.product, v.name as vendor,
                    r.reason, r.status, r.idle_license_id, l.last_active as idle_since, r.decided_by, r.decided_at,
-                   r.decision_comment, r.created_at
+                   r.decision_comment, r.created_at, r.days
             from license_request r join employee e on e.id = r.employee_id
             join subscription s on s.id = r.subscription_id join vendor v on v.id = s.vendor_id
             left join license_assignment l on l.id = r.idle_license_id""";
@@ -28,7 +28,8 @@ class LicenseRepository {
                 rs.getString("vendor"), rs.getString("reason"), rs.getString("status"),
                 rs.getObject("idle_license_id") != null, rs.getObject("idle_since", LocalDate.class),
                 rs.getString("decided_by"), decided == null ? null : decided.toInstant(),
-                rs.getString("decision_comment"), rs.getTimestamp("created_at").toInstant());
+                rs.getString("decision_comment"), rs.getTimestamp("created_at").toInstant(),
+                rs.getObject("days", Integer.class));
     };
 
     private final JdbcClient jdbc;
@@ -38,14 +39,14 @@ class LicenseRepository {
     }
 
     void insert(UUID tenantId, UUID id, UUID employeeId, UUID subscriptionId, String reason, String status,
-            UUID idleLicense, Instant at) {
+            UUID idleLicense, Instant at, Integer days) {
         jdbc.sql("""
                 insert into license_request (id, tenant_id, employee_id, subscription_id, reason, status,
-                                             idle_license_id, decided_at, created_at)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?)""")
+                                             idle_license_id, decided_at, created_at, days)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""")
                 .params(id, tenantId, employeeId, subscriptionId, reason == null || reason.isBlank() ? null
                         : reason.strip(), status, idleLicense, "granted".equals(status) ? Timestamp.from(at) : null,
-                        Timestamp.from(at))
+                        Timestamp.from(at), days)
                 .update();
     }
 

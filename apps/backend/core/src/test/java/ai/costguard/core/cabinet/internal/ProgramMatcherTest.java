@@ -39,6 +39,7 @@ class ProgramMatcherTest {
             public Optional<Offer> match(String text, int idleDays) { return Optional.empty(); }
             public Map<UUID, BigDecimal> monthlySeatPrices() { return Map.of(); }
             public boolean used(UUID subscriptionId, String email, java.time.LocalDate day) { return false; }
+            @Override public List<Renewing> renewing(java.time.LocalDate from, java.time.LocalDate to, int idleDays) { return List.of(); }
         };
     }
 

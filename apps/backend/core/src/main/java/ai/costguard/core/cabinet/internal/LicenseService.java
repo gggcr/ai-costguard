@@ -7,6 +7,7 @@ import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -16,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Пул лицензий (ADR 0055): a person asks for a program; a free seat is theirs at once; otherwise IT decides, and an
- * idle license of a colleague goes back to the pool and to them. A license is reassigned, never lent.
+ * idle license of a colleague goes back to the pool and to them. Asked for N days (ADR 0066), the license goes
+ * back when they are over, to that colleague when it was theirs.
  */
 @Service
 class LicenseService {
@@ -25,6 +27,8 @@ class LicenseService {
 
     private final LicensePool pool;
     private final LicenseRepository requests;
+    private final LeaseRepository leases;
+    private final LeaseService leasing;
     private final PersonalNotices notices;
     private final Whoami whoami;
     private final TenantSession session;
@@ -32,11 +36,14 @@ class LicenseService {
     private final Clock clock;
     private final int idleDays;
 
-    LicenseService(LicensePool pool, LicenseRepository requests, PersonalNotices notices, Whoami whoami,
+    LicenseService(LicensePool pool, LicenseRepository requests, LeaseRepository leases, LeaseService leasing,
+            PersonalNotices notices, Whoami whoami,
             TenantSession session, ApplicationEventPublisher events, Clock clock,
             @Value("${costguard.audit.unused-days:30}") int idleDays) {
         this.pool = pool;
         this.requests = requests;
+        this.leases = leases;
+        this.leasing = leasing;
         this.notices = notices;
         this.whoami = whoami;
         this.session = session;
@@ -49,18 +56,20 @@ class LicenseService {
     MyLicenses mine(UUID tenantId, Jwt jwt) {
         session.bind(tenantId);
         UUID me = whoami.employee(jwt);
-        return new MyLicenses(pool.heldBy(me), pool.offers(idleDays), requests.of(me), idleDays);
+        return new MyLicenses(pool.heldBy(me), pool.offers(idleDays), requests.of(me), idleDays,
+                leases.borrowedBy(me).stream().map(LeaseView::of).toList(),
+                leases.lentBy(me).stream().map(LeaseView::of).toList());
     }
 
     @Transactional
     LicenseRequest ask(UUID tenantId, Jwt jwt, NewLicenseRequest request) {
         session.bind(tenantId);
         UUID me = whoami.employee(jwt);
-        return ask(tenantId, me, request.subscriptionId(), request.reason());
+        return ask(tenantId, me, request.subscriptionId(), request.reason(), request.days());
     }
 
     /** Also for a purchase request that turns out to have a license in the pool (ADR 0056). */
-    LicenseRequest ask(UUID tenantId, UUID me, UUID subscriptionId, String reason) {
+    LicenseRequest ask(UUID tenantId, UUID me, UUID subscriptionId, String reason, Integer days) {
         LicensePool.Offer offer = pool.offer(subscriptionId, idleDays)
                 .orElseThrow(CabinetProblem.SUBSCRIPTION_NOT_FOUND::failure);
         if (pool.heldBy(me).stream().anyMatch(h -> h.subscriptionId().equals(subscriptionId))) {
@@ -70,13 +79,18 @@ class LicenseService {
             throw CabinetProblem.LICENSE_ASKED.failure();
         }
         UUID id = UUID.randomUUID();
-        if (pool.grant(subscriptionId, me).isPresent()) {
-            requests.insert(tenantId, id, me, subscriptionId, reason, "granted", null, clock.instant());
-            notices.send(tenantId, me, "Вам выдана лицензия " + offer.product() + " из пула компании",
-                    "/cabinet/licenses", "good");
+        Optional<UUID> given = pool.grant(subscriptionId, me);
+        if (given.isPresent()) {
+            events.publishEvent(new SeatChanged(tenantId, subscriptionId, me, true));
+            requests.insert(tenantId, id, me, subscriptionId, reason, "granted", null, clock.instant(), days);
+            if (days != null) {
+                leasing.lease(tenantId, given.get(), subscriptionId, me, null, days, offer.product());
+            }
+            notices.send(tenantId, me, "Вам выдана лицензия " + offer.product() + " из пула компании"
+                    + (days == null ? "" : " на " + days + " дн."), "/cabinet/licenses", "good");
         } else {
             UUID idle = pool.idlest(subscriptionId, idleDays, me).map(LicensePool.Idle::licenseId).orElse(null);
-            requests.insert(tenantId, id, me, subscriptionId, reason, "pending", idle, clock.instant());
+            requests.insert(tenantId, id, me, subscriptionId, reason, "pending", idle, clock.instant(), days);
         }
         events.publishEvent(ActionTaken.of(tenantId, "license.requested", "license_request", id,
                 ActionTaken.details("employeeId", me, "subscriptionId", subscriptionId)));
@@ -117,7 +131,9 @@ class LicenseService {
             throw CabinetProblem.LICENSE_REQUEST_DECIDED.failure();
         }
         if (decision.approve()) {
-            if (pool.grant(r.subscriptionId(), r.employeeId()).isEmpty()) {
+            UUID lender = null;
+            Optional<UUID> given = pool.grant(r.subscriptionId(), r.employeeId());
+            if (given.isEmpty()) {
                 LicensePool.Idle taken = idle == null ? null
                         : pool.idle(idleDays).stream().filter(i -> i.licenseId().equals(idle)).findFirst()
                                 .orElse(null);
@@ -127,11 +143,19 @@ class LicenseService {
                 if (taken == null) {
                     throw CabinetProblem.NO_FREE_SEAT.failure();
                 }
-                giveBack(tenantId, taken);
-                pool.grant(r.subscriptionId(), r.employeeId()).orElseThrow(CabinetProblem.NO_FREE_SEAT::failure);
+                giveBack(tenantId, taken, r.days() != null);
+                given = Optional.of(pool.grant(r.subscriptionId(), r.employeeId())
+                        .orElseThrow(CabinetProblem.NO_FREE_SEAT::failure));
+                lender = taken.employeeId();
             }
+            if (r.days() != null) {
+                leasing.lease(tenantId, given.get(), r.subscriptionId(), r.employeeId(), lender, r.days(),
+                        r.product());
+            }
+            events.publishEvent(new SeatChanged(tenantId, r.subscriptionId(), r.employeeId(), true));
             requests.decide(id, "approved", by, clock.instant(), decision.comment());
-            notices.send(tenantId, r.employeeId(), "Вам выдана лицензия " + r.product(), "/cabinet/licenses", "good");
+            notices.send(tenantId, r.employeeId(), "Вам выдана лицензия " + r.product()
+                    + (r.days() == null ? "" : " на " + r.days() + " дн."), "/cabinet/licenses", "good");
         } else {
             requests.decide(id, "rejected", by, clock.instant(), decision.comment());
             notices.send(tenantId, r.employeeId(), "Лицензия " + r.product() + " не выдана"
@@ -149,18 +173,23 @@ class LicenseService {
         session.bind(tenantId);
         int n = 0;
         for (LicensePool.Idle i : pool.idle(idleDays)) {
-            giveBack(tenantId, i);
+            giveBack(tenantId, i, false);
             n++;
         }
         return new Reclaimed(n);
     }
 
-    private void giveBack(UUID tenantId, LicensePool.Idle i) {
+    /** {@code lent}: the license goes to a colleague for a while and comes back; the lease tells the holder. */
+    private void giveBack(UUID tenantId, LicensePool.Idle i, boolean lent) {
         requests.forgetIdle(i.licenseId());
         if (pool.reclaim(i.licenseId())) {
-            notices.send(tenantId, i.employeeId(), "Лицензия " + i.product() + " возвращена в общий пул: "
-                    + (i.lastActive() == null ? "не использовалась" : "не использовалась с " + DAY.format(i.lastActive()))
-                    + ". Понадобится — запросите в кабинете", "/cabinet/licenses", "info");
+            events.publishEvent(new SeatChanged(tenantId, i.subscriptionId(), i.employeeId(), false));
+            if (!lent) {
+                notices.send(tenantId, i.employeeId(), "Лицензия " + i.product() + " возвращена в общий пул: "
+                        + (i.lastActive() == null ? "не использовалась"
+                                : "не использовалась с " + DAY.format(i.lastActive()))
+                        + ". Понадобится — запросите в кабинете", "/cabinet/licenses", "info");
+            }
             events.publishEvent(ActionTaken.of(tenantId, "license.reclaimed", "license_assignment", i.licenseId(),
                     ActionTaken.details("employeeId", i.employeeId(), "subscriptionId", i.subscriptionId())));
         }

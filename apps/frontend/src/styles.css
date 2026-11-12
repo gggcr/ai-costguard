@@ -372,3 +372,15 @@ details summary { cursor: pointer; color: var(--accent); margin-top: 8px; }
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 96px; margin: 8px 0; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
 .bar { width: 100%; min-height: 2px; background: var(--accent); border-radius: 3px 3px 0 0; }
+
+/* Бюджет-светофор агентов (ADR 0067) */
+.traffic { display: inline-flex; flex-direction: column; gap: 3px; padding: 4px; border-radius: 8px; background: var(--surface-2, rgba(127,127,127,.15)); flex-shrink: 0; }
+.traffic-lamp { width: 12px; height: 12px; border-radius: 50%; opacity: .2; }
+.traffic-lamp.on { opacity: 1; box-shadow: 0 0 6px currentColor; }
+.traffic-red { background: var(--critical); color: var(--critical); }
+.traffic-yellow { background: var(--warning); color: var(--warning); }
+.traffic-green { background: var(--good); color: var(--good); }
+.agent-light { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.agent-light:last-child { border-bottom: 0; }
+.agent-budget { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 4px 36px; }
+.agent-light .alert { margin: 6px 0 0 36px; }

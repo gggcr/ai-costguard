@@ -429,6 +429,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vacation"
+  /api/v1/me/team/limit-requests/{id}/decision:
+    put:
+      tags:
+      - Cabinet
+      summary: "Decide on a limit request of my department, as its head"
+      operationId: decideAsHead
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitDecision"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitRequest"
   /api/v1/me/sign-in/otp-first:
     put:
       tags:
@@ -464,6 +490,33 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/agents/operations/{approvalId}/decision:
+    put:
+      tags:
+      - Cabinet
+      summary: Confirm (NEAR keeps it) or block an operation of my agent that the
+        gateway held back
+      operationId: decideOperation
+      parameters:
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationDecision"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationDecided"
   /api/v1/mandates/{id}:
     get:
       tags:
@@ -546,6 +599,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Mandate"
+  /api/v1/limit-requests/{id}/decision:
+    put:
+      tags:
+      - Cabinet
+      summary: Decide on a limit request as finance (a department without a head)
+      operationId: decideAsEmployer_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitDecision"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitRequest"
   /api/v1/licenses/{id}/activity:
     put:
       tags:
@@ -599,6 +678,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LicenseRequest"
+  /api/v1/license-pool/{subscriptionId}/access:
+    get:
+      tags:
+      - Cabinet
+      summary: "How seats of this subscription are given and taken back at the vendor,\
+        \ and the last attempts"
+      operationId: get
+      parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionAccess"
+    put:
+      tags:
+      - Cabinet
+      summary: "Give and take back seats through Microsoft Entra or the vendor's SCIM\
+        \ API, or by hand"
+      operationId: save
+      parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessSettings"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionAccess"
   /api/v1/imports/{id}/review-tasks/{taskId}:
     put:
       tags:
@@ -813,7 +939,7 @@ paths:
       tags:
       - Organisation
       summary: "How the company's people log in: its Microsoft 365, if connected"
-      operationId: get
+      operationId: get_1
       responses:
         "200":
           description: OK
@@ -825,7 +951,7 @@ paths:
       tags:
       - Organisation
       summary: Connect or change the company's Microsoft 365 (Entra ID) login
-      operationId: save
+      operationId: save_1
       requestBody:
         content:
           application/json:
@@ -1738,6 +1864,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PurchaseRequest"
+  /api/v1/me/licenses/{licenseId}/release:
+    post:
+      tags:
+      - Cabinet
+      summary: "Give my license back: to the pool, or to the colleague it was lent\
+        \ from (ADR 0066)"
+      operationId: release
+      parameters:
+      - name: licenseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/me/license-requests:
     post:
       tags:
@@ -1757,6 +1900,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LicenseRequest"
+  /api/v1/me/agents/{agentId}/limit-requests:
+    post:
+      tags:
+      - Cabinet
+      summary: Ask to raise my agent's limit with a short reason; the head of my department
+        is told
+      operationId: askLimit
+      parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewLimitRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitRequest"
   /api/v1/mandates:
     get:
       tags:
@@ -2815,6 +2985,21 @@ paths:
             text/event-stream:
               schema:
                 $ref: "#/components/schemas/SseEmitter"
+  /api/v1/microsoft/apps:
+    get:
+      tags:
+      - Cabinet
+      summary: The enterprise applications of the company's Microsoft Entra ID
+      operationId: apps
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnterpriseApp"
   /api/v1/me:
     get:
       tags:
@@ -2843,6 +3028,21 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vacation"
+  /api/v1/me/team/limit-requests:
+    get:
+      tags:
+      - Cabinet
+      summary: Limit requests of the people of the departments I head
+      operationId: team_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LimitRequest"
   /api/v1/me/sign-in:
     get:
       tags:
@@ -2954,6 +3154,20 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/v1/me/agents:
+    get:
+      tags:
+      - Cabinet
+      summary: "My agents with their traffic light, operations waiting for me and\
+        \ my limit requests"
+      operationId: mine_6
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyAgents"
   /api/v1/login/hint:
     get:
       tags:
@@ -2974,12 +3188,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginHint"
+  /api/v1/limit-requests:
+    get:
+      tags:
+      - Cabinet
+      summary: Every limit request of the company
+      operationId: all_2
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LimitRequest"
   /api/v1/license-requests:
     get:
       tags:
       - Cabinet
       summary: Every license request of the company
-      operationId: all_2
+      operationId: all_3
       responses:
         "200":
           description: OK
@@ -3081,7 +3310,7 @@ paths:
       tags:
       - Imports
       summary: Get an import with its review tasks
-      operationId: get_1
+      operationId: get_2
       parameters:
       - name: id
         in: path
@@ -3122,7 +3351,7 @@ paths:
       tags:
       - Findings
       summary: Get a finding with its history
-      operationId: get_2
+      operationId: get_3
       parameters:
       - name: id
         in: path
@@ -3539,7 +3768,7 @@ paths:
       tags:
       - Assets
       summary: Get an asset
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: id
         in: path
@@ -3681,7 +3910,7 @@ paths:
       tags:
       - Approvals
       summary: Get a request
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: id
         in: path
@@ -3861,12 +4090,28 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/limit-requests/{id}:
+    delete:
+      tags:
+      - Cabinet
+      summary: Cancel my limit request that waits for a decision
+      operationId: cancel_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/me/license-requests/{id}:
     delete:
       tags:
       - Cabinet
       summary: Cancel my request that waits for IT
-      operationId: cancel_2
+      operationId: cancel_3
       parameters:
       - name: id
         in: path
@@ -4372,6 +4617,75 @@ components:
           format: date-time
         telegramAvailable:
           type: boolean
+    LimitDecision:
+      type: object
+      properties:
+        approve:
+          type: boolean
+        comment:
+          type: string
+          maxLength: 1000
+          minLength: 0
+    LimitRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        agentId:
+          type: string
+          format: uuid
+        agentName:
+          type: string
+        budgetId:
+          type: string
+          format: uuid
+        currentLimit:
+          type: number
+        spent:
+          type: number
+        add:
+          type: number
+        currency:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        decisionComment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    OperationDecision:
+      type: object
+      properties:
+        approve:
+          type: boolean
+        comment:
+          type: string
+          maxLength: 1000
+          minLength: 0
+    OperationDecided:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        notaryHash:
+          type: string
     MandateDetails:
       type: object
       properties:
@@ -4513,6 +4827,76 @@ components:
         createdAt:
           type: string
           format: date-time
+        days:
+          type: integer
+          format: int32
+    AccessSettings:
+      type: object
+      properties:
+        kind:
+          type: string
+          pattern: entra|scim|manual
+        entraAppId:
+          type: string
+          maxLength: 100
+          minLength: 0
+        entraAppName:
+          type: string
+          maxLength: 300
+          minLength: 0
+        scimUrl:
+          type: string
+          maxLength: 500
+          minLength: 0
+          pattern: https://\S+
+        scimToken:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        scimRevoke:
+          type: string
+          pattern: deactivate|delete
+      required:
+      - kind
+    AccessChange:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        action:
+          type: string
+        status:
+          type: string
+        detail:
+          type: string
+        at:
+          type: string
+          format: date-time
+    SubscriptionAccess:
+      type: object
+      properties:
+        kind:
+          type: string
+        entraAppId:
+          type: string
+        entraAppName:
+          type: string
+        scimUrl:
+          type: string
+        scimTokenSet:
+          type: boolean
+        scimRevoke:
+          type: string
+        recent:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessChange"
     Resolution:
       type: object
       properties:
@@ -5542,8 +5926,26 @@ components:
           type: string
           maxLength: 1000
           minLength: 0
+        days:
+          type: integer
+          format: int32
+          maximum: 90
+          minimum: 1
       required:
       - subscriptionId
+    NewLimitRequest:
+      type: object
+      properties:
+        add:
+          type: number
+          minimum: 0.01
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 0
+      required:
+      - add
+      - reason
     Reclaimed:
       type: object
       properties:
@@ -6448,6 +6850,13 @@ components:
         timeout:
           type: integer
           format: int64
+    EnterpriseApp:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
     Me:
       type: object
       properties:
@@ -6548,6 +6957,22 @@ components:
         lastActive:
           type: string
           format: date
+        renewalDate:
+          type: string
+          format: date
+    LeaseView:
+      type: object
+      properties:
+        licenseId:
+          type: string
+          format: uuid
+        product:
+          type: string
+        endsOn:
+          type: string
+          format: date
+        fromColleague:
+          type: boolean
     MyLicenses:
       type: object
       properties:
@@ -6566,6 +6991,14 @@ components:
         idleDays:
           type: integer
           format: int32
+        borrowed:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaseView"
+        lent:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaseView"
     Offer:
       type: object
       properties:
@@ -6588,6 +7021,75 @@ components:
         idle:
           type: integer
           format: int32
+    MyAgent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+        riskAction:
+          type: string
+        riskScore:
+          type: integer
+          format: int32
+        riskReason:
+          type: string
+        light:
+          type: string
+          enum:
+          - green
+          - yellow
+          - red
+        why:
+          type: string
+        limit:
+          type: number
+        spent:
+          type: number
+        percent:
+          type: integer
+          format: int32
+        currency:
+          type: string
+        limitRequest:
+          $ref: "#/components/schemas/LimitRequest"
+        waiting:
+          type: array
+          items:
+            $ref: "#/components/schemas/WaitingOperation"
+    MyAgents:
+      type: object
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyAgent"
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitRequest"
+    WaitingOperation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
     LoginHint:
       type: object
       properties:

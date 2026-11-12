@@ -40,7 +40,8 @@ class CabinetPersonalData implements DataHolder {
     @Override
     public List<String> tables() {
         return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
-                "payroll_tenant", "license_request", "purchase_request", "shadow_spend");
+                "payroll_tenant", "license_request", "purchase_request", "shadow_spend", "subscription_access",
+                "access_change", "license_lease", "renewal_reminder", "limit_request", "cabinet_tenant");
     }
 
     @Override
@@ -50,6 +51,13 @@ class CabinetPersonalData implements DataHolder {
         purchases.keysOf(subject.employeeId()).forEach(files::delete);
         report.deleted("cabinet.purchase_request", purchases.deleteOf(subject.employeeId()));
         report.deleted("cabinet.license_request", jdbc.sql("delete from license_request where employee_id = ?")
+                .param(subject.employeeId()).update());
+        report.deleted("cabinet.license_lease", jdbc.sql("delete from license_lease where employee_id = ?")
+                .param(subject.employeeId()).update());
+        jdbc.sql("update license_lease set lender_id = null where lender_id = ?").param(subject.employeeId()).update();
+        report.deleted("cabinet.limit_request", jdbc.sql("delete from limit_request where employee_id = ?")
+                .param(subject.employeeId()).update());
+        report.deleted("cabinet.access_change", jdbc.sql("delete from access_change where employee_id = ?")
                 .param(subject.employeeId()).update());
         int requests = jdbc.sql("select count(*) from vacation_request where employee_id = ?")
                 .param(subject.employeeId()).query(Integer.class).single();
@@ -73,8 +81,9 @@ class CabinetPersonalData implements DataHolder {
     /** The files go with the company's uploads: they share its prefix in the storage (imports erases it). */
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "cabinet", "shadow_spend", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
+        TenantRows.delete(jdbc, tenantId, report, "cabinet", "limit_request", "renewal_reminder", "license_lease", "access_change", "subscription_access", "shadow_spend", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
                 "vacation_request", "employee_document");
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
+        jdbc.sql("delete from cabinet_tenant where tenant_id = ?").param(tenantId).update();
     }
 }

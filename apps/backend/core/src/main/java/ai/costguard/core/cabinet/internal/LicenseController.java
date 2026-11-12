@@ -31,9 +31,19 @@ class LicenseController {
 
     private final MicrosoftActivity activity;
 
-    LicenseController(LicenseService service, MicrosoftActivity activity) {
+    private final LeaseService leases;
+
+    LicenseController(LicenseService service, MicrosoftActivity activity, LeaseService leases) {
         this.service = service;
         this.activity = activity;
+        this.leases = leases;
+    }
+
+    @PostMapping("/me/licenses/{licenseId}/release")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Give my license back: to the pool, or to the colleague it was lent from (ADR 0066)")
+    void release(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID licenseId) {
+        leases.release(TenantClaim.of(jwt), jwt, licenseId);
     }
 
     @GetMapping("/me/licenses")
