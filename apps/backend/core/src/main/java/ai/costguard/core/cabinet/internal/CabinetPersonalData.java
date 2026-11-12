@@ -41,7 +41,7 @@ class CabinetPersonalData implements DataHolder {
     public List<String> tables() {
         return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
                 "payroll_tenant", "license_request", "purchase_request", "shadow_spend", "subscription_access",
-                "access_change", "license_lease", "renewal_reminder", "limit_request", "cabinet_tenant");
+                "access_change", "license_lease", "renewal_reminder", "limit_request", "cabinet_tenant", "document_signature", "signing_key");
     }
 
     @Override
@@ -55,6 +55,10 @@ class CabinetPersonalData implements DataHolder {
         report.deleted("cabinet.license_lease", jdbc.sql("delete from license_lease where employee_id = ?")
                 .param(subject.employeeId()).update());
         jdbc.sql("update license_lease set lender_id = null where lender_id = ?").param(subject.employeeId()).update();
+        for (String email : subject.emails()) {
+            report.deleted("cabinet.signing_key", jdbc.sql("delete from signing_key where email = ?").param(email)
+                    .update());
+        }
         report.deleted("cabinet.limit_request", jdbc.sql("delete from limit_request where employee_id = ?")
                 .param(subject.employeeId()).update());
         report.deleted("cabinet.access_change", jdbc.sql("delete from access_change where employee_id = ?")
@@ -72,6 +76,13 @@ class CabinetPersonalData implements DataHolder {
                     "pay records the employer keeps by law (402-ФЗ, ст. 29; НК РФ, ст. 230)", null);
         }
         int kept = documents.countOf(subject.employeeId());
+        int signatures = jdbc.sql("""
+                select count(*) from document_signature s join employee_document d on d.id = s.document_id
+                where d.employee_id = ?""").param(subject.employeeId()).query(Integer.class).single();
+        if (signatures > 0) {
+            report.retained("cabinet.document_signature", signatures,
+                    "signatures of personnel records the employer keeps by law (ТК РФ, 125-ФЗ; 63-ФЗ)", null);
+        }
         if (kept > 0) {
             report.retained("cabinet.employee_document", kept,
                     "personnel records the employer keeps by law (ТК РФ, 125-ФЗ)", null);
@@ -81,7 +92,7 @@ class CabinetPersonalData implements DataHolder {
     /** The files go with the company's uploads: they share its prefix in the storage (imports erases it). */
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "cabinet", "limit_request", "renewal_reminder", "license_lease", "access_change", "subscription_access", "shadow_spend", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
+        TenantRows.delete(jdbc, tenantId, report, "cabinet", "signing_key", "document_signature", "limit_request", "renewal_reminder", "license_lease", "access_change", "subscription_access", "shadow_spend", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
                 "vacation_request", "employee_document");
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
         jdbc.sql("delete from cabinet_tenant where tenant_id = ?").param(tenantId).update();

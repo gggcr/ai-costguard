@@ -455,6 +455,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LimitRequest"
+  /api/v1/me/signing-key/totp:
+    put:
+      tags:
+      - Cabinet
+      summary: "Confirm the authenticator with a code it shows: it becomes my signing\
+        \ key"
+      operationId: confirmTotp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpConfirm"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SigningKeyStatus"
+    post:
+      tags:
+      - Cabinet
+      summary: "Start the authenticator setup: a secret and its otpauth link for the\
+        \ QR code"
+      description: Replacing a key that is set needs a code of the current one in
+        current.
+      operationId: startTotp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpStart"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpSetup"
+  /api/v1/me/signing-key/pin:
+    put:
+      tags:
+      - Cabinet
+      summary: Set a six-digit PIN as my signing key
+      description: Replacing a key that is set needs a code of the current one in
+        current.
+      operationId: setPin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinSetup"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SigningKeyStatus"
   /api/v1/me/sign-in/otp-first:
     put:
       tags:
@@ -1900,6 +1961,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LicenseRequest"
+  /api/v1/me/documents/{id}/signature:
+    post:
+      tags:
+      - Cabinet
+      summary: Sign my document with a code of my signing key (ADR 0068)
+      operationId: signMine
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeDocument"
   /api/v1/me/agents/{agentId}/limit-requests:
     post:
       tags:
@@ -2243,6 +2330,17 @@ paths:
         schema:
           type: string
           format: date
+      - name: signers
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - employee
+            - employer
+            - accountant
       requestBody:
         content:
           multipart/form-data:
@@ -2282,6 +2380,58 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Onboarded"
+  /api/v1/documents/{id}/signature/employer:
+    post:
+      tags:
+      - Cabinet
+      summary: Sign an employee's document as the employer
+      operationId: signAsEmployer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeDocument"
+  /api/v1/documents/{id}/signature/accountant:
+    post:
+      tags:
+      - Cabinet
+      summary: Sign an employee's document as the accountant
+      operationId: signAsAccountant
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeDocument"
   /api/v1/departments:
     get:
       tags:
@@ -3043,6 +3193,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/LimitRequest"
+  /api/v1/me/signing-key:
+    get:
+      tags:
+      - Cabinet
+      summary: "Whether I have a signing key, and which: an authenticator app (totp)\
+        \ or a PIN"
+      operationId: status
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SigningKeyStatus"
   /api/v1/me/sign-in:
     get:
       tags:
@@ -3489,6 +3653,22 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemBody"
+  /api/v1/documents/awaiting-signature:
+    get:
+      tags:
+      - Cabinet
+      summary: "Documents I have to sign: as the employer (owner) or the accountant\
+        \ (finance)"
+      operationId: awaiting
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwaitingSignature"
   /api/v1/connections/{id}:
     get:
       tags:
@@ -4667,6 +4847,34 @@ components:
         createdAt:
           type: string
           format: date-time
+    TotpConfirm:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+    SigningKeyStatus:
+      type: object
+      properties:
+        method:
+          type: string
+        totpAvailable:
+          type: boolean
+        lockedUntil:
+          type: string
+          format: date-time
+    PinSetup:
+      type: object
+      properties:
+        pin:
+          type: string
+          minLength: 1
+        current:
+          type: string
+      required:
+      - pin
     OperationDecision:
       type: object
       properties:
@@ -5860,6 +6068,18 @@ components:
       - endsOn
       - kind
       - startsOn
+    TotpStart:
+      type: object
+      properties:
+        current:
+          type: string
+    TotpSetup:
+      type: object
+      properties:
+        secret:
+          type: string
+        uri:
+          type: string
     NewShadowSpend:
       type: object
       properties:
@@ -5933,6 +6153,66 @@ components:
           minimum: 1
       required:
       - subscriptionId
+    SignRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+    DocumentSignature:
+      type: object
+      properties:
+        party:
+          type: string
+        signerName:
+          type: string
+        signerEmail:
+          type: string
+        method:
+          type: string
+        documentSha256:
+          type: string
+        signedAt:
+          type: string
+          format: date-time
+    EmployeeDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source:
+          type: string
+        kind:
+          type: string
+        title:
+          type: string
+        number:
+          type: string
+        signedOn:
+          type: string
+          format: date
+        fileName:
+          type: string
+        size:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        returnedOn:
+          type: string
+          format: date
+        signers:
+          type: array
+          items:
+            type: string
+        signatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentSignature"
     NewLimitRequest:
       type: object
       properties:
@@ -6144,34 +6424,6 @@ components:
         note:
           type: string
         until:
-          type: string
-          format: date
-    EmployeeDocument:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        source:
-          type: string
-        kind:
-          type: string
-        title:
-          type: string
-        number:
-          type: string
-        signedOn:
-          type: string
-          format: date
-        fileName:
-          type: string
-        size:
-          type: integer
-          format: int64
-        createdAt:
-          type: string
-          format: date-time
-        returnedOn:
           type: string
           format: date
     NewEmployee:
@@ -7207,6 +7459,32 @@ components:
           type: string
         cost:
           type: number
+    AwaitingSignature:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        title:
+          type: string
+        party:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        signers:
+          type: array
+          items:
+            type: string
+        signatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentSignature"
     ConnectionRun:
       type: object
       properties:

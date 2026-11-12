@@ -17,7 +17,11 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** «Мои документы» (ADR 0052): what the employer uploads for an employee, and the employee's handover acts. */
+/**
+ * «Мои документы» (ADR 0052): what the employer uploads for an employee, and the employee's handover acts. A PDF can
+ * be sent for signing (ADR 0068): the employee, the employer and the accountant each sign it with a code of their
+ * signing key, and every download then carries the stamps.
+ */
 @Service
 class DocumentService {
 
@@ -32,10 +36,12 @@ class DocumentService {
     private final TenantSession session;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final SigningKeys keys;
 
     DocumentService(DocumentRepository documents, EmployeeActs acts, StoredFiles files, PersonalNotices notices,
             EmployeeDirectory employees, Whoami whoami, TenantSession session, ApplicationEventPublisher events,
-            Clock clock) {
+            Clock clock, SigningKeys keys) {
+        this.keys = keys;
         this.documents = documents;
         this.acts = acts;
         this.files = files;
@@ -48,7 +54,7 @@ class DocumentService {
     }
 
     record Upload(DocumentKind kind, String title, String number, LocalDate signedOn, String fileName,
-            String contentType, byte[] content) {
+            String contentType, byte[] content, List<SignerParty> signers) {
     }
 
     /** The employer adds a document; the employee is told in their cabinet and over their channels. */
@@ -62,14 +68,21 @@ class DocumentService {
             throw CabinetProblem.FILE_TOO_LARGE.failure();
         }
         employees.card(employeeId).orElseThrow(CabinetProblem.EMPLOYEE_NOT_FOUND::failure);
+        List<String> signers = upload.signers() == null ? List.of()
+                : upload.signers().stream().distinct().sorted().map(Enum::name).toList();
+        if (!signers.isEmpty() && !SignatureStamp.isPdf(upload.content())) {
+            throw CabinetProblem.SIGN_ONLY_PDF.failure();
+        }
         UUID id = UUID.randomUUID();
         String key = tenantId + "/documents/" + id;
         files.put(key, upload.content());
         StoredDocument d = new StoredDocument(id, employeeId, upload.kind().name(), upload.title().strip(),
                 blank(upload.number()), upload.signedOn(), key, upload.fileName(), upload.contentType(),
-                upload.content().length, by, clock.instant());
+                upload.content().length, by, clock.instant(), signers);
         documents.insert(tenantId, d);
-        notices.send(tenantId, employeeId, "Новый документ: " + d.title(), "/cabinet/documents", "info");
+        boolean mine = signers.contains("employee");
+        notices.send(tenantId, employeeId, (mine ? "Подпишите документ: " : "Новый документ: ") + d.title(),
+                "/cabinet/documents", mine ? "warning" : "info");
         events.publishEvent(ActionTaken.of(tenantId, "document.added", "employee_document", id,
                 ActionTaken.details("employeeId", employeeId, "kind", d.kind())));
         return view(d);
@@ -113,15 +126,99 @@ class DocumentService {
         session.bind(tenantId);
         StoredDocument d = documents.find(documentId).filter(x -> x.employeeId().equals(employeeId))
                 .orElseThrow(CabinetProblem.DOCUMENT_NOT_FOUND::failure);
+        if (!documents.signatures(d.id()).isEmpty()) {
+            throw CabinetProblem.DOCUMENT_SIGNED.failure();
+        }
         documents.delete(d.id());
         files.delete(d.fileKey());
         events.publishEvent(ActionTaken.of(tenantId, "document.removed", "employee_document", d.id(),
                 ActionTaken.details("employeeId", employeeId)));
     }
 
+    /** A signed PDF comes with its stamps; the original stays in storage as it was. */
     private DocumentFile content(StoredDocument d) {
         byte[] bytes = files.get(d.fileKey()).orElseThrow(CabinetProblem.DOCUMENT_NOT_FOUND::failure);
+        List<DocumentSignature> signed = documents.signatures(d.id());
+        if (!signed.isEmpty() && SignatureStamp.isPdf(bytes)) {
+            return new DocumentFile(d.fileName(), "application/pdf", SignatureStamp.stamp(bytes, d.title(), d.id(),
+                    signed));
+        }
         return new DocumentFile(d.fileName(), d.contentType(), bytes);
+    }
+
+    /** The employee signs their own document. */
+    @Transactional
+    EmployeeDocument signAsEmployee(UUID tenantId, Jwt jwt, UUID documentId, String code) {
+        session.bind(tenantId);
+        UUID me = whoami.employee(jwt);
+        StoredDocument d = documents.lock(documentId).filter(x -> x.employeeId().equals(me))
+                .orElseThrow(CabinetProblem.DOCUMENT_NOT_FOUND::failure);
+        return sign(tenantId, jwt, d, SignerParty.employee, code);
+    }
+
+    /** The employer (owner) or the accountant (finance) signs; the controller checks the role. */
+    @Transactional
+    EmployeeDocument signAs(UUID tenantId, Jwt jwt, UUID documentId, SignerParty party, String code) {
+        session.bind(tenantId);
+        StoredDocument d = documents.lock(documentId).orElseThrow(CabinetProblem.DOCUMENT_NOT_FOUND::failure);
+        return sign(tenantId, jwt, d, party, code);
+    }
+
+    private EmployeeDocument sign(UUID tenantId, Jwt jwt, StoredDocument d, SignerParty party, String code) {
+        if (!d.signers().contains(party.name())) {
+            throw CabinetProblem.SIGN_NOT_ASKED.failure();
+        }
+        List<DocumentSignature> before = documents.signatures(d.id());
+        if (before.stream().anyMatch(s -> s.party().equals(party.name()))) {
+            throw CabinetProblem.SIGN_ALREADY.failure();
+        }
+        String email = SigningKeys.email(jwt);
+        String method = keys.check(tenantId, email, code);
+        byte[] bytes = files.get(d.fileKey()).orElseThrow(CabinetProblem.DOCUMENT_NOT_FOUND::failure);
+        DocumentSignature signature = new DocumentSignature(party.name(), Whoami.who(jwt), email, method,
+                sha256(bytes), clock.instant());
+        documents.sign(tenantId, d.id(), signature);
+        int left = d.signers().size() - before.size() - 1;
+        if (left == 0) {
+            notices.send(tenantId, d.employeeId(), "Документ подписан всеми сторонами: " + d.title(),
+                    "/cabinet/documents", "good");
+        } else if (party != SignerParty.employee) {
+            notices.send(tenantId, d.employeeId(), SignatureStamp.party(party.name()) + " подписал(а) документ: "
+                    + d.title(), "/cabinet/documents", "info");
+        }
+        events.publishEvent(ActionTaken.of(tenantId, "document.signed", "employee_document", d.id(),
+                ActionTaken.details("party", party.name(), "method", method, "sha256", signature.documentSha256())));
+        return view(d);
+    }
+
+    /** What the employer or the accountant still has to sign. */
+    @Transactional(readOnly = true)
+    List<AwaitingSignature> awaiting(UUID tenantId, List<SignerParty> parties) {
+        session.bind(tenantId);
+        List<String> names = parties.stream().map(Enum::name).toList();
+        List<AwaitingSignature> out = new ArrayList<>();
+        if (names.isEmpty()) {
+            return out;
+        }
+        for (StoredDocument d : documents.awaiting(names)) {
+            List<DocumentSignature> signed = documents.signatures(d.id());
+            String name = employees.card(d.employeeId()).map(EmployeeDirectory.EmployeeCard::name).orElse("");
+            for (String p : d.signers()) {
+                if (names.contains(p) && signed.stream().noneMatch(s -> s.party().equals(p))) {
+                    out.add(new AwaitingSignature(d.id(), d.employeeId(), name, d.title(), p, d.createdAt(),
+                            d.signers(), signed));
+                }
+            }
+        }
+        return out;
+    }
+
+    private static String sha256(byte[] bytes) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private List<EmployeeDocument> all(UUID employeeId) {
@@ -131,15 +228,15 @@ class DocumentService {
             out.add(new EmployeeDocument(a.id(), "asset_act", "asset_act",
                     "Акт выдачи: " + a.model() + " (инв. " + a.inventoryNumber() + ")", a.number(), a.issuedOn(),
                     "Акт " + a.number() + ".pdf", null, a.issuedOn().atStartOfDay(java.time.ZoneOffset.UTC)
-                            .toInstant(), a.returnedOn()));
+                            .toInstant(), a.returnedOn(), List.of(), List.of()));
         }
         out.sort(Comparator.comparing(EmployeeDocument::createdAt).reversed());
         return out;
     }
 
-    private static EmployeeDocument view(StoredDocument d) {
+    private EmployeeDocument view(StoredDocument d) {
         return new EmployeeDocument(d.id(), "upload", d.kind(), d.title(), d.number(), d.signedOn(), d.fileName(),
-                d.size(), d.createdAt(), null);
+                d.size(), d.createdAt(), null, d.signers(), documents.signatures(d.id()));
     }
 
     private static String blank(String s) {

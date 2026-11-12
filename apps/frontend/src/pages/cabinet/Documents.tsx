@@ -6,6 +6,7 @@ import { useStore } from '../../api/store';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, Modal } from '../../components/ui';
 import { fmtDate, fmtDateTime } from '../../lib';
 import { errorText, useApi } from './useApi';
+import { PARTY_LABEL, SignatureState, SignModal, type DocumentSignature } from './Signing';
 
 export interface EmployeeDocument {
   id: string;
@@ -18,6 +19,8 @@ export interface EmployeeDocument {
   size: number | null;
   createdAt: string;
   returnedOn: string | null;
+  signers: string[];
+  signatures: DocumentSignature[];
 }
 
 export const KIND_LABEL: Record<string, string> = {
@@ -28,12 +31,12 @@ export const KIND_LABEL: Record<string, string> = {
   asset_act: 'Акт выдачи техники',
 };
 
-function DocumentList({ docs, open, onRemove }: { docs: EmployeeDocument[]; open: (d: EmployeeDocument) => void; onRemove?: (d: EmployeeDocument) => void }) {
+function DocumentList({ docs, open, onRemove, onSign }: { docs: EmployeeDocument[]; open: (d: EmployeeDocument) => void; onRemove?: (d: EmployeeDocument) => void; onSign?: (d: EmployeeDocument) => void }) {
   if (docs.length === 0) return <Empty>Документов пока нет</Empty>;
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Документ</th><th>Вид</th><th>Номер</th><th>Дата</th><th /></tr></thead>
+        <thead><tr><th>Документ</th><th>Вид</th><th>Номер</th><th>Дата</th><th>Подпись</th><th /></tr></thead>
         <tbody>
           {docs.map((d) => (
             <tr key={d.id}>
@@ -41,9 +44,11 @@ function DocumentList({ docs, open, onRemove }: { docs: EmployeeDocument[]; open
               <td><Badge tone={d.source === 'asset_act' ? 'info' : 'neutral'}>{KIND_LABEL[d.kind] ?? d.kind}</Badge></td>
               <td>{d.number ?? '—'}</td>
               <td>{d.signedOn ? fmtDate(d.signedOn) : fmtDate(d.createdAt)}</td>
+              <td>{d.signers.length > 0 ? <SignatureState signers={d.signers} signatures={d.signatures} /> : '—'}</td>
               <td className="row-gap">
+                {onSign && d.signers.includes('employee') && !d.signatures.some((s) => s.party === 'employee') && <Button variant="primary" onClick={() => onSign(d)}>Подписать</Button>}
                 <Button variant="ghost" icon="download" onClick={() => open(d)}>Скачать</Button>
-                {onRemove && d.source === 'upload' && (
+                {onRemove && d.source === 'upload' && d.signatures.length === 0 && (
                   <ConfirmButton variant="ghost" title="Удалить документ?" text={`«${d.title}» пропадёт у сотрудника.`} confirmLabel="Удалить" onConfirm={() => onRemove(d)}>Удалить</ConfirmButton>
                 )}
               </td>
@@ -56,14 +61,16 @@ function DocumentList({ docs, open, onRemove }: { docs: EmployeeDocument[]; open
 }
 
 export function MyDocuments() {
-  const { data, error } = useApi<EmployeeDocument[]>('/api/v1/me/documents');
+  const { data, error, reload } = useApi<EmployeeDocument[]>('/api/v1/me/documents');
   const { toast } = useStore();
+  const [signing, setSigning] = useState<EmployeeDocument | null>(null);
   if (error) return <Empty>{error}</Empty>;
   if (!data) return <Empty>Загрузка…</Empty>;
   return (
     <Card title="Мои документы">
-      <p className="muted small">Договор, соглашения и приказы, которые добавил работодатель, и акты выдачи техники. О каждом новом документе приходит уведомление.</p>
-      <DocumentList docs={data} open={(d) => { download(`/api/v1/me/documents/${d.id}/file`, d.fileName).catch((e) => toast(errorText(e), 'critical')); }} />
+      {signing && <SignModal title={signing.title} path={`/api/v1/me/documents/${signing.id}/signature`} onClose={() => setSigning(null)} onSigned={() => { setSigning(null); reload(); }} />}
+      <p className="muted small">Договор, соглашения и приказы, которые добавил работодатель, и акты выдачи техники. О каждом новом документе приходит уведомление. Документы на подпись подписываются кодом из приложения или ПИН-кодом.</p>
+      <DocumentList docs={data} onSign={setSigning} open={(d) => { download(`/api/v1/me/documents/${d.id}/file`, d.fileName).catch((e) => toast(errorText(e), 'critical')); }} />
     </Card>
   );
 }
@@ -109,13 +116,15 @@ export function EmployeeDocumentsModal({ employeeId, name, onClose }: { employee
   const [number, setNumber] = useState('');
   const [signedOn, setSignedOn] = useState('');
   const [busy, setBusy] = useState(false);
+  const [signers, setSigners] = useState<string[]>([]);
+  const toggle = (p: string) => setSigners((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
   const add = async () => {
     if (!file || !title.trim()) return;
     setBusy(true);
     try {
-      await uploadForm(`/api/v1/employees/${employeeId}/documents`, file, { kind, title: title.trim(), number, signedOn });
+      await uploadForm(`/api/v1/employees/${employeeId}/documents`, file, { kind, title: title.trim(), number, signedOn, signers: signers.join(',') });
       toast('Документ добавлен, сотрудник получит уведомление', 'good');
-      setFile(null); setTitle(''); setNumber(''); setSignedOn('');
+      setFile(null); setTitle(''); setNumber(''); setSignedOn(''); setSigners([]);
       reload();
     } catch (e) {
       toast(errorText(e), 'critical');
@@ -148,6 +157,12 @@ export function EmployeeDocumentsModal({ employeeId, name, onClose }: { employee
         <Field label="Дата подписания"><input className="input" type="date" value={signedOn} onChange={(e) => setSignedOn(e.target.value)} /></Field>
         <Field label="Файл, до 20 МБ"><input className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
       </div>
+      <fieldset className="sign-parties">
+        <legend className="field-label">Кто подписывает электронной подписью (только PDF)</legend>
+        {['employee', 'employer', 'accountant'].map((p) => (
+          <label key={p} className="check"><input type="checkbox" checked={signers.includes(p)} onChange={() => toggle(p)} /> {PARTY_LABEL[p]}</label>
+        ))}
+      </fieldset>
       <Button variant="primary" disabled={!file || !title.trim() || busy} onClick={() => { void add(); }}>Добавить</Button>
     </Modal>
   );

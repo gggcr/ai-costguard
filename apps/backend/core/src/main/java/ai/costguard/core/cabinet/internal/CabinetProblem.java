@@ -44,6 +44,18 @@ enum CabinetProblem implements ProblemCode {
     LIMIT_REQUEST_DECIDED(HttpStatus.CONFLICT, "The request is already decided"),
     OPERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "No such operation of your agents waits for you"),
     OPERATION_DECIDED(HttpStatus.CONFLICT, "The operation is already decided or its time is over"),
+    SIGNING_NO_EMAIL(HttpStatus.FORBIDDEN, "Your sign-in has no e-mail to keep a signing key for"),
+    SIGNING_KEY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+            "The server has no encryption key (CONNECTIONS_ENCRYPTION_KEY) for authenticator secrets: use a PIN"),
+    SIGNING_NO_PENDING(HttpStatus.CONFLICT, "Start the authenticator setup first"),
+    SIGNING_PIN_WEAK(HttpStatus.BAD_REQUEST, "The PIN is six digits, not all the same and not 123456"),
+    SIGNING_KEY_MISSING(HttpStatus.CONFLICT, "Set up your signature first: an authenticator app or a PIN"),
+    SIGNING_CODE_WRONG(HttpStatus.FORBIDDEN, "Wrong code"),
+    SIGNING_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "Five wrong codes: signing is locked for 15 minutes"),
+    SIGN_ONLY_PDF(HttpStatus.BAD_REQUEST, "Only a PDF can be signed: upload the document as PDF"),
+    SIGN_NOT_ASKED(HttpStatus.CONFLICT, "This side is not asked to sign the document"),
+    SIGN_ALREADY(HttpStatus.CONFLICT, "This side has signed the document already"),
+    DOCUMENT_SIGNED(HttpStatus.CONFLICT, "A signed document cannot be removed"),
     MICROSOFT_UNAVAILABLE(HttpStatus.BAD_GATEWAY,
             "Microsoft did not give the sign-in log: check the app's permission AuditLog.Read.All and Entra ID P1");
 

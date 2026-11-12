@@ -26,6 +26,14 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /** Employee documents: the employer adds them, the employee reads their own (ADR 0052). */
 @RestController
@@ -57,7 +65,8 @@ class DocumentController {
     @Operation(summary = "Add a document of an employee; the employee is notified")
     EmployeeDocument add(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID employeeId,
             @RequestPart("file") MultipartFile file, @RequestParam DocumentKind kind, @RequestParam String title,
-            @RequestParam(required = false) String number, @RequestParam(required = false) LocalDate signedOn) {
+            @RequestParam(required = false) String number, @RequestParam(required = false) LocalDate signedOn,
+            @RequestParam(required = false) List<SignerParty> signers) {
         byte[] content;
         try {
             content = file.getBytes();
@@ -68,7 +77,47 @@ class DocumentController {
                 : file.getOriginalFilename();
         String type = file.getContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : file.getContentType();
         return service.add(TenantClaim.of(jwt), employeeId,
-                new DocumentService.Upload(kind, title, number, signedOn, name, type, content), Whoami.who(jwt));
+                new DocumentService.Upload(kind, title, number, signedOn, name, type, content, signers),
+                Whoami.who(jwt));
+    }
+
+    @PostMapping("/me/documents/{id}/signature")
+    @Operation(summary = "Sign my document with a code of my signing key (ADR 0068)")
+    EmployeeDocument signMine(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+            @Valid @RequestBody SignRequest request) {
+        return service.signAsEmployee(TenantClaim.of(jwt), jwt, id, request.code());
+    }
+
+    @PostMapping("/documents/{id}/signature/employer")
+    @PreAuthorize("hasRole('owner')")
+    @Operation(summary = "Sign an employee's document as the employer")
+    EmployeeDocument signAsEmployer(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+            @Valid @RequestBody SignRequest request) {
+        return service.signAs(TenantClaim.of(jwt), jwt, id, SignerParty.employer, request.code());
+    }
+
+    @PostMapping("/documents/{id}/signature/accountant")
+    @PreAuthorize("hasRole('finance')")
+    @Operation(summary = "Sign an employee's document as the accountant")
+    EmployeeDocument signAsAccountant(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+            @Valid @RequestBody SignRequest request) {
+        return service.signAs(TenantClaim.of(jwt), jwt, id, SignerParty.accountant, request.code());
+    }
+
+    @GetMapping("/documents/awaiting-signature")
+    @PreAuthorize("hasAnyRole('owner', 'finance')")
+    @Operation(summary = "Documents I have to sign: as the employer (owner) or the accountant (finance)")
+    List<AwaitingSignature> awaiting(Authentication auth) {
+        Set<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
+        List<SignerParty> parties = new ArrayList<>();
+        if (roles.contains("ROLE_owner")) {
+            parties.add(SignerParty.employer);
+        }
+        if (roles.contains("ROLE_finance")) {
+            parties.add(SignerParty.accountant);
+        }
+        return service.awaiting(TenantClaim.of((Jwt) auth.getPrincipal()), parties);
     }
 
     @GetMapping("/employees/{employeeId}/documents")

@@ -16,6 +16,7 @@ import { MyPurchases } from './cabinet/Purchases';
 import { MyShadowSpend } from './cabinet/Shadow';
 import { MyAgents } from './cabinet/Agents';
 import { SignInCard } from './cabinet/SignIn';
+import { SigningKeyCard } from './cabinet/Signing';
 
 /** Профиль того, кто вошёл: из ядра в режиме API, из демо-данных в демо. */
 export function useMe(): { me: Me | null; error: string | null } {
@@ -112,6 +113,7 @@ function Profile({ me }: { me: Me }) {
         )}
       </Card>
       {mode === 'api' && <SignInCard />}
+      {mode === 'api' && <SigningKeyCard />}
       {mode === 'api' && <ChannelSettings />}
     </>
   );

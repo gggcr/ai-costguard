@@ -112,6 +112,17 @@ export type Approval = {
   nearTxHash?: string;
 };
 
+export type AwaitingSignature = {
+  id?: string;  // uuid
+  employeeId?: string;  // uuid
+  employeeName?: string;
+  title?: string;
+  party?: string;
+  createdAt?: string;  // date-time
+  signers?: Array<string>;
+  signatures?: Array<DocumentSignature>;
+};
+
 export type Budget = {
   id?: string;  // uuid
   name?: string;
@@ -314,6 +325,15 @@ export type DismissalChecklist = {
   sections?: Array<ChecklistSection>;
 };
 
+export type DocumentSignature = {
+  party?: string;
+  signerName?: string;
+  signerEmail?: string;
+  method?: string;
+  documentSha256?: string;
+  signedAt?: string;  // date-time
+};
+
 export type Employee = {
   id?: string;  // uuid
   name?: string;
@@ -343,6 +363,8 @@ export type EmployeeDocument = {
   size?: number;
   createdAt?: string;  // date-time
   returnedOn?: string;  // date
+  signers?: Array<string>;
+  signatures?: Array<DocumentSignature>;
 };
 
 export type EnterpriseApp = {
@@ -874,6 +896,11 @@ export type PayrollSchedule = {
   salaryDay?: number;
 };
 
+export type PinSetup = {
+  pin: string;
+  current?: string;
+};
+
 export type Plan = {
   id?: string;  // uuid
   vendorId?: string;  // uuid
@@ -1173,10 +1200,20 @@ export type ShadowSummary = {
   hiddenServices?: number;
 };
 
+export type SignRequest = {
+  code: string;
+};
+
 export type SigningKey = {
   keyId?: string;
   algorithm?: string;
   publicKey?: string;
+};
+
+export type SigningKeyStatus = {
+  method?: string;
+  totpAvailable?: boolean;
+  lockedUntil?: string;  // date-time
 };
 
 export type SimulatedOperation = {
@@ -1274,6 +1311,19 @@ export type Totals = {
   open?: number;
   expectedSavings?: number;
   confirmedSavings?: number;
+};
+
+export type TotpConfirm = {
+  code: string;
+};
+
+export type TotpSetup = {
+  secret?: string;
+  uri?: string;
+};
+
+export type TotpStart = {
+  current?: string;
 };
 
 export type UserAccount = {
@@ -1419,6 +1469,9 @@ export const operations = {
   organisationDepartments: { method: "GET", path: "/api/v1/departments" },
   organisationCreateDepartment: { method: "POST", path: "/api/v1/departments" },
   organisationSetHead: { method: "PUT", path: "/api/v1/departments/{id}/head" },
+  cabinetAwaiting: { method: "GET", path: "/api/v1/documents/awaiting-signature" },
+  cabinetSignAsAccountant: { method: "POST", path: "/api/v1/documents/{id}/signature/accountant" },
+  cabinetSignAsEmployer: { method: "POST", path: "/api/v1/documents/{id}/signature/employer" },
   organisationEmployees: { method: "GET", path: "/api/v1/employees" },
   organisationCreateEmployee: { method: "POST", path: "/api/v1/employees" },
   organisationAdd_1: { method: "POST", path: "/api/v1/employees/onboarding" },
@@ -1475,6 +1528,7 @@ export const operations = {
   cabinetAskLimit: { method: "POST", path: "/api/v1/me/agents/{agentId}/limit-requests" },
   cabinetMine_5: { method: "GET", path: "/api/v1/me/documents" },
   cabinetMyFile_1: { method: "GET", path: "/api/v1/me/documents/{id}/file" },
+  cabinetSignMine: { method: "POST", path: "/api/v1/me/documents/{id}/signature" },
   cabinetAsk_2: { method: "POST", path: "/api/v1/me/license-requests" },
   cabinetCancel_3: { method: "DELETE", path: "/api/v1/me/license-requests/{id}" },
   cabinetMine_4: { method: "GET", path: "/api/v1/me/licenses" },
@@ -1494,6 +1548,10 @@ export const operations = {
   cabinetDelete_2: { method: "DELETE", path: "/api/v1/me/shadow-spend/{id}" },
   organisationSignIn: { method: "GET", path: "/api/v1/me/sign-in" },
   organisationOtpFirst: { method: "PUT", path: "/api/v1/me/sign-in/otp-first" },
+  cabinetStatus: { method: "GET", path: "/api/v1/me/signing-key" },
+  cabinetSetPin: { method: "PUT", path: "/api/v1/me/signing-key/pin" },
+  cabinetStartTotp: { method: "POST", path: "/api/v1/me/signing-key/totp" },
+  cabinetConfirmTotp: { method: "PUT", path: "/api/v1/me/signing-key/totp" },
   cabinetTeam_1: { method: "GET", path: "/api/v1/me/team/limit-requests" },
   cabinetDecideAsHead: { method: "PUT", path: "/api/v1/me/team/limit-requests/{id}/decision" },
   cabinetTeam: { method: "GET", path: "/api/v1/me/team/vacations" },
