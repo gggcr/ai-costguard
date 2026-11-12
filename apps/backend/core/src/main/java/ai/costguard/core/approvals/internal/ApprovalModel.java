@@ -23,9 +23,10 @@ record Decision(@NotNull Verdict verdict, String comment) {
 
 /**
  * Who is deciding. {@code restricted} is true for an agent owner, who decides only on their own agents. {@code subject}
- * (the token's sub) finds the decider's employee; {@code email} is only written down as who decided.
+ * (the token's sub) finds the decider's account and employee; who decided is written down from that account, never
+ * from the token (finding H2 of 2026-11-12).
  */
-record Decider(UUID tenantId, boolean restricted, String subject, String email) {
+record Decider(UUID tenantId, boolean restricted, String subject) {
 }
 
 record DueApproval(UUID approvalId, UUID tenantId) {

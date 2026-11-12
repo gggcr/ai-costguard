@@ -71,9 +71,16 @@ class ApprovalRepository {
                 Timestamp.from(createdAt), Timestamp.from(expiresAt)).update() == 1;
     }
 
-    void close(UUID id, ApprovalStatus status, String decidedBy, String comment) {
-        jdbc.sql("update approval_request set status = ?, decided_by = ?, comment = ? where id = ?")
-                .params(status.name(), decidedBy, comment, id).update();
+    /** {@code decidedBy}: the decider's stored address; {@code deciderAccount}: their account; both null for the timer. */
+    void close(UUID id, ApprovalStatus status, String decidedBy, UUID deciderAccount, String comment) {
+        jdbc.sql("""
+                update approval_request set status = ?, decided_by = ?, decided_by_account = ?, comment = ?
+                where id = ?""").params(status.name(), decidedBy, deciderAccount, comment, id).update();
+    }
+
+    void setApproverHash(UUID id, String hash, int version) {
+        jdbc.sql("update approval_request set approver_hash = ?, approver_hash_version = ? where id = ?")
+                .params(hash, version, id).update();
     }
 
     void setNotaryHash(UUID id, String hash) {

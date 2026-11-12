@@ -3,6 +3,7 @@ package ai.costguard.core.org.internal;
 import ai.costguard.core.org.UserDirectory;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,5 +27,10 @@ class RepositoryUserDirectory implements UserDirectory {
     @Override
     public Optional<UserCard> userBySubject(String subject) {
         return org.userBySubject(subject).map(RepositoryUserDirectory::card);
+    }
+
+    @Override
+    public Optional<UserCard> userById(UUID id) {
+        return id == null ? Optional.empty() : org.user(id).map(RepositoryUserDirectory::card);
     }
 }

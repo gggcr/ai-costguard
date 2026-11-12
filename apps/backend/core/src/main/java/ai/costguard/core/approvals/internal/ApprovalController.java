@@ -54,8 +54,7 @@ class ApprovalController {
         Set<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toSet());
         boolean restricted = !roles.contains("ROLE_owner") && !roles.contains("ROLE_finance");
-        Decider decider = new Decider(TenantClaim.of(jwt), restricted, jwt.getSubject(),
-                jwt.getClaimAsString("email"));
+        Decider decider = new Decider(TenantClaim.of(jwt), restricted, jwt.getSubject());
         return service.decide(decider, id, decision);
     }
 }

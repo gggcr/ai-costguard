@@ -8,6 +8,7 @@ import ai.costguard.core.approvals.ApprovalOpened;
 import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.approvals.OwnerApprovals;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.org.UserDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import ai.costguard.core.shared.activity.ActionTaken;
 import java.math.BigDecimal;
@@ -32,11 +33,12 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
     private final ApplicationEventPublisher events;
     private final EmployeeDirectory directory;
     private final AgentOwners owners;
+    private final UserDirectory users;
     private final Duration ttl;
     private final BigDecimal confirmAbove;
 
     ApprovalService(ApprovalRepository approvals, TenantSession session, Clock clock,
-            ApplicationEventPublisher events, EmployeeDirectory directory, AgentOwners owners,
+            ApplicationEventPublisher events, EmployeeDirectory directory, AgentOwners owners, UserDirectory users,
             @Value("${costguard.approvals.ttl:PT4H}") Duration ttl,
             @Value("${costguard.notary.confirm-above:100000}") BigDecimal confirmAbove) {
         this.approvals = approvals;
@@ -45,6 +47,7 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
         this.events = events;
         this.directory = directory;
         this.owners = owners;
+        this.users = users;
         this.ttl = ttl;
         this.confirmAbove = confirmAbove;
     }
@@ -82,6 +85,10 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
     Approval decide(Decider decider, UUID id, Decision decision) {
         session.bind(decider.tenantId());
         Approval approval = approvals.findForUpdate(id).orElseThrow(ApprovalProblem.APPROVAL_NOT_FOUND::failure);
+        // the decision names the account of the token's subject, in this company (RLS); a sign-in without one
+        // decides nothing, whatever address or name its token carries (finding H2 of 2026-11-12)
+        UserDirectory.UserCard account = users.userBySubject(decider.subject())
+                .orElseThrow(ApprovalProblem.DECIDER_ACCOUNT_REQUIRED::failure);
         if (decider.restricted()) {
             requireOwnAgent(decider, approval.agentId());
         }
@@ -90,7 +97,7 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
         }
         ApprovalStatus status = decision.verdict() == Verdict.approve ? ApprovalStatus.approved
                 : ApprovalStatus.rejected;
-        return close(decider.tenantId(), approval, status, decider.email(), decision.comment(), false);
+        return close(decider.tenantId(), approval, status, account.email(), account.id(), decision.comment(), false);
     }
 
     @Override
@@ -105,8 +112,8 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
 
     /** The owner's own word is notarized whatever the amount (ADR 0067). */
     @Override
-    public Optional<Decided> decide(UUID tenantId, UUID approvalId, UUID ownerId, String by, boolean approve,
-            String comment) {
+    public Optional<Decided> decide(UUID tenantId, UUID approvalId, UUID ownerId, UUID deciderAccountId,
+            boolean approve, String comment) {
         session.bind(tenantId);
         Optional<Approval> found = approvals.findForUpdate(approvalId)
                 .filter(a -> owners.ownerOf(a.agentId()).filter(ownerId::equals).isPresent());
@@ -117,8 +124,11 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
         if (approval.status() != ApprovalStatus.pending || !clock.instant().isBefore(approval.deadline())) {
             throw new OwnerApprovals.AlreadyDecided();
         }
-        Approval closed = close(tenantId, approval, approve ? ApprovalStatus.approved : ApprovalStatus.rejected, by,
-                comment, true);
+        // who decided is the account the caller found by the token's subject, as stored, never a name from the token
+        UserDirectory.UserCard account = users.userById(deciderAccountId)
+                .orElseThrow(ApprovalProblem.DECIDER_ACCOUNT_REQUIRED::failure);
+        Approval closed = close(tenantId, approval, approve ? ApprovalStatus.approved : ApprovalStatus.rejected,
+                account.email(), account.id(), comment, true);
         return Optional.of(new Decided(closed.id(), closed.status().name(), closed.notaryHash()));
     }
 
@@ -129,9 +139,9 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
         }
     }
 
-    private Approval close(UUID tenantId, Approval approval, ApprovalStatus status, String by, String comment,
-            boolean byOwner) {
-        approvals.close(approval.id(), status, by, comment);
+    private Approval close(UUID tenantId, Approval approval, ApprovalStatus status, String by, UUID byAccount,
+            String comment, boolean byOwner) {
+        approvals.close(approval.id(), status, by, byAccount, comment);
         approvals.removeTimer(approval.id());
         events.publishEvent(new ActionTaken(tenantId, "approval." + status.name(), "approval", approval.id(),
                 ActionTaken.details("operationId", approval.operationId(), "agentId", approval.agentId(), "amount",
@@ -139,18 +149,23 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
         events.publishEvent(new ApprovalDecided(tenantId, approval.id(), approval.operationId(), approval.agentId(),
                 status.name(), approval.amount(), clock.instant()));
         if (status == ApprovalStatus.approved && (byOwner || approval.amount().compareTo(confirmAbove) >= 0)) {
-            requestConfirmation(tenantId, approval, by);
+            requestConfirmation(tenantId, approval, byAccount);
         }
         return approvals.find(approval.id()).orElseThrow();
     }
 
-    /** A large approved operation goes to the NEAR notary as hashes only (ADR 0009). */
-    private void requestConfirmation(UUID tenantId, Approval approval, String by) {
+    /**
+     * A large approved operation goes to the NEAR notary as hashes only (ADR 0009). The approver hash is v2, from the
+     * decider's account (finding H2 of 2026-11-12), and is kept with its version to be checked against the chain.
+     */
+    private void requestConfirmation(UUID tenantId, Approval approval, UUID byAccount) {
         String operationHash = NotaryHashes.operation(tenantId, approval.operationId(), approval.agentId(),
                 approval.amount(), approval.id());
+        String approverHash = NotaryHashes.approverV2(tenantId, approval.id(), byAccount);
         approvals.setNotaryHash(approval.id(), operationHash);
+        approvals.setApproverHash(approval.id(), approverHash, 2);
         events.publishEvent(new LargeOperationApproved(tenantId, approval.id(), approval.operationId(), operationHash,
-                NotaryHashes.approver(tenantId, approval.id(), by), clock.instant()));
+                approverHash, clock.instant()));
     }
 
     @Transactional(readOnly = true)
@@ -168,7 +183,7 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
         session.bind(due.tenantId());
         Optional<Approval> approval = approvals.findForUpdate(due.approvalId());
         if (approval.filter(a -> a.status() == ApprovalStatus.pending).isPresent()) {
-            close(due.tenantId(), approval.get(), ApprovalStatus.expired, null, null, false);
+            close(due.tenantId(), approval.get(), ApprovalStatus.expired, null, null, null, false);
         } else {
             approvals.removeTimer(due.approvalId());
         }

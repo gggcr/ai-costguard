@@ -165,7 +165,8 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_agent_owner"));
         mvc.perform(json(put("/api/v1/approvals/" + ofP + "/decision"), "{\"verdict\":\"approve\"}")
                         .with(token(tenant, "kc-nobody-" + UUID.randomUUID(), p.email(), "agent_owner")))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_agent_owner"));
+                // no CostGuard account at all: refused before ownership is even looked at (H2)
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("decider_account_required"));
         assertThat(decidedFor(ofP)).as("someone else decided on P's operation").isEmpty();
         mvc.perform(get("/api/v1/approvals/" + ofP).with(finance())).andExpect(jsonPath("$.status").value("pending"));
 
@@ -174,6 +175,15 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
         mvc.perform(json(put("/api/v1/approvals/" + ofP + "/decision"), "{\"verdict\":\"approve\"}")
                 .with(as(tenant, p.email(), "agent_owner"))).andExpect(status().isOk());
         assertThat(decidedFor(ofP)).hasSize(1);
+    }
+
+    /** The finance person and the owner decide: a decision names the CostGuard account of the token (H2). */
+    private UUID financeAccount;
+
+    @org.junit.jupiter.api.BeforeEach
+    void theDecidersHaveAccounts() {
+        financeAccount = login(tenant, "fin@x.ru", "finance", null);
+        login(tenant, "adm@x.ru", "owner", null);
     }
 
     private RequestPostProcessor finance() {
@@ -351,7 +361,9 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
             assertThat(e.operationId()).isEqualTo(operation);
             assertThat(e.operationHash())
                     .isEqualTo(NotaryHashes.operation(tenant, operation, agent, new BigDecimal("1500"), id));
-            assertThat(e.approverHash()).isEqualTo(NotaryHashes.approver(tenant, id, "fin@x.ru"))
+            // v2, from the decider's account, not v1 from the token's e-mail (finding H2 of 2026-11-12)
+            assertThat(e.approverHash()).isEqualTo(NotaryHashes.approverV2(tenant, id, financeAccount))
+                    .isNotEqualTo(NotaryHashes.approverV1(tenant, id, "fin@x.ru"))
                     .doesNotContain("fin@x.ru");
         });
         mvc.perform(get("/api/v1/approvals/" + id).with(finance()))

@@ -216,8 +216,10 @@ class AgentLightService {
     OperationDecided decideOperation(UUID tenantId, Jwt jwt, UUID approvalId, OperationDecision decision) {
         session.bind(tenantId);
         UUID me = whoami.employee(jwt);
+        // the decision names the account of the token's subject, not the token's name (finding H2 of 2026-11-12)
+        UUID account = whoami.account(jwt).id();
         try {
-            OwnerApprovals.Decided d = approvals.decide(tenantId, approvalId, me, Whoami.who(jwt), decision.approve(),
+            OwnerApprovals.Decided d = approvals.decide(tenantId, approvalId, me, account, decision.approve(),
                     decision.comment()).orElseThrow(CabinetProblem.OPERATION_NOT_FOUND::failure);
             return new OperationDecided(d.id(), d.status(), d.notaryHash());
         } catch (OwnerApprovals.AlreadyDecided e) {

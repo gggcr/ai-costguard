@@ -16,7 +16,9 @@
 - Хэши считает ядро, нотариус их только передаёт. Каждый — sha256 в нижнем hex от строк, соединённых `\n`:
   - мандат: `costguard:mandate:v1`, tenant_id, mandate_id, версия, порог согласования с 6 знаками, CEL-выражение;
   - операция: `costguard:operation:v1`, tenant_id, operation_id, agent_id, сумма с 6 знаками, approval_id;
-  - согласующий: `costguard:approver:v1`, tenant_id, approval_id, кто решил (email из токена).
+  - согласующий: `costguard:approver:v2`, tenant_id, approval_id, id учётной записи CostGuard того, кто решил
+    (ADR 0069, с V49). До V49 — `costguard:approver:v1`, tenant_id, approval_id, кто решил (email из токена);
+    такие хэши в NEAR не пересчитываются, строка согласования помечена `approver_hash_version = 1`.
   tenant_id и approval_id в сеть не попадают, поэтому по хэшу нельзя угадать условия мандата или проверить
   догадку «это одобрил такой-то». Компания, у которой есть исходные данные, может показать их проверяющему, и тот
   пересчитает хэш сам. Эталонные значения закреплены в `MandateHashTest` и `NotaryHashesTest`.

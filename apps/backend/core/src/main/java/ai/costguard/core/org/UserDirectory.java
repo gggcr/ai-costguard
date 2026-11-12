@@ -15,6 +15,9 @@ public interface UserDirectory {
      */
     Optional<UserCard> userBySubject(String subject);
 
+    /** The account with this id, in the bound company. */
+    Optional<UserCard> userById(UUID id);
+
     /** {@code role}: owner, finance, it_admin, agent_owner or auditor; {@code employeeId} may be null. */
     record UserCard(UUID id, String name, String email, String role, UUID employeeId) {
     }

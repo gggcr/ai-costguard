@@ -18,10 +18,13 @@ public interface OwnerApprovals {
     List<Waiting> waiting(Collection<UUID> agentIds);
 
     /**
-     * Decides as the owner. Empty when the request is not of an agent of {@code ownerId}; throws
-     * {@link AlreadyDecided} when someone decided first or the time is over.
+     * Decides as the owner. {@code deciderAccountId}: the CostGuard account of the token's subject, which the decision
+     * names (decided_by and the approver hash come from it, never from the token, finding H2 of 2026-11-12). Empty
+     * when the request is not of an agent of {@code ownerId}; throws {@link AlreadyDecided} when someone decided first
+     * or the time is over.
      */
-    Optional<Decided> decide(UUID tenantId, UUID approvalId, UUID ownerId, String by, boolean approve, String comment);
+    Optional<Decided> decide(UUID tenantId, UUID approvalId, UUID ownerId, UUID deciderAccountId, boolean approve,
+            String comment);
 
     record Waiting(UUID id, UUID agentId, String description, BigDecimal amount, String reason, Instant createdAt,
             Instant deadline) {
