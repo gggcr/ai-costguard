@@ -25,7 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The merge of vendors and people. Vendors are matched by INN, then by the cleaned name, and created when new:
- * a vendor needs nothing but a name. People are matched by e-mail, then by a unique full name, but never created,
+ * a vendor needs nothing but a name. People are matched by the e-mail when one is given, otherwise by a unique full
+ * name (never the name after a wrong address), and never created,
  * because an employee needs a department only people know. A license is tied when its vendor, subscription and
  * person are all known; then its last activity moves forward. A device is registered by its serial or
  * inventory number and issued to the holder the source names (with a handover act). An employee an HR system
@@ -221,8 +222,17 @@ class EntityStaging implements NormalizedEntities {
         }
     }
 
+    /**
+     * The person a record names (ADR 0070, applied to connectors on 2026-11-13). An address that is given decides
+     * alone: a wrong, unknown or shared one names nobody, and the name is not tried, because an HR system's dismissal
+     * locks the person out and an MDM's device comes with an act. Only a record without an address is matched by the
+     * name, to the one employee who is not erased and has it; namesakes name nobody.
+     */
     private Optional<UUID> person(Optional<String> email, Optional<String> name) {
-        return email.flatMap(people::employeeByEmail).or(() -> name.flatMap(people::employeeByName));
+        if (email.isPresent()) {
+            return people.matchByEmail(email.get()).employee();
+        }
+        return name.flatMap(n -> people.matchByName(n).employee());
     }
 
     private static Optional<String> text(JsonNode p, String field) {
