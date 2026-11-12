@@ -4,6 +4,7 @@ import ai.costguard.core.findings.FindingOpened;
 import ai.costguard.core.findings.FindingsIntake;
 import ai.costguard.core.findings.InvoiceEvidence;
 import ai.costguard.core.findings.SavingsConfirmed;
+import ai.costguard.core.org.UserDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -30,6 +31,7 @@ class FindingService implements FindingsIntake {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final BigDecimal confirmShare;
+    private final UserDirectory users;
 
     /**
      * @param confirmShare the share of the expected saving an invoice has to show to confirm it
@@ -37,7 +39,8 @@ class FindingService implements FindingsIntake {
      *     month
      */
     FindingService(FindingRepository findings, TenantSession session, Clock clock, ApplicationEventPublisher events,
-            @Value("${costguard.findings.confirm-share:0.9}") BigDecimal confirmShare) {
+            @Value("${costguard.findings.confirm-share:0.9}") BigDecimal confirmShare, UserDirectory users) {
+        this.users = users;
         this.findings = findings;
         this.session = session;
         this.clock = clock;
@@ -172,9 +175,19 @@ class FindingService implements FindingsIntake {
         return findings.totals();
     }
 
+    /**
+     * Who moved the finding, as its history stores it: the address of the CostGuard account of the token's subject;
+     * a token no account is linked to keeps what the controller passed (its e-mail, or its subject). The token's own
+     * e-mail is the person's to change in Keycloak, and nothing else records who did it (audit of 2026-11-13).
+     */
+    private String by(String subject, String tokenBy) {
+        return users.userBySubject(subject).map(UserDirectory.UserCard::email).orElse(tokenBy);
+    }
+
     @Transactional
-    Finding act(UUID tenantId, UUID id, ActionRequest request, String by) {
+    Finding act(UUID tenantId, UUID id, ActionRequest request, String subject, String tokenBy) {
         session.bind(tenantId);
+        String by = by(subject, tokenBy);
         Finding f = findings.lock(id).orElseThrow(FindingProblem.FINDING_NOT_FOUND::failure);
         FindingStatus status = FindingStatus.of(f.status());
         if (!Transitions.ALLOWED.get(status).contains(request.action())

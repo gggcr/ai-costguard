@@ -42,7 +42,7 @@ class ImportController {
         String by = jwt.getClaimAsString("email");
         ImportService.Upload upload = service.upload(TenantClaim.of(jwt),
                 file.getOriginalFilename() == null ? "file" : file.getOriginalFilename(), file.getContentType(),
-                file.getBytes(), vendorId, by == null ? jwt.getSubject() : by);
+                file.getBytes(), vendorId, jwt.getSubject(), by == null ? jwt.getSubject() : by);
         return upload.created()
                 ? ResponseEntity.created(URI.create("/api/v1/imports/" + upload.job().id())).body(upload.job())
                 : ResponseEntity.ok(upload.job());

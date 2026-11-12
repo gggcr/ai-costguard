@@ -3,6 +3,7 @@ package ai.costguard.core.imports.internal;
 import ai.costguard.core.imports.ImportAccepted;
 import ai.costguard.core.imports.ImportFileUploaded;
 import ai.costguard.core.imports.ImportResults;
+import ai.costguard.core.org.UserDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
@@ -27,14 +28,16 @@ class ImportService implements ImportResults {
     private final TenantSession session;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final UserDirectory users;
 
     ImportService(ImportRepository imports, FileStore files, TenantSession session, Clock clock,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, UserDirectory users) {
         this.imports = imports;
         this.files = files;
         this.session = session;
         this.clock = clock;
         this.events = events;
+        this.users = users;
     }
 
     record Upload(ImportJob job, boolean created) {
@@ -42,12 +45,16 @@ class ImportService implements ImportResults {
 
     /** The same file uploaded again returns the first import, so it is never counted twice. */
     @Transactional
-    Upload upload(UUID tenantId, String fileName, String contentType, byte[] content, UUID vendorId, String by) {
+    Upload upload(UUID tenantId, String fileName, String contentType, byte[] content, UUID vendorId,
+            String subject, String tokenBy) {
         if (content.length == 0) {
             throw ImportProblem.EMPTY_FILE.failure();
         }
         ImportType type = ImportType.of(fileName).orElseThrow(ImportProblem.UNSUPPORTED_FILE::failure);
         session.bind(tenantId);
+        // who uploaded, as stored with the file: the account of the token's subject, not the token's e-mail, which
+        // the person can change in Keycloak and which nothing else records (audit of 2026-11-13)
+        String by = users.userBySubject(subject).map(UserDirectory.UserCard::email).orElse(tokenBy);
         String sha = sha256(content);
         var existing = imports.bySha(sha);
         if (existing.isPresent()) {

@@ -50,6 +50,6 @@ class FindingController {
     @Operation(summary = "Move a finding along its life cycle", description = "Board frame 8.")
     Finding act(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody ActionRequest request) {
         String by = jwt.getClaimAsString("email");
-        return service.act(TenantClaim.of(jwt), id, request, by == null ? jwt.getSubject() : by);
+        return service.act(TenantClaim.of(jwt), id, request, jwt.getSubject(), by == null ? jwt.getSubject() : by);
     }
 }

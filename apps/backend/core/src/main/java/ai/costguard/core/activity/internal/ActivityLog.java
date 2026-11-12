@@ -1,5 +1,6 @@
 package ai.costguard.core.activity.internal;
 
+import ai.costguard.core.org.UserDirectory;
 import ai.costguard.core.privacy.DataHolder;
 import ai.costguard.core.privacy.Report;
 import ai.costguard.core.privacy.Retention;
@@ -27,11 +28,13 @@ class ActivityLog implements DataHolder {
     private final ActivityRepository repository;
     private final JdbcClient jdbc;
     private final Clock clock;
+    private final UserDirectory users;
 
-    ActivityLog(ActivityRepository repository, JdbcClient jdbc, Clock clock) {
+    ActivityLog(ActivityRepository repository, JdbcClient jdbc, Clock clock, UserDirectory users) {
         this.repository = repository;
         this.jdbc = jdbc;
         this.clock = clock;
+        this.users = users;
     }
 
     @EventListener
@@ -41,10 +44,16 @@ class ActivityLog implements DataHolder {
         if (system == null) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof Jwt jwt && jwt.getSubject() != null) {
-                String name = jwt.getClaimAsString("name");
-                actor = repository.actor(e.tenantId(), jwt.getSubject(),
-                        name != null ? name : jwt.getClaimAsString("preferred_username"),
-                        jwt.getClaimAsString("email"));
+                // a person with a CostGuard account is logged as the company stored the account (by the subject):
+                // the name and e-mail of the token are the person's own to change in Keycloak (audit of 2026-11-13)
+                var account = users.userBySubject(jwt.getSubject());
+                String name = account.map(UserDirectory.UserCard::name).filter(n -> !n.isBlank())
+                        .or(() -> account.map(UserDirectory.UserCard::email))
+                        .orElseGet(() -> jwt.getClaimAsString("name") != null ? jwt.getClaimAsString("name")
+                                : jwt.getClaimAsString("preferred_username"));
+                String email = account.map(UserDirectory.UserCard::email)
+                        .orElseGet(() -> jwt.getClaimAsString("email"));
+                actor = repository.actor(e.tenantId(), jwt.getSubject(), name, email);
             } else {
                 system = "core";
             }
