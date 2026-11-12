@@ -205,30 +205,30 @@ class PayrollService {
         }
     }
 
+    /**
+     * Who a payment is for (finding R1 of 2026-11-12 and its remainder R1.5.1). A payment that carries an address is
+     * matched by the address only: a broken one is {@code bad email}, an unknown one {@code employee not found}, one of
+     * several employees {@code ambiguous employee}, and the name never stands in for it, since a mistyped address
+     * with someone else's name would pay that someone. Only a payment with no address at all is matched by the name,
+     * and only to the one employee who has it.
+     */
     private Match person(String email, String name) {
-        boolean named = name != null && !name.isBlank();
         if (email != null && !email.isBlank()) {
-            EmployeeDirectory.EmailMatch m = employees.matchByEmail(email);
-            switch (m.outcome()) {
-                case MATCHED:
-                    return Match.of(m.employeeId());
-                case AMBIGUOUS:
-                    // several employees have the address: the name must not pick one of them, nor anyone else
-                    return Match.none("ambiguous employee", m.candidates());
-                case INVALID:
-                    if (!named) {
-                        return Match.none("bad email", 0);
-                    }
-                    break;
-                default:
-                    break;
-            }
+            EmployeeDirectory.EmployeeMatch m = employees.matchByEmail(email);
+            return switch (m.outcome()) {
+                case MATCHED -> Match.of(m.employeeId());
+                case AMBIGUOUS -> Match.none("ambiguous employee", m.candidates());
+                case INVALID -> Match.none("bad email", 0);
+                case NOT_FOUND -> Match.none("employee not found", 0);
+            };
         }
-        if (named) {
-            Optional<UUID> byName = employees.employeeByName(name);
-            if (byName.isPresent()) {
-                return Match.of(byName.get());
-            }
+        if (name != null && !name.isBlank()) {
+            EmployeeDirectory.EmployeeMatch m = employees.matchByName(name);
+            return switch (m.outcome()) {
+                case MATCHED -> Match.of(m.employeeId());
+                case AMBIGUOUS -> Match.none("ambiguous employee", m.candidates());
+                case INVALID, NOT_FOUND -> Match.none("employee not found", 0);
+            };
         }
         return Match.none("employee not found", 0);
     }

@@ -29,16 +29,16 @@ class UserEmployeeDirectory implements EmployeeDirectory {
     }
 
     @Override
-    public EmailMatch matchByEmail(String email) {
+    public EmployeeMatch matchByEmail(String email) {
         String address = Names.email(email);
         if (address == null) {
-            return new EmailMatch(EmailMatch.Outcome.INVALID, null, 0);
+            return new EmployeeMatch(EmployeeMatch.Outcome.INVALID, null, 0);
         }
         List<UUID> found = org.employeesByEmail(address);
         return switch (found.size()) {
-            case 0 -> new EmailMatch(EmailMatch.Outcome.NOT_FOUND, null, 0);
-            case 1 -> new EmailMatch(EmailMatch.Outcome.MATCHED, found.get(0), 1);
-            default -> new EmailMatch(EmailMatch.Outcome.AMBIGUOUS, null, found.size());
+            case 0 -> new EmployeeMatch(EmployeeMatch.Outcome.NOT_FOUND, null, 0);
+            case 1 -> new EmployeeMatch(EmployeeMatch.Outcome.MATCHED, found.get(0), 1);
+            default -> new EmployeeMatch(EmployeeMatch.Outcome.AMBIGUOUS, null, found.size());
         };
     }
 
@@ -51,6 +51,21 @@ class UserEmployeeDirectory implements EmployeeDirectory {
         List<UUID> found = org.employeeNames().stream().filter(e -> Names.clean(e.name()).equals(wanted))
                 .map(OrgRepository.Named::id).toList();
         return found.size() == 1 ? Optional.of(found.get(0)) : Optional.empty();
+    }
+
+    @Override
+    public EmployeeMatch matchByName(String name) {
+        String wanted = Names.clean(name);
+        if (wanted.isEmpty()) {
+            return new EmployeeMatch(EmployeeMatch.Outcome.INVALID, null, 0);
+        }
+        List<UUID> found = org.workingOrDismissedNames().stream().filter(e -> Names.clean(e.name()).equals(wanted))
+                .map(OrgRepository.Named::id).toList();
+        return switch (found.size()) {
+            case 0 -> new EmployeeMatch(EmployeeMatch.Outcome.NOT_FOUND, null, 0);
+            case 1 -> new EmployeeMatch(EmployeeMatch.Outcome.MATCHED, found.get(0), 1);
+            default -> new EmployeeMatch(EmployeeMatch.Outcome.AMBIGUOUS, null, found.size());
+        };
     }
 
     @Override

@@ -63,6 +63,18 @@ class CabinetPersonalData implements DataHolder {
             report.deleted("cabinet.payroll_unmatched", jdbc.sql(
                     "delete from payroll_unmatched where lower(reported_email) = lower(?)").param(email).update());
         }
+        // payments paid to nobody that name the person only by their full name (no address): the same cleaned name
+        // the ingest pipeline keys people by (R1); compared in Java, with the cleaning the application uses
+        if (subject.nameKey() != null && !subject.nameKey().isBlank()) {
+            List<java.util.UUID> byName = jdbc.sql("select id, reported_name from payroll_unmatched where reported_email is null")
+                    .query((rs, i) -> ai.costguard.core.shared.names.Names.clean(rs.getString("reported_name"))
+                            .equals(subject.nameKey()) ? rs.getObject("id", java.util.UUID.class) : null)
+                    .list().stream().filter(java.util.Objects::nonNull).toList();
+            if (!byName.isEmpty()) {
+                report.deleted("cabinet.payroll_unmatched", jdbc.sql("delete from payroll_unmatched where id in (:ids)")
+                        .param("ids", byName).update());
+            }
+        }
         report.deleted("cabinet.limit_request", jdbc.sql("delete from limit_request where employee_id = ?")
                 .param(subject.employeeId()).update());
         report.deleted("cabinet.access_change", jdbc.sql("delete from access_change where employee_id = ?")

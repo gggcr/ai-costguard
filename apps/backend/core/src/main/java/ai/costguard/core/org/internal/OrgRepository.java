@@ -189,6 +189,12 @@ class OrgRepository {
     record Named(UUID id, String name) {
     }
 
+    /** The names of the employees who are not erased (an erased one carries a placeholder name). */
+    List<Named> workingOrDismissedNames() {
+        return jdbc.sql("select id, name from employee where erased_at is null")
+                .query((rs, n) -> new Named(rs.getObject("id", UUID.class), rs.getString("name"))).list();
+    }
+
     List<Named> employeeNames() {
         return jdbc.sql("select id, name from employee")
                 .query((rs, n) -> new Named(rs.getObject("id", UUID.class), rs.getString("name"))).list();

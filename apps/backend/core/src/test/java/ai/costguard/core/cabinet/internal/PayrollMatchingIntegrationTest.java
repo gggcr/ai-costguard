@@ -293,12 +293,139 @@ class PayrollMatchingIntegrationTest extends PostgresTestSupport {
         assertThat(unmatched(tenant)).singleElement().satisfies(u -> assertThat(u)
                 .containsEntry("reportedName", "Сотрудник Уникальный Именем").containsEntry("externalKey", "zup-1")
                 .containsEntry("source", "1c-zup"));
-        // an unknown address still falls back to a unique name, as before
+        // an unknown address is not rescued by the name either (R1.5.1): it pays nobody
         MockHttpServletResponse byName = batch(tenant, """
                 {"employeeEmail":"nobody-%s@example.com","employeeName":"Сотрудник Уникальный Именем","kind":"bonus",
                  "period":"2026-10-01","payDate":"2026-10-20","amount":1000,"externalKey":"zup-2"}""".formatted(run));
-        assertThat((Integer) JsonPath.read(body(byName), "$.stored")).isEqualTo(1);
-        assertThat(amountsOf(tenant, named)).containsExactly(1000.0);
+        assertThat((Integer) JsonPath.read(body(byName), "$.stored")).isZero();
+        assertThat(JsonPath.<List<String>>read(body(byName), "$.skipped[*].reason")).containsExactly("employee not found");
+        assertThat(amountsOf(tenant, named)).isEmpty();
+    }
+
+    // R1.5.1: an address that does not name the employee is never rescued by a name
+
+    /** An employee with their own CostGuard account, so their own pay can be read the way they read it. */
+    private String employeeWithLogin(String name, String email) throws Exception {
+        String id = employee(tenant, name, email);
+        login(tenant, email, "employee", UUID.fromString(id));
+        return id;
+    }
+
+    private String myPay(String email) throws Exception {
+        MockHttpServletResponse r = call(get("/api/v1/me/payroll"), as(tenant, email, "employee"));
+        assertThat(r.getStatus()).as(body(r)).isEqualTo(200);
+        return body(r);
+    }
+
+    private static String connectorPayment(String email, String name, String key, String amount) {
+        String address = email == null ? "" : "\"employeeEmail\":\"" + email + "\",";
+        return "{" + address + "\"employeeName\":\"" + name + "\",\"kind\":\"bonus\",\"period\":\"2026-10-01\","
+                + "\"payDate\":\"2026-10-21\",\"amount\":" + amount + ",\"externalKey\":\"" + key + "\"}";
+    }
+
+    @Test
+    void r1_5_1_aBrokenAddressWithSomeoneElsesNamePaysNobody() throws Exception {
+        String mail = "named-" + run + "@example.com";
+        String named = employeeWithLogin("Сотрудник Чужое Имя", mail);
+        MockHttpServletResponse r = batch(tenant, connectorPayment("named-" + run + "@@example", "Сотрудник Чужое Имя",
+                "zup-bad", "12121"));
+        assertThat(JsonPath.<List<String>>read(body(r), "$.skipped[*].reason")).containsExactly("bad email");
+        assertThat(amountsOf(tenant, named)).isEmpty();
+        assertThat(myPay(mail)).doesNotContain("12121");
+        assertThat(unmatched(tenant)).singleElement().satisfies(u -> assertThat(u).containsEntry("reason", "bad email")
+                .containsEntry("reportedName", "Сотрудник Чужое Имя"));
+    }
+
+    @Test
+    void r1_5_1_aValidButUnknownAddressWithAnExistingNamePaysNobody() throws Exception {
+        String mail = "existing-" + run + "@example.com";
+        String named = employeeWithLogin("Сотрудник Существующий", mail);
+        MockHttpServletResponse r = batch(tenant, connectorPayment("typo-" + run + "@example.com",
+                "Сотрудник Существующий", "zup-typo", "34343"));
+        assertThat(JsonPath.<List<String>>read(body(r), "$.skipped[*].reason")).containsExactly("employee not found");
+        assertThat(amountsOf(tenant, named)).isEmpty();
+        assertThat(myPay(mail)).doesNotContain("34343");
+        // a file row with that unknown address
+        MockHttpServletResponse sheet = sheet(tenant, "typo-" + run + "@example.com;Премия;2026-10;21.10.2026;34343,00");
+        assertThat(JsonPath.<List<String>>read(body(sheet), "$.skipped[*].reason")).containsExactly("employee not found");
+        assertThat(myPay(mail)).doesNotContain("34343");
+    }
+
+    @Test
+    void r1_5_1_noAddressAndAUniqueNamePaysThatOne() throws Exception {
+        String mail = "only-name-" + run + "@example.com";
+        String named = employeeWithLogin("Сотрудник Единственный Такой", mail);
+        MockHttpServletResponse r = batch(tenant, connectorPayment(null, "Сотрудник Единственный Такой", "zup-name",
+                "5656"));
+        assertThat((Integer) JsonPath.read(body(r), "$.stored")).isEqualTo(1);
+        assertThat(amountsOf(tenant, named)).containsExactly(5656.0);
+        assertThat(myPay(mail)).contains("5656");
+        // a file row with the name only, too
+        sheet(tenant, "Сотрудник Единственный Такой;Аванс;2026-10;24.10.2026;7070,00");
+        assertThat(amountsOf(tenant, named)).containsExactlyInAnyOrder(5656.0, 7070.0);
+    }
+
+    @Test
+    void r1_5_1_noAddressAndNamesakesPayNobody() throws Exception {
+        String first = "twin-name-1-" + run + "@example.com";
+        String second = "twin-name-2-" + run + "@example.com";
+        String a = employeeWithLogin("Сотрудник Тёзка", first);
+        String b = employeeWithLogin("Сотрудник Тёзка", second);
+        MockHttpServletResponse r = batch(tenant, connectorPayment(null, "Сотрудник Тёзка", "zup-namesake", "8989"));
+        assertThat(JsonPath.<List<String>>read(body(r), "$.skipped[*].reason")).containsExactly("ambiguous employee");
+        assertThat(amountsOf(tenant, a)).isEmpty();
+        assertThat(amountsOf(tenant, b)).isEmpty();
+        assertThat(myPay(first)).doesNotContain("8989");
+        assertThat(myPay(second)).doesNotContain("8989");
+        assertThat(unmatched(tenant)).singleElement().satisfies(u -> assertThat(u)
+                .containsEntry("reason", "ambiguous employee").containsEntry("candidates", 2));
+    }
+
+    @Test
+    void r1_5_1_anAmbiguousAddressWithAUniqueNamePaysNobodyAndTheNamedOneSeesNothing() throws Exception {
+        String mail = "amb-named-" + run + "@example.com";
+        String named = employeeWithLogin("Сотрудник Уникальное ФИО", mail);
+        employee(tenant, "Сотрудник Двойник Адреса", "AMB-NAMED-" + run + "@example.com");
+        MockHttpServletResponse r = batch(tenant, connectorPayment("  Amb-Named-" + run + "@Example.com ",
+                "Сотрудник Уникальное ФИО", "zup-amb", "9191"));
+        assertThat(JsonPath.<List<String>>read(body(r), "$.skipped[*].reason")).containsExactly("ambiguous employee");
+        assertThat(amountsOf(tenant, named)).isEmpty();
+        assertThat(myPay(mail)).doesNotContain("9191");
+    }
+
+    @Test
+    void r1_5_1_aNameOfAnotherCompanyPaysNobodyHere() throws Exception {
+        UUID other = UUID.randomUUID();
+        String theirs = employee(other, "Сотрудник Только В Другой", "other-name-" + run + "@example.com");
+        MockHttpServletResponse r = batch(tenant, connectorPayment(null, "Сотрудник Только В Другой", "zup-other",
+                "4242"));
+        assertThat(JsonPath.<List<String>>read(body(r), "$.skipped[*].reason")).containsExactly("employee not found");
+        assertThat(amountsOf(other, theirs)).isEmpty();
+        assertThat(unmatched(other)).isEmpty();
+    }
+
+    @Test
+    void r1_5_1_theSameUnmatchedPaymentAgainAndInParallelIsOneRowAndPaysNobody() throws Exception {
+        String mail = "rep-" + run + "@example.com";
+        String named = employeeWithLogin("Сотрудник Повтор", mail);
+        String payment = connectorPayment("rep-typo-" + run + "@example.com", "Сотрудник Повтор", "zup-rep", "6363");
+        batch(tenant, payment);
+        batch(tenant, payment);
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        try {
+            List<Callable<Integer>> calls = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                calls.add(() -> batch(tenant, payment).getStatus());
+            }
+            for (Future<Integer> f : pool.invokeAll(calls)) {
+                assertThat(f.get()).isEqualTo(200);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(unmatched(tenant)).hasSize(1);
+        assertThat(amountsOf(tenant, named)).isEmpty();
+        assertThat(myPay(mail)).doesNotContain("6363");
     }
 
     // races, and who may see the kept rows
@@ -331,10 +458,17 @@ class PayrollMatchingIntegrationTest extends PostgresTestSupport {
         employee(tenant, "Сотрудник Скрытый 1", "hid-" + run + "@example.com");
         employee(tenant, "Сотрудник Скрытый 2", "Hid-" + run + "@example.com");
         sheet(tenant, "hid-" + run + "@example.com;Аванс;2026-10;24.10.2026;10,00");
-        assertThat(call(get("/api/v1/payroll/unmatched"), owner(tenant)).getStatus()).isEqualTo(200);
-        assertThat(call(get("/api/v1/payroll/unmatched"), as(tenant, "it-" + run + "@payroll.example", "it_admin"))
-                .getStatus()).isEqualTo(403);
-        assertThat(call(get("/api/v1/payroll/unmatched"), as(tenant, "e-" + run + "@payroll.example", "employee"))
-                .getStatus()).isEqualTo(403);
+        for (RequestPostProcessor allowed : List.of(owner(tenant), finance(tenant))) {
+            MockHttpServletResponse r = call(get("/api/v1/payroll/unmatched"), allowed);
+            assertThat(r.getStatus()).isEqualTo(200);
+            assertThat(JsonPath.<List<String>>read(body(r), "$[*].reportedEmail"))
+                    .containsExactly("hid-" + run + "@example.com");
+        }
+        for (String role : List.of("it_admin", "employee", "connector", "auditor", "agent_owner")) {
+            MockHttpServletResponse r = call(get("/api/v1/payroll/unmatched"),
+                    as(tenant, role + "-" + run + "@payroll.example", role));
+            assertThat(r.getStatus()).as(role).isEqualTo(403);
+            assertThat(body(r)).as(role).doesNotContain("hid-" + run);
+        }
     }
 }

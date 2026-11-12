@@ -1,5 +1,6 @@
 // Зарплата (ADR 0054): сотрудник видит свои выплаты и ближайшие дни выплат; owner и finance загружают ведомость.
 import { useState } from 'react';
+import type { PayrollUnmatched } from '../../api/generated/core';
 import { api, uploadForm } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, Empty, Field, Stat } from '../../components/ui';
@@ -51,6 +52,8 @@ export function EmployerPayroll() {
   const schedule = useApi<{ advanceDay: number; salaryDay: number }>('/api/v1/payroll/schedule');
   const [shown, setShown] = useState(new Date().toISOString().slice(0, 7));
   const payments = useApi<Payment[]>(`/api/v1/payroll/payments?month=${shown}`);
+  // выплаты, которые никто не получил (ADR 0070): адрес не найден, у нескольких сотрудников или не адрес
+  const unmatched = useApi<PayrollUnmatched[]>('/api/v1/payroll/unmatched');
   const [advance, setAdvance] = useState<number | null>(null);
   const [salary, setSalary] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -72,6 +75,7 @@ export function EmployerPayroll() {
       const r = await uploadForm<ImportResult>('/api/v1/payroll/imports', file, {});
       setResult(r);
       payments.reload();
+      unmatched.reload();
     } catch (e) {
       toast(errorText(e), 'critical');
     }
@@ -103,6 +107,28 @@ export function EmployerPayroll() {
               <tbody>
                 {payments.data.map((p) => (
                   <tr key={p.id}><td>{p.employeeName}</td><td>{KIND[p.kind] ?? p.kind}</td><td>{fmtDate(p.payDate)}</td><td className="num">{money(p.amount, p.currency)}</td><td className="muted small">{p.source}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+      <Card title="Выплаты без сотрудника">
+        <p className="muted small">Эти выплаты никому не назначены: адрес из ведомости или 1С:ЗУП не найден, есть у нескольких сотрудников или записан с ошибкой. Исправьте адрес сотрудника или в источнике и загрузите выплату снова — строка исчезнет сама.</p>
+        {unmatched.error ? <Empty>{unmatched.error}</Empty> : !unmatched.data ? <Empty>Загрузка…</Empty> : unmatched.data.length === 0 ? <Empty>Все выплаты назначены</Empty> : (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Кому (как в источнике)</th><th>Вид</th><th>Дата</th><th className="num">Сумма</th><th>Причина</th><th>Источник</th></tr></thead>
+              <tbody>
+                {unmatched.data.map((u) => (
+                  <tr key={u.id}>
+                    <td>{[u.reportedEmail, u.reportedName].filter(Boolean).join(' · ')}</td>
+                    <td>{KIND[u.kind ?? ''] ?? u.kind}</td>
+                    <td>{u.payDate ? fmtDate(u.payDate) : ''}</td>
+                    <td className="num">{money(u.amount ?? 0, u.currency ?? 'RUB')}</td>
+                    <td><Badge>{REASON[u.reason ?? ''] ?? u.reason}</Badge>{u.reason === 'ambiguous employee' && (u.candidates ?? 0) > 1 ? <span className="muted small"> · сотрудников с этим адресом: {u.candidates}</span> : null}</td>
+                    <td className="muted small">{u.source}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>

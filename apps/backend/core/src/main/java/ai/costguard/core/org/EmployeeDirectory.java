@@ -23,10 +23,20 @@ public interface EmployeeDirectory {
      * the employees who are not erased, working or dismissed. Exactly one is a match; several are ambiguous, and none
      * of them is chosen. For matching data, never to decide who the signed-in person is.
      */
-    EmailMatch matchByEmail(String email);
+    EmployeeMatch matchByEmail(String email);
 
-    /** {@code employeeId} only for {@link Outcome#MATCHED}; {@code candidates}: how many employees have the address. */
-    record EmailMatch(Outcome outcome, UUID employeeId, int candidates) {
+    /**
+     * How a reported full name names an employee of the company, for a payment that carries no address: the name is
+     * cleaned as {@link #employeeByName} does and compared with the employees who are not erased. Exactly one is a
+     * match; namesakes are ambiguous, and none of them is chosen.
+     */
+    EmployeeMatch matchByName(String name);
+
+    /**
+     * {@code employeeId} only for {@link Outcome#MATCHED}; {@code candidates}: how many employees have the address
+     * (or the name).
+     */
+    record EmployeeMatch(Outcome outcome, UUID employeeId, int candidates) {
 
         public enum Outcome { MATCHED, NOT_FOUND, AMBIGUOUS, INVALID }
 
