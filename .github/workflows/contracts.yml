@@ -11,10 +11,12 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - name: Breaking changes against ${{ github.base_ref }}
+        # The branch name goes in through the environment, never spliced into the script (shell injection)
+        env: { BASE_REF: '${{ github.base_ref }}' }
         run: |
           mkdir -p /tmp/base
           for spec in core gateway; do
-            if git show "origin/${{ github.base_ref }}:schemas/openapi/$spec.yaml" > /tmp/base/$spec.yaml 2>/dev/null; then
+            if git show "origin/$BASE_REF:schemas/openapi/$spec.yaml" > /tmp/base/$spec.yaml 2>/dev/null; then
               docker run --rm -v /tmp/base:/base -v "$PWD/schemas/openapi:/head" tufin/oasdiff:v1.10.27 \
                 breaking /base/$spec.yaml /head/$spec.yaml --fail-on ERR --format githubactions
               docker run --rm -v /tmp/base:/base -v "$PWD/schemas/openapi:/head" tufin/oasdiff:v1.10.27 \
@@ -32,9 +34,10 @@ jobs:
         with: { version: '0.5.11' }
       - run: uv sync --frozen --all-packages
       - name: Every changed schema reads the old messages
+        env: { BASE_REF: '${{ github.base_ref }}' }
         run: |
-          for f in $(git diff --name-only "origin/${{ github.base_ref }}" -- 'schemas/avro/*.avsc'); do
-            git show "origin/${{ github.base_ref }}:$f" > /tmp/old.avsc 2>/dev/null || continue
+          for f in $(git diff --name-only "origin/$BASE_REF" -- 'schemas/avro/*.avsc'); do
+            git show "origin/$BASE_REF:$f" > /tmp/old.avsc 2>/dev/null || continue
             uv run python tools/codegen/avro_compat.py /tmp/old.avsc "$f"
           done
   codegen:
