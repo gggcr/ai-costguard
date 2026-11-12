@@ -39,7 +39,7 @@ class ShadowSpendIntegrationTest extends PostgresTestSupport {
     private String department;
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
                         .claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
     }
@@ -58,8 +58,10 @@ class ShadowSpendIntegrationTest extends PostgresTestSupport {
             department = create("/api/v1/departments", "{\"name\":\"Дизайн-%s\"}".formatted(UUID.randomUUID()));
         }
         String email = "p-" + UUID.randomUUID() + "@corp.ru";
-        create("/api/v1/employees", "{\"name\":\"%s\",\"email\":\"%s\",\"departmentId\":\"%s\",\"position\":\"x\"}"
+        String id = create("/api/v1/employees", "{\"name\":\"%s\",\"email\":\"%s\",\"departmentId\":\"%s\",\"position\":\"x\"}"
                 .formatted(email, email, department));
+        // the CostGuard account an onboarding or an invitation leaves, linked to the person's Keycloak sub
+        login(tenant, email, "employee", UUID.fromString(id));
         return email;
     }
 

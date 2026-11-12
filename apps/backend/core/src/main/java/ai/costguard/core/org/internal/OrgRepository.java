@@ -111,21 +111,58 @@ class OrgRepository {
                 .query(USER).optional();
     }
 
+    /** An account no Keycloak account is known for yet: it is linked at its first confirmed sign-in (FirstLogin). */
     void insertUser(UUID tenantId, UUID id, NewUser u) {
+        insertUser(tenantId, id, u, null);
+    }
+
+    /** {@code subject}: the id of the Keycloak account the core has just created for this person, the token's sub. */
+    void insertUser(UUID tenantId, UUID id, NewUser u, String subject) {
         jdbc.sql("""
-                insert into user_account (id, tenant_id, name, email, role, employee_id)
-                values (?, ?, ?, ?, ?, ?)
-                """).params(id, tenantId, u.name(), u.email(), u.role().name(), u.employeeId()).update();
+                insert into user_account (id, tenant_id, name, email, role, employee_id, keycloak_subject)
+                values (?, ?, ?, ?, ?, ?, ?)
+                """).params(id, tenantId, u.name(), u.email(), u.role().name(), u.employeeId(),
+                        subject == null || subject.isBlank() ? null : subject).update();
     }
 
-    Optional<UUID> employeeOfUser(String email) {
-        return jdbc.sql("select employee_id from user_account where email = ? and employee_id is not null")
-                .param(email).query(UUID.class).optional();
+    /** The account of a signed-in person, by the subject of the token; never by the token's e-mail. */
+    Optional<UserAccount> userBySubject(String subject) {
+        if (subject == null || subject.isBlank()) {
+            return Optional.empty();
+        }
+        return jdbc.sql("select " + USER_COLUMNS + " from user_account where keycloak_subject = ?").param(subject)
+                .query(USER).optional();
     }
 
-    Optional<UUID> employeeByEmail(String email) {
-        return jdbc.sql("select id from employee where lower(email) = ? order by dismissed_at nulls first limit 1").param(email)
-                .query(UUID.class).optional();
+    Optional<UUID> employeeOfSubject(String subject) {
+        return userBySubject(subject).map(UserAccount::employeeId);
+    }
+
+    /**
+     * The account with this stored address when it is the only account of the company with it (ignoring case) and no
+     * Keycloak account is linked to it yet; empty when there is none, it is linked, or several accounts have the
+     * address (the same rule as V47).
+     */
+    List<UserAccount> unlinkedUsersByEmail(String email) {
+        return jdbc.sql("select " + USER_COLUMNS + " from user_account u where lower(u.email) = lower(?) "
+                        + "and u.keycloak_subject is null "
+                        + "and (select count(*) from user_account x where lower(x.email) = lower(u.email)) = 1")
+                .param(email).query(USER).list();
+    }
+
+    /** False when the account was linked meanwhile. */
+    boolean linkSubject(UUID userId, String subject) {
+        return jdbc.sql("update user_account set keycloak_subject = ? where id = ? and keycloak_subject is null")
+                .params(subject, userId).update() == 1;
+    }
+
+    /**
+     * Every employee of the company, working or dismissed but not erased, whose stored address equals this normalised
+     * one ignoring case. No choice is made here: one is a match, several are ambiguous (finding R1 of 2026-11-12).
+     */
+    List<UUID> employeesByEmail(String normalised) {
+        return jdbc.sql("select id from employee where lower(email) = ? and erased_at is null order by id")
+                .param(normalised).query(UUID.class).list();
     }
 
     java.util.Map<UUID, LocalDate> dismissed() {

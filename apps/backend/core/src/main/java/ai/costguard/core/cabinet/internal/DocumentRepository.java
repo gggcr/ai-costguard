@@ -49,13 +49,14 @@ class DocumentRepository {
                 .param(documentId).query(SIGNATURE).list();
     }
 
-    void sign(UUID tenantId, UUID documentId, DocumentSignature s) {
+    /** {@code signerAccountId}: the CostGuard account that signed, found by the token's subject. */
+    void sign(UUID tenantId, UUID documentId, DocumentSignature s, UUID signerAccountId) {
         jdbc.sql("""
                 insert into document_signature (id, tenant_id, document_id, party, signer_name, signer_email, method,
-                                                document_sha256, signed_at)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?)""")
+                                                document_sha256, signed_at, signer_account_id)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""")
                 .params(UUID.randomUUID(), tenantId, documentId, s.party(), s.signerName(), s.signerEmail(),
-                        s.method(), s.documentSha256(), Timestamp.from(s.signedAt()))
+                        s.method(), s.documentSha256(), Timestamp.from(s.signedAt()), signerAccountId)
                 .update();
     }
 

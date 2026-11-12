@@ -111,10 +111,69 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
     private final UUID tenant = UUID.randomUUID();
 
     private RequestPostProcessor as(UUID tenantId, String email, String... roles) {
+        return token(tenantId, subject(tenantId, email), email, roles);
+    }
+
+    /** A token with its own subject: the decider is found by the sub, the e-mail is only written down. */
+    private RequestPostProcessor token(UUID tenantId, String sub, String email, String... roles) {
         return jwt()
-                .jwt(j -> j.claim("tenant_id", tenantId.toString()).claim("email", email)
-                        .claim("realm_access", Map.of("roles", List.of(roles))))
+                .jwt(j -> j.subject(sub).claim("tenant_id", tenantId.toString()).claim("email", email)
+                        .claim("email_verified", false).claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
+    }
+
+    /** An agent owner with an account linked to their Keycloak account, and an agent of theirs. */
+    private record OwnerWithAgent(String email, UUID agent) {
+    }
+
+    private OwnerWithAgent ownerWithAgent(RequestPostProcessor admin) throws Exception {
+        String email = UUID.randomUUID() + "@x.ru";
+        String department = JsonPath.read(mvc.perform(json(post("/api/v1/departments"),
+                "{\"name\":\"%s\"}".formatted(UUID.randomUUID())).with(admin))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        String employee = JsonPath.read(mvc.perform(json(post("/api/v1/employees"), """
+                {"name":"O","email":"%s","departmentId":"%s","position":"P"}
+                """.formatted(email, department)).with(admin)).andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(json(post("/api/v1/users"), """
+                {"name":"O","email":"%s","role":"agent_owner","employeeId":"%s"}
+                """.formatted(email, employee)).with(admin)).andExpect(status().isCreated());
+        login(tenant, email, "agent_owner", UUID.fromString(employee));
+        String mandate = JsonPath.read(mvc.perform(json(post("/api/v1/mandates"), """
+                {"name":"%s","models":["m"],"vendors":["v"],"maxPerOperation":1,"approvalThreshold":1,
+                 "hours":"круглосуточно"}
+                """.formatted(UUID.randomUUID())).with(admin)).andReturn().getResponse().getContentAsString(), "$.id");
+        String agent = JsonPath.read(mvc.perform(json(post("/api/v1/agents"), """
+                {"name":"B","description":"","framework":"f","departmentId":"%s","ownerId":"%s","mandateId":"%s"}
+                """.formatted(department, employee, mandate)).with(admin))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        return new OwnerWithAgent(email, UUID.fromString(agent));
+    }
+
+    /**
+     * The e-mail spoofing finding of 2026-11-12: agent owner Q puts agent owner P's address on Q's Keycloak account.
+     * The decider is found by the token's subject, so Q still decides only on Q's agents.
+     */
+    @Test
+    void anotherAgentOwnersEmailDoesNotLetMeDecideOnTheirAgents() throws Exception {
+        RequestPostProcessor admin = as(tenant, "adm@x.ru", "owner");
+        OwnerWithAgent p = ownerWithAgent(admin);
+        OwnerWithAgent q = ownerWithAgent(admin);
+        RequestPostProcessor qAsP = token(tenant, subject(tenant, q.email()), p.email(), "agent_owner");
+
+        UUID ofP = request(p.agent());
+        mvc.perform(json(put("/api/v1/approvals/" + ofP + "/decision"), "{\"verdict\":\"approve\"}").with(qAsP))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_agent_owner"));
+        mvc.perform(json(put("/api/v1/approvals/" + ofP + "/decision"), "{\"verdict\":\"approve\"}")
+                        .with(token(tenant, "kc-nobody-" + UUID.randomUUID(), p.email(), "agent_owner")))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_agent_owner"));
+        assertThat(decidedFor(ofP)).as("someone else decided on P's operation").isEmpty();
+        mvc.perform(get("/api/v1/approvals/" + ofP).with(finance())).andExpect(jsonPath("$.status").value("pending"));
+
+        mvc.perform(json(put("/api/v1/approvals/" + request(q.agent()) + "/decision"), "{\"verdict\":\"approve\"}")
+                .with(qAsP)).andExpect(status().isOk());
+        mvc.perform(json(put("/api/v1/approvals/" + ofP + "/decision"), "{\"verdict\":\"approve\"}")
+                .with(as(tenant, p.email(), "agent_owner"))).andExpect(status().isOk());
+        assertThat(decidedFor(ofP)).hasSize(1);
     }
 
     private RequestPostProcessor finance() {
@@ -235,6 +294,7 @@ class ApprovalsApiIntegrationTest extends PostgresTestSupport {
         mvc.perform(json(post("/api/v1/users"), """
                 {"name":"O","email":"%s","role":"agent_owner","employeeId":"%s"}
                 """.formatted(email, employee)).with(admin)).andExpect(status().isCreated());
+        login(tenant, email, "agent_owner", UUID.fromString(employee));
         String mandate = JsonPath.read(mvc.perform(json(post("/api/v1/mandates"), """
                 {"name":"%s","models":["m"],"vendors":["v"],"maxPerOperation":1,"approvalThreshold":1,
                  "hours":"круглосуточно"}

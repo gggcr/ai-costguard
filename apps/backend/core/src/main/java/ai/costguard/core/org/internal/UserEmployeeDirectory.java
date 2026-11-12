@@ -19,14 +19,27 @@ class UserEmployeeDirectory implements EmployeeDirectory {
     }
 
     @Override
-    public Optional<UUID> employeeOfUser(String email) {
-        return org.employeeOfUser(email);
+    public Optional<UUID> employeeOfSubject(String subject) {
+        return org.employeeOfSubject(subject);
     }
 
     @Override
     public Optional<UUID> employeeByEmail(String email) {
+        return matchByEmail(email).employee();
+    }
+
+    @Override
+    public EmailMatch matchByEmail(String email) {
         String address = Names.email(email);
-        return address == null ? Optional.empty() : org.employeeByEmail(address);
+        if (address == null) {
+            return new EmailMatch(EmailMatch.Outcome.INVALID, null, 0);
+        }
+        List<UUID> found = org.employeesByEmail(address);
+        return switch (found.size()) {
+            case 0 -> new EmailMatch(EmailMatch.Outcome.NOT_FOUND, null, 0);
+            case 1 -> new EmailMatch(EmailMatch.Outcome.MATCHED, found.get(0), 1);
+            default -> new EmailMatch(EmailMatch.Outcome.AMBIGUOUS, null, found.size());
+        };
     }
 
     @Override

@@ -108,7 +108,7 @@ class RegistrationService {
                     registrations.insertTenant(tenantId, request.companyName().strip(), request.currency(),
                             request.country());
                     org.insertUser(tenantId, UUID.randomUUID(), new NewUser(request.ownerFirstName().strip() + " "
-                            + request.ownerLastName().strip(), email, UserRole.owner, null));
+                            + request.ownerLastName().strip(), email, UserRole.owner, null), accountId);
                     registrations.insertRegistration(tenantId, accountId, email, now,
                             now.plus(properties.unconfirmedFor()));
                     plans.startTrial(tenantId);

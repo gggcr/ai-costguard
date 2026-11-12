@@ -43,6 +43,16 @@ record ReportedPayment(@Size(max = 320) String employeeEmail, @Size(max = 300) S
 record PaymentBatch(@NotNull @Size(max = 64) String source, @NotEmpty @Size(max = 10000) List<@Valid ReportedPayment> payments) {
 }
 
+/**
+ * A payment no employee got (finding R1 of 2026-11-12): its address named none or several employees of the company, or
+ * was not an address. As the source reported it, with the reason; {@code candidates} is how many employees the address
+ * named. Finance sorts it out and loads it again: a later load that matches it removes it.
+ */
+record PayrollUnmatched(UUID id, String source, String reportedEmail, String reportedName, String kind,
+        LocalDate period, LocalDate payDate, BigDecimal amount, String currency, String externalKey, String reason,
+        int candidates, Instant firstSeen, Instant lastSeen) {
+}
+
 /** What a batch or a file did: rows stored, and rows left out with the reason, by their line or position. */
 record PayrollImport(int stored, List<Skipped> skipped) {
     record Skipped(int row, String reason) {

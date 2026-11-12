@@ -28,8 +28,8 @@ class MeController {
     @GetMapping
     @Operation(summary = "Who I am: name, roles and the employee record of the token")
     Me me(@AuthenticationPrincipal Jwt jwt) {
-        return service.me(TenantClaim.of(jwt), jwt.getClaimAsString("email"), jwt.getClaimAsString("name"),
-                roles(jwt));
+        return service.me(TenantClaim.of(jwt), jwt.getSubject(), jwt.getClaimAsString("email"),
+                jwt.getClaimAsString("name"), roles(jwt));
     }
 
     static List<String> roles(Jwt jwt) {

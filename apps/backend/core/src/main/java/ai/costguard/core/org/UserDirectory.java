@@ -9,8 +9,11 @@ public interface UserDirectory {
 
     List<UserCard> users();
 
-    /** The user with this e-mail (the token's), ignoring case. */
-    Optional<UserCard> userByEmail(String email);
+    /**
+     * The signed-in person's account, by the subject (sub) of the verified token. Never look a person up by the
+     * token's e-mail: a person can change it in their Keycloak account, the subject they cannot.
+     */
+    Optional<UserCard> userBySubject(String subject);
 
     /** {@code role}: owner, finance, it_admin, agent_owner or auditor; {@code employeeId} may be null. */
     record UserCard(UUID id, String name, String email, String role, UUID employeeId) {

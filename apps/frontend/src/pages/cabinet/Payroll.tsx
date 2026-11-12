@@ -11,7 +11,7 @@ interface MyPayroll { schedule: { advanceDay: number; salaryDay: number }; upcom
 interface ImportResult { stored: number; skipped: { row: number; reason: string }[] }
 
 const KIND: Record<string, string> = { advance: 'Аванс', salary: 'Зарплата', vacation_pay: 'Отпускные', bonus: 'Премия', other: 'Другое' };
-const REASON: Record<string, string> = { 'employee not found': 'сотрудник не найден', 'bad date': 'неверная дата', 'bad amount': 'неверная сумма' };
+const REASON: Record<string, string> = { 'employee not found': 'сотрудник не найден', 'ambiguous employee': 'адрес у нескольких сотрудников, выплата не назначена', 'bad email': 'неверный адрес почты', 'bad date': 'неверная дата', 'bad amount': 'неверная сумма' };
 
 const money = (n: number, currency = 'RUB') =>
   new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);

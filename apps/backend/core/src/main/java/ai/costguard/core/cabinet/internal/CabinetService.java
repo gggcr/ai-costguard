@@ -22,20 +22,23 @@ class CabinetService {
         this.session = session;
     }
 
-    /** The person of the token: the user record if there is one, and the employee it is linked to or shares an e-mail with. */
+    /**
+     * The person of the token: the account linked to the token's subject, and the employee that account is linked
+     * to. Without an account there is no employee card, whatever e-mail the token carries; the token's name and
+     * e-mail are then only shown back.
+     */
     @Transactional(readOnly = true)
-    Me me(UUID tenantId, String email, String tokenName, List<String> roles) {
+    Me me(UUID tenantId, String subject, String tokenEmail, String tokenName, List<String> roles) {
         session.bind(tenantId);
-        var user = users.userByEmail(email);
-        Optional<UUID> employeeId = user.map(UserDirectory.UserCard::employeeId)
-                .or(() -> employees.employeeOfUser(email))
-                .or(() -> employees.employeeByEmail(email));
+        Optional<UserDirectory.UserCard> user = users.userBySubject(subject);
+        Optional<UUID> employeeId = user.map(UserDirectory.UserCard::employeeId);
         Profile profile = employeeId.flatMap(employees::card)
                 .filter(card -> card.dismissedAt() == null)
                 .map(c -> new Profile(c.id(), c.name(), c.position(), c.department(), c.email()))
                 .orElse(null);
         String name = user.map(UserDirectory.UserCard::name)
-                .orElse(profile != null ? profile.name() : tokenName != null ? tokenName : email);
+                .orElse(tokenName != null ? tokenName : tokenEmail);
+        String email = user.map(UserDirectory.UserCard::email).orElse(tokenEmail);
         return new Me(user.map(UserDirectory.UserCard::id).orElse(null), name, email, roles, profile);
     }
 }

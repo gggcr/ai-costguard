@@ -125,7 +125,13 @@ class PayrollService {
         return payroll.ofPeriod(month.atDay(1));
     }
 
-    /** A batch from the connector or a person; every payment is matched to an employee by e-mail, then by name. */
+    /**
+     * A batch from the connector or a person; every payment is matched to an employee by e-mail, then by name. A
+     * payment goes only to the one employee of the company its address names; an address of several (they differ in
+     * case only) pays nobody, nor does the name rescue it, and an unknown or broken address with no unique name pays
+     * nobody either (finding R1 of 2026-11-12). Such a payment is kept in payroll_unmatched with its reason, once
+     * however often it comes, and leaves it when a later load matches it.
+     */
     @Transactional
     PayrollImport store(UUID tenantId, PaymentBatch batch) {
         session.bind(tenantId);
@@ -133,14 +139,21 @@ class PayrollService {
         int stored = 0;
         for (int i = 0; i < batch.payments().size(); i++) {
             ReportedPayment p = batch.payments().get(i);
-            Optional<UUID> who = person(p.employeeEmail(), p.employeeName());
-            if (who.isEmpty()) {
-                skipped.add(new PayrollImport.Skipped(i + 1, "employee not found"));
+            LocalDate period = p.period().withDayOfMonth(1);
+            BigDecimal amount = p.amount().setScale(2, RoundingMode.HALF_UP);
+            String currency = p.currency() == null ? currency() : p.currency();
+            String fingerprint = fingerprint(p, period, amount, currency);
+            Match who = person(p.employeeEmail(), p.employeeName());
+            if (who.employee().isEmpty()) {
+                payroll.keepUnmatched(tenantId, fingerprint, batch.source(), blankToNull(p.employeeEmail()),
+                        blankToNull(p.employeeName()), p.kind(), period, p.payDate(), amount, currency,
+                        p.externalKey(), who.reason(), who.candidates(), clock.instant());
+                skipped.add(new PayrollImport.Skipped(i + 1, who.reason()));
                 continue;
             }
-            payroll.upsert(tenantId, who.get(), p.kind(), p.period().withDayOfMonth(1), p.payDate(),
-                    p.amount().setScale(2, RoundingMode.HALF_UP), p.currency() == null ? currency() : p.currency(),
+            payroll.upsert(tenantId, who.employee().get(), p.kind(), period, p.payDate(), amount, currency,
                     batch.source(), p.externalKey(), clock.instant());
+            payroll.resolveUnmatched(fingerprint);
             stored++;
         }
         events.publishEvent(ActionTaken.of(tenantId, "payroll.loaded", "payroll_payment", tenantId,
@@ -180,14 +193,71 @@ class PayrollService {
         return new PayrollImport(stored.stored(), skipped);
     }
 
-    private Optional<UUID> person(String email, String name) {
+    /** Who a payment is for, or why nobody: the reason and how many employees its address named. */
+    record Match(Optional<UUID> employee, String reason, int candidates) {
+
+        static Match of(UUID employee) {
+            return new Match(Optional.of(employee), null, 1);
+        }
+
+        static Match none(String reason, int candidates) {
+            return new Match(Optional.empty(), reason, candidates);
+        }
+    }
+
+    private Match person(String email, String name) {
+        boolean named = name != null && !name.isBlank();
         if (email != null && !email.isBlank()) {
-            Optional<UUID> byEmail = employees.employeeByEmail(email.strip());
-            if (byEmail.isPresent()) {
-                return byEmail;
+            EmployeeDirectory.EmailMatch m = employees.matchByEmail(email);
+            switch (m.outcome()) {
+                case MATCHED:
+                    return Match.of(m.employeeId());
+                case AMBIGUOUS:
+                    // several employees have the address: the name must not pick one of them, nor anyone else
+                    return Match.none("ambiguous employee", m.candidates());
+                case INVALID:
+                    if (!named) {
+                        return Match.none("bad email", 0);
+                    }
+                    break;
+                default:
+                    break;
             }
         }
-        return name == null || name.isBlank() ? Optional.empty() : employees.employeeByName(name);
+        if (named) {
+            Optional<UUID> byName = employees.employeeByName(name);
+            if (byName.isPresent()) {
+                return Match.of(byName.get());
+            }
+        }
+        return Match.none("employee not found", 0);
+    }
+
+    /**
+     * The same payment reported again is the same row: who it names (the address as the application normalises it,
+     * and the name), kind, month, day, amount and currency. Not the source, so a sheet and the connector agree.
+     */
+    static String fingerprint(ReportedPayment p, LocalDate period, BigDecimal amount, String currency) {
+        String email = p.employeeEmail() == null ? "" : p.employeeEmail().strip().toLowerCase(Locale.ROOT);
+        String name = p.employeeName() == null ? "" : p.employeeName().strip();
+        String text = String.join("\u001f", email, name, p.kind().name(), period.toString(), p.payDate().toString(),
+                amount.toPlainString(), currency);
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
+    @Transactional(readOnly = true)
+    List<PayrollUnmatched> unmatched(UUID tenantId) {
+        session.bind(tenantId);
+        return payroll.unmatched();
     }
 
     private String currency() {

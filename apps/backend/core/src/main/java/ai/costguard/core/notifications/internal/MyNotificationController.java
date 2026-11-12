@@ -37,11 +37,12 @@ class MyNotificationController {
         this.tx = tx;
     }
 
+    /** The employee of the account of the token's subject (sub); never found by the token's e-mail. */
     private UUID employee(UUID tenantId, Jwt jwt) {
-        String email = jwt.getClaimAsString("email");
+        String subject = jwt.getSubject();
         UUID id = tx.execute(s -> {
             session.bind(tenantId);
-            return employees.employeeOfUser(email).or(() -> employees.employeeByEmail(email)).orElse(null);
+            return employees.employeeOfSubject(subject).orElse(null);
         });
         if (id == null) {
             throw new ApiException(NotificationProblem.NOT_AN_EMPLOYEE);

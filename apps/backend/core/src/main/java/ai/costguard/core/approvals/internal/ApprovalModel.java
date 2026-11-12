@@ -21,8 +21,11 @@ record Approval(UUID id, UUID operationId, UUID agentId, String description, Big
 record Decision(@NotNull Verdict verdict, String comment) {
 }
 
-/** Who is deciding. {@code restricted} is true for an agent owner, who decides only on their own agents. */
-record Decider(UUID tenantId, boolean restricted, String email) {
+/**
+ * Who is deciding. {@code restricted} is true for an agent owner, who decides only on their own agents. {@code subject}
+ * (the token's sub) finds the decider's employee; {@code email} is only written down as who decided.
+ */
+record Decider(UUID tenantId, boolean restricted, String subject, String email) {
 }
 
 record DueApproval(UUID approvalId, UUID tenantId) {

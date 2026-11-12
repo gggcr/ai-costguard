@@ -62,7 +62,7 @@ class AgentService {
     }
 
     private void requireOwnership(Actor actor, UUID ownerId) {
-        if (actor.restricted() && !directory.employeeOfUser(actor.email()).filter(ownerId::equals).isPresent()) {
+        if (actor.restricted() && !directory.employeeOfSubject(actor.subject()).filter(ownerId::equals).isPresent()) {
             throw AgentProblem.NOT_AGENT_OWNER.failure();
         }
     }

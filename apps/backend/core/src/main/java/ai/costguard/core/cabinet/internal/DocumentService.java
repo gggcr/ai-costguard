@@ -172,12 +172,14 @@ class DocumentService {
         if (before.stream().anyMatch(s -> s.party().equals(party.name()))) {
             throw CabinetProblem.SIGN_ALREADY.failure();
         }
-        String email = SigningKeys.email(jwt);
-        String method = keys.check(tenantId, email, code);
+        // the signer is the account of the token's subject; the stamp names it as the company stored it, not as
+        // the token (whose name and e-mail a person can change in Keycloak)
+        var signer = keys.account(jwt);
+        String method = keys.check(tenantId, signer.id(), code);
         byte[] bytes = files.get(d.fileKey()).orElseThrow(CabinetProblem.DOCUMENT_NOT_FOUND::failure);
-        DocumentSignature signature = new DocumentSignature(party.name(), Whoami.who(jwt), email, method,
+        DocumentSignature signature = new DocumentSignature(party.name(), signer.name(), signer.email(), method,
                 sha256(bytes), clock.instant());
-        documents.sign(tenantId, d.id(), signature);
+        documents.sign(tenantId, d.id(), signature, signer.id());
         int left = d.signers().size() - before.size() - 1;
         if (left == 0) {
             notices.send(tenantId, d.employeeId(), "Документ подписан всеми сторонами: " + d.title(),

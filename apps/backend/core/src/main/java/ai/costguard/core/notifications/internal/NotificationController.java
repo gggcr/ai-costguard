@@ -39,26 +39,26 @@ class NotificationController {
     @Operation(summary = "My e-mail and Telegram notifications",
             description = "Levels: off, info, warning, critical. Without saved settings: e-mail for critical ones.")
     SettingsView settings(@AuthenticationPrincipal Jwt jwt) {
-        return settings.get(TenantClaim.of(jwt), jwt.getClaimAsString("email"));
+        return settings.get(TenantClaim.of(jwt), jwt.getSubject());
     }
 
     @PutMapping("/settings")
     @Operation(summary = "Change my notification levels")
     SettingsView saveSettings(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SettingsChange change) {
-        return settings.save(TenantClaim.of(jwt), jwt.getClaimAsString("email"), change);
+        return settings.save(TenantClaim.of(jwt), jwt.getSubject(), change);
     }
 
     @PostMapping("/telegram-link")
     @Operation(summary = "A one-time link that connects my Telegram",
             description = "Open it in Telegram and press Start. 409 telegram_unavailable when no bot is configured.")
     TelegramLink telegramLink(@AuthenticationPrincipal Jwt jwt) {
-        return settings.link(TenantClaim.of(jwt), jwt.getClaimAsString("email"));
+        return settings.link(TenantClaim.of(jwt), jwt.getSubject());
     }
 
     @DeleteMapping("/telegram")
     @Operation(summary = "Stop sending me notifications to Telegram")
     SettingsView unlinkTelegram(@AuthenticationPrincipal Jwt jwt) {
-        return settings.unlink(TenantClaim.of(jwt), jwt.getClaimAsString("email"));
+        return settings.unlink(TenantClaim.of(jwt), jwt.getSubject());
     }
 
     @GetMapping

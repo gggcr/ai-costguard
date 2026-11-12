@@ -177,12 +177,17 @@ class RiskAndChannelsIntegrationTest extends PostgresTestSupport {
     }
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email)
                 .claim("realm_access", Map.of("roles", List.of(roles)))).authorities(realmRoles);
     }
 
     private RequestPostProcessor admin() {
         return as("admin-" + suffix + "@x.ru", "it_admin");
+    }
+
+    /** Only the owner links a user to an employee (finding H1 of 2026-11-12). */
+    private RequestPostProcessor owner() {
+        return as("owner-" + suffix + "@x.ru", "owner");
     }
 
     private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
@@ -202,10 +207,13 @@ class RiskAndChannelsIntegrationTest extends PostgresTestSupport {
                 """.formatted(ownerEmail, department)).with(admin())), "$.id");
         mvc.perform(json(post("/api/v1/users"), """
                 {"name":"Owner","email":"%s","role":"agent_owner","employeeId":"%s"}
-                """.formatted(ownerEmail, employee)).with(admin())).andExpect(status().isCreated());
+                """.formatted(ownerEmail, employee)).with(owner())).andExpect(status().isCreated());
         mvc.perform(json(post("/api/v1/users"), """
                 {"name":"Auditor","email":"%s","role":"auditor"}
                 """.formatted(auditorEmail)).with(admin())).andExpect(status().isCreated());
+        // their Keycloak accounts, linked as at their first confirmed sign-in
+        login(tenant, ownerEmail, "agent_owner", UUID.fromString(employee));
+        login(tenant, auditorEmail, "auditor", null);
         String mandate = JsonPath.read(read(json(post("/api/v1/mandates"), """
                 {"name":"%s","models":["gpt-5"],"vendors":["OpenAI"],"maxPerOperation":500,"approvalThreshold":300,
                  "hours":"00:00–23:59"}""".formatted(UUID.randomUUID())).with(admin())), "$.id");

@@ -50,7 +50,7 @@ class VendorAccessIntegrationTest extends PostgresTestSupport {
     private final String domain = "corp-" + UUID.randomUUID().toString().substring(0, 8) + ".example";
 
     private RequestPostProcessor as(String role, String email) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email)
                         .claim("realm_access", Map.of("roles", List.of(role))))
                 .authorities(realmRoles);
     }
@@ -79,8 +79,10 @@ class VendorAccessIntegrationTest extends PostgresTestSupport {
 
     private String person(String dept) throws Exception {
         String email = "p-" + UUID.randomUUID() + "@" + domain;
-        create("/api/v1/employees", "{\"name\":\"Анна Петрова\",\"email\":\"%s\",\"departmentId\":\"%s\",\"position\":\"x\"}"
+        String id = create("/api/v1/employees", "{\"name\":\"Анна Петрова\",\"email\":\"%s\",\"departmentId\":\"%s\",\"position\":\"x\"}"
                 .formatted(email, dept));
+        // the CostGuard account an onboarding or an invitation leaves, linked to the person's Keycloak sub
+        login(tenant, email, "employee", UUID.fromString(id));
         return email;
     }
 

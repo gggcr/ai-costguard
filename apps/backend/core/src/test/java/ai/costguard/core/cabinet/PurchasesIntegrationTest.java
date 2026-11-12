@@ -39,7 +39,7 @@ class PurchasesIntegrationTest extends PostgresTestSupport {
     private String department;
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
                         .claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
     }
@@ -64,7 +64,14 @@ class PurchasesIntegrationTest extends PostgresTestSupport {
         return department;
     }
 
+    /** An employee with the CostGuard account an onboarding or an invitation leaves, linked to their Keycloak sub. */
     private String employee(String email) throws Exception {
+        String id = employeeRecord(email);
+        login(tenant, email, "employee", UUID.fromString(id));
+        return id;
+    }
+
+    private String employeeRecord(String email) throws Exception {
         return create("/api/v1/employees", "{\"name\":\"%s\",\"email\":\"%s\",\"departmentId\":\"%s\",\"position\":\"x\"}"
                 .formatted(email, email, dept()));
     }

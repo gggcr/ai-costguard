@@ -60,6 +60,9 @@ record MandateDetails(
 record PublishedTerms(int version, String expression, BigDecimal approvalThreshold) {
 }
 
-/** Who is calling. {@code restricted} is true for an agent owner, who may touch only their own agents. */
-record Actor(UUID tenantId, boolean restricted, String email) {
+/**
+ * Who is calling. {@code restricted} is true for an agent owner, who may touch only their own agents; {@code subject}
+ * is the token's sub, which finds the caller's account and employee (never the token's e-mail).
+ */
+record Actor(UUID tenantId, boolean restricted, String subject) {
 }

@@ -61,6 +61,13 @@ class PayrollController {
         return service.ofMonth(TenantClaim.of(jwt), YearMonth.parse(month));
     }
 
+    @GetMapping("/payroll/unmatched")
+    @PreAuthorize("hasAnyRole('owner', 'finance')")
+    @Operation(summary = "Payments no employee got: the address named none or several employees, or was not one")
+    List<PayrollUnmatched> unmatched(@AuthenticationPrincipal Jwt jwt) {
+        return service.unmatched(TenantClaim.of(jwt));
+    }
+
     @PostMapping("/payroll/payments")
     @PreAuthorize("hasAnyRole('owner', 'finance', 'connector')")
     @Operation(summary = "Payments from a source such as the 1С:ЗУП connector; the same payment again replaces it")

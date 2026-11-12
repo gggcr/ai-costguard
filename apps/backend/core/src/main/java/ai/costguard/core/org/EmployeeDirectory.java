@@ -8,10 +8,32 @@ import java.util.UUID;
 /** Links a login, an e-mail or a name to a person. Call inside a transaction already bound to the tenant. */
 public interface EmployeeDirectory {
 
-    Optional<UUID> employeeOfUser(String email);
+    /** The employee linked to the account of this token subject (sub); empty without an account or a link. */
+    Optional<UUID> employeeOfSubject(String subject);
 
-    /** The employee with this e-mail, ignoring case. */
+    /**
+     * The employee with this e-mail, ignoring case, when it names exactly one employee of the company; empty when it
+     * names none or several. For matching data (an import), never to decide who the signed-in person is.
+     */
     Optional<UUID> employeeByEmail(String email);
+
+    /**
+     * How a reported address names an employee of the company (finding R1 of 2026-11-12): the address is normalised
+     * as the application does (trimmed, lower case, checked), then compared ignoring case with the stored addresses of
+     * the employees who are not erased, working or dismissed. Exactly one is a match; several are ambiguous, and none
+     * of them is chosen. For matching data, never to decide who the signed-in person is.
+     */
+    EmailMatch matchByEmail(String email);
+
+    /** {@code employeeId} only for {@link Outcome#MATCHED}; {@code candidates}: how many employees have the address. */
+    record EmailMatch(Outcome outcome, UUID employeeId, int candidates) {
+
+        public enum Outcome { MATCHED, NOT_FOUND, AMBIGUOUS, INVALID }
+
+        public Optional<UUID> employee() {
+            return outcome == Outcome.MATCHED ? Optional.of(employeeId) : Optional.empty();
+        }
+    }
 
     /** The only employee with this cleaned full name; empty when there is none or several namesakes. */
     Optional<UUID> employeeByName(String name);

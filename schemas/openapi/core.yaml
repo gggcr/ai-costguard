@@ -3021,6 +3021,22 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Product"
+  /api/v1/payroll/unmatched:
+    get:
+      tags:
+      - Cabinet
+      summary: "Payments no employee got: the address named none or several employees,\
+        \ or was not one"
+      operationId: unmatched
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PayrollUnmatched"
   /api/v1/payments:
     get:
       tags:
@@ -6924,6 +6940,43 @@ components:
         hiddenServices:
           type: integer
           format: int32
+    PayrollUnmatched:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source:
+          type: string
+        reportedEmail:
+          type: string
+        reportedName:
+          type: string
+        kind:
+          type: string
+        period:
+          type: string
+          format: date
+        payDate:
+          type: string
+          format: date
+        amount:
+          type: number
+        currency:
+          type: string
+        externalKey:
+          type: string
+        reason:
+          type: string
+        candidates:
+          type: integer
+          format: int32
+        firstSeen:
+          type: string
+          format: date-time
+        lastSeen:
+          type: string
+          format: date-time
     PayrollPayment:
       type: object
       properties:

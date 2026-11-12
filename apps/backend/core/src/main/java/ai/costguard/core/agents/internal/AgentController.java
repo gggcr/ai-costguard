@@ -44,7 +44,7 @@ class AgentController {
         Set<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toSet());
         boolean privileged = roles.contains("ROLE_owner") || roles.contains("ROLE_it_admin");
-        return new Actor(TenantClaim.of(jwt), !privileged, jwt.getClaimAsString("email"));
+        return new Actor(TenantClaim.of(jwt), !privileged, jwt.getSubject());
     }
 
     @GetMapping("/agents")

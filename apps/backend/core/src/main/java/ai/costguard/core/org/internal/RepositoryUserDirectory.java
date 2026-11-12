@@ -24,11 +24,7 @@ class RepositoryUserDirectory implements UserDirectory {
     }
 
     @Override
-    public Optional<UserCard> userByEmail(String email) {
-        if (email == null || email.isBlank()) {
-            return Optional.empty();
-        }
-        return org.users().stream().filter(u -> u.email().equalsIgnoreCase(email.trim())).findFirst()
-                .map(RepositoryUserDirectory::card);
+    public Optional<UserCard> userBySubject(String subject) {
+        return org.userBySubject(subject).map(RepositoryUserDirectory::card);
     }
 }

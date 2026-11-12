@@ -41,7 +41,8 @@ class CabinetPersonalData implements DataHolder {
     public List<String> tables() {
         return List.of("employee_document", "vacation_request", "payroll_payment", "payroll_schedule",
                 "payroll_tenant", "license_request", "purchase_request", "shadow_spend", "subscription_access",
-                "access_change", "license_lease", "renewal_reminder", "limit_request", "cabinet_tenant", "document_signature", "signing_key");
+                "access_change", "license_lease", "renewal_reminder", "limit_request", "cabinet_tenant", "document_signature", "signing_key",
+                "payroll_unmatched");
     }
 
     @Override
@@ -58,6 +59,9 @@ class CabinetPersonalData implements DataHolder {
         for (String email : subject.emails()) {
             report.deleted("cabinet.signing_key", jdbc.sql("delete from signing_key where email = ?").param(email)
                     .update());
+            // payments that named the person's address and were paid to nobody (R1)
+            report.deleted("cabinet.payroll_unmatched", jdbc.sql(
+                    "delete from payroll_unmatched where lower(reported_email) = lower(?)").param(email).update());
         }
         report.deleted("cabinet.limit_request", jdbc.sql("delete from limit_request where employee_id = ?")
                 .param(subject.employeeId()).update());
@@ -93,7 +97,7 @@ class CabinetPersonalData implements DataHolder {
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
         TenantRows.delete(jdbc, tenantId, report, "cabinet", "signing_key", "document_signature", "limit_request", "renewal_reminder", "license_lease", "access_change", "subscription_access", "shadow_spend", "purchase_request", "license_request", "payroll_payment", "payroll_schedule",
-                "vacation_request", "employee_document");
+                "payroll_unmatched", "vacation_request", "employee_document");
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
         jdbc.sql("delete from cabinet_tenant where tenant_id = ?").param(tenantId).update();
     }

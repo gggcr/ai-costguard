@@ -33,7 +33,7 @@ class CabinetApiIntegrationTest extends PostgresTestSupport {
     private final UUID tenant = UUID.randomUUID();
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email)
                         .claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
     }
@@ -46,7 +46,14 @@ class CabinetApiIntegrationTest extends PostgresTestSupport {
         return request.contentType(MediaType.APPLICATION_JSON).content(body);
     }
 
+    /** An employee with the CostGuard account an onboarding or an invitation leaves, linked to their Keycloak sub. */
     private String employee(String email) throws Exception {
+        String id = employeeRecord(email);
+        login(tenant, email, "employee", UUID.fromString(id));
+        return id;
+    }
+
+    private String employeeRecord(String email) throws Exception {
         String department = JsonPath.read(mvc.perform(json(post("/api/v1/departments"),
                         "{\"name\":\"%s\"}".formatted(UUID.randomUUID())).with(admin()))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
@@ -86,12 +93,17 @@ class CabinetApiIntegrationTest extends PostgresTestSupport {
     @Test
     void anEmployeeKeepsTheirOwnDeliverySettings() throws Exception {
         String email = "smirnov-%s@corp.ru".formatted(UUID.randomUUID());
-        String id = employee(email);
+        String id = employeeRecord(email);
         // invited as an employee (V34 lets user records carry the role)
         mvc.perform(json(post("/api/v1/users"), """
                         {"name":"Смирнов Олег","email":"%s","role":"employee","employeeId":"%s"}
                         """.formatted(email, id)).with(as("owner@corp.ru", "owner")))
                 .andExpect(status().is2xxSuccessful());
+        // the first sign-in with the confirmed address links the person's Keycloak account to the record (FirstLogin)
+        mvc.perform(get("/api/v1/me").with(jwt().jwt(j -> j.subject(subject(tenant, email))
+                        .claim("tenant_id", tenant.toString()).claim("email", email).claim("email_verified", true)
+                        .claim("realm_access", Map.of("roles", List.of("employee")))).authorities(realmRoles)))
+                .andExpect(jsonPath("$.employee.id").value(id));
         mvc.perform(get("/api/v1/notifications/settings").with(as(email, "employee"))).andExpect(status().isOk());
         mvc.perform(get("/api/v1/me").with(as(email, "employee")))
                 .andExpect(jsonPath("$.employee.id").value(id))

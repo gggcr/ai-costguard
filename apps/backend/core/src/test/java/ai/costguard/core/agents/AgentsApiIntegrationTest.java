@@ -72,14 +72,24 @@ class AgentsApiIntegrationTest extends PostgresTestSupport {
     private final UUID owner = UUID.randomUUID();
 
     private RequestPostProcessor as(UUID tenantId, String email, String... roles) {
+        return token(tenantId, subject(tenantId, email), email, roles);
+    }
+
+    /** A token with its own subject: the person is found by the sub, the e-mail only rides along. */
+    private RequestPostProcessor token(UUID tenantId, String sub, String email, String... roles) {
         return jwt()
-                .jwt(j -> j.claim("tenant_id", tenantId.toString()).claim("email", email)
-                        .claim("realm_access", Map.of("roles", List.of(roles))))
+                .jwt(j -> j.subject(sub).claim("tenant_id", tenantId.toString()).claim("email", email)
+                        .claim("email_verified", false).claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
     }
 
     private RequestPostProcessor admin() {
         return as(tenant, "admin@x.ru", "it_admin");
+    }
+
+    /** Only the owner links a user to an employee (finding H1 of 2026-11-12). */
+    private RequestPostProcessor owner() {
+        return as(tenant, "owner@x.ru", "owner");
     }
 
     private MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
@@ -123,8 +133,41 @@ class AgentsApiIntegrationTest extends PostgresTestSupport {
                 """.formatted(email, department)).with(admin())).andReturn().getResponse().getContentAsString(), "$.id");
         mvc.perform(json(post("/api/v1/users"), """
                 {"name":"O","email":"%s","role":"agent_owner","employeeId":"%s"}
-                """.formatted(email, employee)).with(admin())).andExpect(status().isCreated());
+                """.formatted(email, employee)).with(owner())).andExpect(status().isCreated());
+        // the person's Keycloak account, linked as at their first confirmed sign-in
+        login(tenant, email, "agent_owner", UUID.fromString(employee));
         return UUID.fromString(employee);
+    }
+
+    /**
+     * The e-mail spoofing finding of 2026-11-12: agent owner Q puts agent owner P's address on Q's Keycloak account.
+     * Ownership follows the token's subject, so Q still owns only Q's agents.
+     */
+    @Test
+    void anotherAgentOwnersEmailDoesNotMakeTheirAgentsMine() throws Exception {
+        String mailP = "p-" + UUID.randomUUID() + "@x.ru";
+        String mailQ = "q-" + UUID.randomUUID() + "@x.ru";
+        UUID p = employeeWithLogin(mailP);
+        UUID q = employeeWithLogin(mailQ);
+        String mandate = mandate();
+        String agentOfP = JsonPath.read(mvc.perform(json(post("/api/v1/agents"), agentBody(mandate, p)).with(admin()))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        String agentOfQ = JsonPath.read(mvc.perform(json(post("/api/v1/agents"), agentBody(mandate, q)).with(admin()))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        RequestPostProcessor qAsP = token(tenant, subject(tenant, mailQ), mailP, "agent_owner");
+
+        mvc.perform(put("/api/v1/agents/" + agentOfP + "/suspension").with(qAsP))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_agent_owner"));
+        mvc.perform(get("/api/v1/agents/" + agentOfP).with(admin())).andExpect(jsonPath("$.status").value(
+                org.hamcrest.Matchers.not("suspended")));
+        // Q is still Q: their own agent, whatever the token's e-mail
+        mvc.perform(put("/api/v1/agents/" + agentOfQ + "/suspension").with(qAsP)).andExpect(status().isOk());
+        // someone without a CostGuard account and with P's address owns nothing
+        mvc.perform(put("/api/v1/agents/" + agentOfP + "/suspension")
+                        .with(token(tenant, "kc-nobody-" + UUID.randomUUID(), mailP, "agent_owner")))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_agent_owner"));
+        mvc.perform(put("/api/v1/agents/" + agentOfP + "/suspension").with(as(tenant, mailP, "agent_owner")))
+                .andExpect(status().isOk());
     }
 
     @Test

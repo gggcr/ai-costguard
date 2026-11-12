@@ -102,7 +102,7 @@ class OnboardingService {
                 Employee created = orgs.createEmployee(tenantId, new EmployeeDetails(first + " " + last, email,
                         request.departmentId(), request.position().strip()));
                 org.insertUser(tenantId, UUID.randomUUID(), new NewUser(first + " " + last, email,
-                        UserRole.employee, created.id()));
+                        UserRole.employee, created.id()), account);
                 events.publishEvent(ActionTaken.of(tenantId, "employee.onboarded", "employee", created.id(),
                         Map.of("mailbox", made, "account", account)));
                 return created;

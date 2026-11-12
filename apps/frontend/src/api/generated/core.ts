@@ -896,6 +896,23 @@ export type PayrollSchedule = {
   salaryDay?: number;
 };
 
+export type PayrollUnmatched = {
+  id?: string;  // uuid
+  source?: string;
+  reportedEmail?: string;
+  reportedName?: string;
+  kind?: string;
+  period?: string;  // date
+  payDate?: string;  // date
+  amount?: number;
+  currency?: string;
+  externalKey?: string;
+  reason?: string;
+  candidates?: number;
+  firstSeen?: string;  // date-time
+  lastSeen?: string;  // date-time
+};
+
 export type PinSetup = {
   pin: string;
   current?: string;
@@ -1577,6 +1594,7 @@ export const operations = {
   cabinetStore: { method: "POST", path: "/api/v1/payroll/payments" },
   cabinetSchedule: { method: "GET", path: "/api/v1/payroll/schedule" },
   cabinetSaveSchedule: { method: "PUT", path: "/api/v1/payroll/schedule" },
+  cabinetUnmatched: { method: "GET", path: "/api/v1/payroll/unmatched" },
   softwarePlans: { method: "GET", path: "/api/v1/plans" },
   softwareCreatePlan: { method: "POST", path: "/api/v1/plans" },
   softwareDeletePlan: { method: "DELETE", path: "/api/v1/plans/{id}" },

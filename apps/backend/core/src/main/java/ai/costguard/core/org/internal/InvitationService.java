@@ -76,7 +76,7 @@ class InvitationService {
                 UUID userId = UUID.randomUUID();
                 try {
                     org.insertUser(tenantId, userId, new NewUser(request.firstName().strip() + " "
-                            + request.lastName().strip(), email, request.role(), request.employeeId()));
+                            + request.lastName().strip(), email, request.role(), request.employeeId()), accountId);
                 } catch (DuplicateKeyException e) {
                     throw OrgProblem.EMAIL_TAKEN.failure();
                 }
@@ -161,9 +161,12 @@ class InvitationService {
         });
     }
 
-    /** Inside a transaction bound to the tenant. True when an invitation to this e-mail was waiting. */
-    boolean accept(UUID tenantId, String email) {
-        if (!registrations.accept(email, clock.instant())) {
+    /**
+     * Inside a transaction bound to the tenant. True when an invitation was waiting for this Keycloak account (the
+     * token's sub): the invitation names the account the core created for it, not only an e-mail.
+     */
+    boolean accept(UUID tenantId, String subject) {
+        if (!registrations.accept(subject, clock.instant())) {
             return false;
         }
         events.publishEvent(ActionTaken.bySystem("registration", tenantId, "invitation.accepted", "tenant", tenantId,

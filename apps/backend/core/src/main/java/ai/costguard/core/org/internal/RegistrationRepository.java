@@ -138,11 +138,11 @@ class RegistrationRepository {
                 .query(String.class).optional();
     }
 
-    /** True when an invitation to this e-mail was waiting. */
-    boolean accept(String email, Instant now) {
+    /** True when an invitation was waiting for this Keycloak account (the token's sub). */
+    boolean accept(String subject, Instant now) {
         return jdbc.sql("""
                 update invitation set status = 'accepted', accepted_at = ?
-                where status = 'sent' and lower(email) = lower(?)
-                """).params(Timestamp.from(now), email).update() > 0;
+                where status = 'sent' and keycloak_user_id = ?
+                """).params(Timestamp.from(now), subject).update() > 0;
     }
 }

@@ -42,7 +42,7 @@ class PayrollIntegrationTest extends PostgresTestSupport {
     private final UUID tenant = UUID.randomUUID();
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
                         .claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
     }
@@ -55,7 +55,14 @@ class PayrollIntegrationTest extends PostgresTestSupport {
         return request.contentType(MediaType.APPLICATION_JSON).content(body);
     }
 
+    /** An employee with the CostGuard account an onboarding or an invitation leaves, linked to their Keycloak sub. */
     private String employee(String name, String email) throws Exception {
+        String id = employeeRecord(name, email);
+        login(tenant, email, "employee", UUID.fromString(id));
+        return id;
+    }
+
+    private String employeeRecord(String name, String email) throws Exception {
         String department = JsonPath.read(mvc.perform(json(post("/api/v1/departments"),
                         "{\"name\":\"%s\"}".formatted(UUID.randomUUID())).with(as("o@corp.ru", "owner")))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");

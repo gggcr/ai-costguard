@@ -208,7 +208,9 @@ class OnboardingIntegrationTest extends PostgresTestSupport {
                         + "\"contractId\":null,\"departmentId\":\"%s\",\"seats\":2,\"pricePerSeat\":1500,"
                         + "\"billingPeriod\":\"month\",\"renewalDate\":\"2027-01-01\"}").formatted(vendor, dept)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
-        RequestPostProcessor anna = jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email)
+        // Anna's token carries the id of the Keycloak account her onboarding created
+        String annaSub = ACCOUNTS.stored(email).orElseThrow().id();
+        RequestPostProcessor anna = jwt().jwt(j -> j.subject(annaSub).claim("tenant_id", tenant.toString()).claim("email", email)
                         .claim("realm_access", Map.of("roles", List.of("employee"))))
                 .authorities(realmRoles);
         mvc.perform(post("/api/v1/me/license-requests").with(anna).contentType(MediaType.APPLICATION_JSON)

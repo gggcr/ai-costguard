@@ -8,6 +8,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -117,8 +118,14 @@ class OrgController {
     @PostMapping("/users")
     @ManagesOrg
     @Operation(summary = "Add a CostGuard user")
-    ResponseEntity<UserAccount> createUser(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody NewUser request) {
-        UserAccount created = service.createUser(TenantClaim.of(jwt), request);
+    // Only the owner may link the user to an employee (employeeId): the user then sees that employee's cabinet, pay
+    // and documents included, which an it_admin must not hand out (ADR 0054; finding H1 of 2026-11-12).
+    ResponseEntity<UserAccount> createUser(Authentication auth, @Valid @RequestBody NewUser request) {
+        boolean owner = auth.getAuthorities().stream().anyMatch(a -> "ROLE_owner".equals(a.getAuthority()));
+        if (request.employeeId() != null && !owner) {
+            throw OrgProblem.EMPLOYEE_LINK_OWNER_ONLY.failure();
+        }
+        UserAccount created = service.createUser(TenantClaim.of((Jwt) auth.getPrincipal()), request);
         return ResponseEntity.created(URI.create("/api/v1/users/" + created.id())).body(created);
     }
 

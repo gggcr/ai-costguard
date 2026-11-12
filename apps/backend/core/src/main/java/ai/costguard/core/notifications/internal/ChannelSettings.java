@@ -54,8 +54,9 @@ class ChannelSettings {
         }
     }
 
-    private UserDirectory.UserCard me(String tokenEmail) {
-        return users.userByEmail(tokenEmail).orElseThrow(NotificationProblem.USER_NOT_FOUND::failure);
+    /** The account of the token's subject (sub); the token's e-mail would let a person reach someone else's. */
+    private UserDirectory.UserCard me(String subject) {
+        return users.userBySubject(subject).orElseThrow(NotificationProblem.USER_NOT_FOUND::failure);
     }
 
     private SettingsView view(UserDirectory.UserCard user) {
@@ -65,27 +66,27 @@ class ChannelSettings {
     }
 
     @Transactional(readOnly = true)
-    SettingsView get(UUID tenantId, String tokenEmail) {
+    SettingsView get(UUID tenantId, String subject) {
         session.bind(tenantId);
-        return view(me(tokenEmail));
+        return view(me(subject));
     }
 
     @Transactional
-    SettingsView save(UUID tenantId, String tokenEmail, SettingsChange change) {
+    SettingsView save(UUID tenantId, String subject, SettingsChange change) {
         session.bind(tenantId);
-        UserDirectory.UserCard user = me(tokenEmail);
+        UserDirectory.UserCard user = me(subject);
         deliveries.saveLevels(tenantId, user.id(), change.emailLevel(), change.telegramLevel());
         return view(user);
     }
 
     /** A one-time link to the bot; a new one replaces the previous. The code itself is not stored, its hash is. */
     @Transactional
-    TelegramLink link(UUID tenantId, String tokenEmail) {
+    TelegramLink link(UUID tenantId, String subject) {
         if (!telegram.enabled()) {
             throw NotificationProblem.TELEGRAM_UNAVAILABLE.failure();
         }
         session.bind(tenantId);
-        UserDirectory.UserCard user = me(tokenEmail);
+        UserDirectory.UserCard user = me(subject);
         byte[] bytes = new byte[24];
         RANDOM.nextBytes(bytes);
         String code = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -101,9 +102,9 @@ class ChannelSettings {
     }
 
     @Transactional
-    SettingsView unlink(UUID tenantId, String tokenEmail) {
+    SettingsView unlink(UUID tenantId, String subject) {
         session.bind(tenantId);
-        UserDirectory.UserCard user = me(tokenEmail);
+        UserDirectory.UserCard user = me(subject);
         deliveries.unlinkTelegram(user.id());
         return view(user);
     }

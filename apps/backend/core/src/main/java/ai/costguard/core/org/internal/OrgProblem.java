@@ -13,6 +13,8 @@ enum OrgProblem implements ProblemCode {
     DEPARTMENT_NAME_TAKEN(HttpStatus.CONFLICT, "A department with this name exists"),
     EMAIL_TAKEN(HttpStatus.CONFLICT, "This email is already registered"),
     LAST_OWNER(HttpStatus.CONFLICT, "A company must keep at least one owner"),
+    EMPLOYEE_LINK_OWNER_ONLY(HttpStatus.FORBIDDEN,
+            "Only the owner links a user to an employee: the user then sees that employee's pay and documents"),
     EMPLOYEE_ERASED(HttpStatus.CONFLICT, "The employee's data was erased; add the person again if they return");
 
     private final HttpStatus status;

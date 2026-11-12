@@ -123,7 +123,7 @@ class ApprovalService implements ApprovalRequests, OwnerApprovals {
     }
 
     private void requireOwnAgent(Decider decider, UUID agentId) {
-        Optional<UUID> employee = directory.employeeOfUser(decider.email());
+        Optional<UUID> employee = directory.employeeOfSubject(decider.subject());
         if (employee.isEmpty() || !employee.equals(owners.ownerOf(agentId))) {
             throw ApprovalProblem.NOT_AGENT_OWNER.failure();
         }

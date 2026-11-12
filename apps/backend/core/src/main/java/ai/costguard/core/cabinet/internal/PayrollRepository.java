@@ -61,6 +61,42 @@ class PayrollRepository {
         seen(tenantId);
     }
 
+    /** A payment no employee got, kept once however often it is reported (the fingerprint), with its latest reason. */
+    void keepUnmatched(UUID tenantId, String fingerprint, String source, String email, String name, PayKind kind,
+            LocalDate period, LocalDate payDate, BigDecimal amount, String currency, String externalKey, String reason,
+            int candidates, Instant at) {
+        jdbc.sql("""
+                insert into payroll_unmatched (id, tenant_id, fingerprint, source, reported_email, reported_name, kind,
+                                               period, pay_date, amount, currency, external_key, reason, candidates,
+                                               first_seen, last_seen)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                on conflict (tenant_id, fingerprint) do update set
+                    source = excluded.source, external_key = excluded.external_key, reason = excluded.reason,
+                    candidates = excluded.candidates, last_seen = excluded.last_seen""")
+                .params(UUID.randomUUID(), tenantId, fingerprint, source, email, name, kind.name(), period, payDate,
+                        amount, currency, externalKey, reason, candidates, Timestamp.from(at), Timestamp.from(at))
+                .update();
+    }
+
+    /** The same payment matched an employee at last: it is no longer waiting. */
+    void resolveUnmatched(String fingerprint) {
+        jdbc.sql("delete from payroll_unmatched where fingerprint = ?").param(fingerprint).update();
+    }
+
+    List<PayrollUnmatched> unmatched() {
+        return jdbc.sql("""
+                select id, source, reported_email, reported_name, kind, period, pay_date, amount, currency,
+                       external_key, reason, candidates, first_seen, last_seen
+                from payroll_unmatched order by last_seen desc, id limit 1000""")
+                .query((rs, i) -> new PayrollUnmatched(rs.getObject("id", UUID.class), rs.getString("source"),
+                        rs.getString("reported_email"), rs.getString("reported_name"), rs.getString("kind"),
+                        rs.getObject("period", LocalDate.class), rs.getObject("pay_date", LocalDate.class),
+                        rs.getBigDecimal("amount"), rs.getString("currency"), rs.getString("external_key"),
+                        rs.getString("reason"), rs.getInt("candidates"), rs.getTimestamp("first_seen").toInstant(),
+                        rs.getTimestamp("last_seen").toInstant()))
+                .list();
+    }
+
     private void seen(UUID tenantId) {
         jdbc.sql("insert into payroll_tenant (tenant_id) values (?) on conflict do nothing").param(tenantId).update();
     }

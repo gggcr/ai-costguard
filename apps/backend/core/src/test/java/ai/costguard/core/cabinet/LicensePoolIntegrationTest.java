@@ -35,7 +35,7 @@ class LicensePoolIntegrationTest extends PostgresTestSupport {
     private final UUID tenant = UUID.randomUUID();
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
                         .claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
     }
@@ -55,7 +55,14 @@ class LicensePoolIntegrationTest extends PostgresTestSupport {
 
     private String department;
 
+    /** An employee with the CostGuard account an onboarding or an invitation leaves, linked to their Keycloak sub. */
     private String employee(String email) throws Exception {
+        String id = employeeRecord(email);
+        login(tenant, email, "employee", UUID.fromString(id));
+        return id;
+    }
+
+    private String employeeRecord(String email) throws Exception {
         if (department == null) {
             department = create("/api/v1/departments", "{\"name\":\"%s\"}".formatted(UUID.randomUUID()));
         }

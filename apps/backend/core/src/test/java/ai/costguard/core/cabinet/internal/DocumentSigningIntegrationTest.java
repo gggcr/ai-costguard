@@ -22,6 +22,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,9 +44,16 @@ class DocumentSigningIntegrationTest extends PostgresTestSupport {
     private final UUID tenant = UUID.randomUUID();
 
     private RequestPostProcessor as(String email, String... roles) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
+        return jwt().jwt(j -> j.subject(subject(tenant, email)).claim("tenant_id", tenant.toString()).claim("email", email).claim("name", email)
                         .claim("realm_access", Map.of("roles", List.of(roles))))
                 .authorities(realmRoles);
+    }
+
+    /** The employer and the accountant are CostGuard users: their signing keys belong to their accounts. */
+    @BeforeEach
+    void theEmployerAndTheAccountantHaveAccounts() {
+        login(tenant, "boss@corp.ru", "owner", null);
+        login(tenant, "acc@corp.ru", "finance", null);
     }
 
     private RequestPostProcessor owner() {
@@ -65,7 +73,14 @@ class DocumentSigningIntegrationTest extends PostgresTestSupport {
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
     }
 
+    /** An employee with the CostGuard account an onboarding or an invitation leaves, linked to their Keycloak sub. */
     private String employee(String email) throws Exception {
+        String id = employeeRecord(email);
+        login(tenant, email, "employee", UUID.fromString(id));
+        return id;
+    }
+
+    private String employeeRecord(String email) throws Exception {
         String department = create("/api/v1/departments", "{\"name\":\"%s\"}".formatted(UUID.randomUUID()));
         return create("/api/v1/employees", "{\"name\":\"Иванов Иван\",\"email\":\"%s\",\"departmentId\":\"%s\",\"position\":\"x\"}"
                 .formatted(email, department));

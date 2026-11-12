@@ -44,8 +44,10 @@ class InvitationIntegrationTest extends PostgresTestSupport {
                 .authorities(realmRoles);
     }
 
+    /** The invitee's token: its sub is the id of the Keycloak account the invitation created, as Keycloak issues it. */
     private RequestPostProcessor invitee(String email, String role) {
-        return jwt().jwt(j -> j.claim("tenant_id", tenant.toString()).claim("email", email)
+        String sub = ACCOUNTS.stored(email).orElseThrow().id();
+        return jwt().jwt(j -> j.subject(sub).claim("tenant_id", tenant.toString()).claim("email", email)
                         .claim("email_verified", true).claim("realm_access", Map.of("roles", List.of(role))))
                 .authorities(realmRoles);
     }
@@ -121,6 +123,32 @@ class InvitationIntegrationTest extends PostgresTestSupport {
                 .andExpect(jsonPath("$.code").value("invitation_accepted"));
         mvc.perform(post("/api/v1/invitations/" + id + "/resend").with(as("owner")))
                 .andExpect(status().isConflict());
+    }
+
+    /**
+     * The e-mail spoofing finding of 2026-11-12: a confirmed token with the invitee's address, but of another Keycloak
+     * account, does not accept the invitation nor take the invited account.
+     */
+    @Test
+    void anotherKeycloakAccountWithTheInviteesEmailAcceptsNothing() throws Exception {
+        String email = email();
+        String id = invited(email, "finance");
+        ACCOUNTS.confirm(email);
+        RequestPostProcessor other = jwt().jwt(j -> j.subject("kc-other-" + UUID.randomUUID())
+                        .claim("tenant_id", tenant.toString()).claim("email", email).claim("email_verified", true)
+                        .claim("realm_access", Map.of("roles", List.of("finance"))))
+                .authorities(realmRoles);
+
+        mvc.perform(get("/api/v1/departments").with(other)).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/invitations").with(as("owner")))
+                .andExpect(jsonPath("$[?(@.id == '%s')].status".formatted(id)).value("sent"));
+        mvc.perform(get("/api/v1/notifications/settings").with(other)).andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/v1/departments").with(invitee(email, "finance"))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/invitations").with(as("owner")))
+                .andExpect(jsonPath("$[?(@.id == '%s')].status".formatted(id)).value("accepted"));
+        mvc.perform(get("/api/v1/notifications/settings").with(invitee(email, "finance")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.email").value(email));
     }
 
     @Test
