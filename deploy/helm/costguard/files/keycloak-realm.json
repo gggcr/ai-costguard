@@ -142,6 +142,7 @@
   "sslRequired": "external",
   "registrationAllowed": false,
   "bruteForceProtected": true,
+  "passwordPolicy": "length(12) and maxLength(128) and notUsername and notEmail and passwordHistory(3)",
   "otpPolicyType": "totp",
   "otpPolicyAlgorithm": "HmacSHA1",
   "otpPolicyDigits": 6,

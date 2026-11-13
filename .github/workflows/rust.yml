@@ -4,21 +4,25 @@ on:
     paths: ['contracts/**']
   pull_request:
     paths: ['contracts/**']
+# The token of every job reads the code and nothing more
+permissions:
+  contents: read
+
 jobs:
   notary-contract:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: contracts/notary } }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: rustup toolchain install 1.95 --profile minimal --component clippy,rustfmt --target wasm32-unknown-unknown
       - run: rustup override set 1.95
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with: { workspaces: contracts/notary }
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --locked
       - run: cargo build --locked --release --target wasm32-unknown-unknown
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: notary-wasm
           path: contracts/notary/target/wasm32-unknown-unknown/release/costguard_notary.wasm

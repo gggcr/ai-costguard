@@ -4,13 +4,17 @@ on:
     paths: ['apps/frontend/**', 'libs/js/**', 'schemas/openapi/**']
   pull_request:
     paths: ['apps/frontend/**', 'libs/js/**', 'schemas/openapi/**']
+# The token of every job reads the code and nothing more
+permissions:
+  contents: read
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/frontend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: '24', cache: npm, cache-dependency-path: apps/frontend/package-lock.json }
       - run: npm ci
       - run: npm run typecheck
@@ -18,8 +22,8 @@ jobs:
   js-sdk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: '24' }
       # The SDK has no dependencies; the compiler comes from the frontend's lock file.
       - run: npm ci

@@ -62,3 +62,21 @@ approval_id, `decided_by_account`. Сравнить с `approver_hash` (у v2) �
 `GET /api/v1/payroll/unmatched` (owner, finance): строка, причина (`ambiguous employee`, `employee not found`,
 `bad email`), число кандидатов. Исправить данные (адрес сотрудника, адрес в источнике) и загрузить ту же выплату
 снова: строка уйдёт сама. Срок хранения строк пока не установлен (ADR 0070, открытый вопрос).
+
+## 6. Требования к паролю в Keycloak (аудит 2026-11-13)
+
+В `deploy/helm/costguard/files/keycloak-realm.json` добавлена политика паролей: не короче 12 и не длиннее 128
+символов, не совпадает с логином и почтой, не повторяет три последних. Как и раздел 1, в работающий realm это само не
+попадает: Realm settings → Authentication → Policies → Password policy, добавить те же правила → Save, или Admin
+REST API `PUT /admin/realms/costguard` с `"passwordPolicy": "length(12) and maxLength(128) and notUsername and
+notEmail and passwordHistory(3)"`. Действует при следующей смене пароля; пароль, который ядро выдаёт новому
+сотруднику (ADR 0059), — 14 символов, проходит. Локальный realm (`infra/keycloak`) не меняется: демо-вход
+`demo` / `demo`.
+
+## 7. Метрики и проверки здоровья на отдельном порту (аудит 2026-11-13)
+
+Ядро и шлюз в Helm отдают `/actuator` (health, prometheus) на порту `managementPort` (9090, переменная
+`MANAGEMENT_SERVER_PORT`). Service публикует его как `management` для проб и ServiceMonitor, ingress — только порт
+`http`, поэтому `https://<api>/actuator/prometheus` снаружи отвечает 404. Проверка после выкладки:
+`curl -s -o /dev/null -w '%{http_code}' https://<api-host>/actuator/prometheus` — 404; в Prometheus цели
+`costguard-core` и `costguard-gateway` — up. Локальный стенд (`make demo`) не меняется: там актуатор на основном порту.

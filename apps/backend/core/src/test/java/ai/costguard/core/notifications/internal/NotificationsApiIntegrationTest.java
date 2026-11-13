@@ -97,9 +97,17 @@ class NotificationsApiIntegrationTest extends PostgresTestSupport {
         findings.detected(tenant, "fp-" + UUID.randomUUID(), "r", "B", "d", BigDecimal.ONE, null, null);
         eventually(() -> unread(tenant) == 2);
 
+        // a service account neither marks nor clears the company's feed (finding of 2026-11-13)
+        mvc.perform(put("/api/v1/notifications/read").with(as(tenant, "connector"))).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/notifications").with(as(tenant, "importer"))).andExpect(status().isForbidden());
+        assertThat(unread(tenant)).isEqualTo(2);
+
         mvc.perform(put("/api/v1/notifications/read").with(as(tenant, "auditor"))).andExpect(status().isNoContent());
         assertThat(unread(tenant)).isZero();
-        mvc.perform(delete("/api/v1/notifications").with(as(tenant, "auditor"))).andExpect(status().isNoContent());
+        // an auditor reads, but clearing is for those who run the company
+        mvc.perform(delete("/api/v1/notifications").with(as(tenant, "auditor"))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/notifications").with(as(tenant, "auditor"))).andExpect(jsonPath("$.items", hasSize(2)));
+        mvc.perform(delete("/api/v1/notifications").with(as(tenant, "owner"))).andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/notifications").with(as(tenant, "auditor"))).andExpect(jsonPath("$.items", hasSize(0)));
     }
 

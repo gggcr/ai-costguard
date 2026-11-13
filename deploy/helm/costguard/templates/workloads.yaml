@@ -56,6 +56,12 @@ spec:
             {{- if not $svc.plain }}
             {{- include "costguard.env" $ | nindent 12 }}
             {{- end }}
+            {{- if eq ($svc.probes | default "") "spring" }}
+            # Actuator (health, metrics) on its own port: the Service publishes it for probes and Prometheus,
+            # the ingress only the http port, so /actuator/prometheus is not on the internet (finding of 2026-11-13)
+            - name: MANAGEMENT_SERVER_PORT
+              value: {{ $.Values.managementPort | quote }}
+            {{- end }}
             {{- range $k, $v := $svc.env }}
             - name: {{ $k }}
               value: {{ tpl (toString $v) $ | quote }}
@@ -64,17 +70,21 @@ spec:
           ports:
             - name: http
               containerPort: {{ .port }}
+            {{- if eq ($svc.probes | default "") "spring" }}
+            - name: management
+              containerPort: {{ $.Values.managementPort }}
+            {{- end }}
           {{- end }}
           {{- if eq ($svc.probes | default "") "spring" }}
           startupProbe:
-            httpGet: { path: /actuator/health/liveness, port: http }
+            httpGet: { path: /actuator/health/liveness, port: management }
             failureThreshold: 30
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /actuator/health/liveness, port: http }
+            httpGet: { path: /actuator/health/liveness, port: management }
             periodSeconds: 10
           readinessProbe:
-            httpGet: { path: /actuator/health/readiness, port: http }
+            httpGet: { path: /actuator/health/readiness, port: management }
             periodSeconds: 5
           {{- else if eq ($svc.probes | default "") "http" }}
           livenessProbe:
@@ -115,6 +125,11 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    {{- if eq ($svc.probes | default "") "spring" }}
+    - name: management
+      port: {{ $.Values.managementPort }}
+      targetPort: management
+    {{- end }}
 {{- end }}
 {{- if gt (int $svc.replicas) 1 }}
 ---
@@ -166,7 +181,7 @@ spec:
       app.kubernetes.io/part-of: costguard
       app.kubernetes.io/name: {{ $name }}
   endpoints:
-    - port: http
+    - port: {{ if eq ($svc.probes | default "") "spring" }}management{{ else }}http{{ end }}
       path: {{ $svc.metrics }}
       interval: 30s
 {{- end }}

@@ -31,6 +31,10 @@ external:
 
 secretName: costguard-secrets
 
+# Spring services serve /actuator (health, metrics) on this port: probes and Prometheus use it inside the cluster,
+# the ingress publishes only the http port.
+managementPort: 9090
+
 # One entry per workload. `http` services get a Service, probes and metrics; the others are Kafka consumers.
 # `plain` services get neither the secret nor the shared environment (the web client needs none of it); `writable`
 # lists the directories they write to under a read-only root. Values of `env` may use templates ({{ .Release.Namespace }}).

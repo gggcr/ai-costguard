@@ -164,6 +164,10 @@ class VendorAccess {
             if ("scim".equals(a.kind()) && (a.scimUrl() == null || (!newToken && !hadToken))) {
                 throw CabinetProblem.ACCESS_SETTINGS.failure();
             }
+            // a vendor on the internet, not a service of the network (a host that does not resolve yet may be saved)
+            if ("scim".equals(a.kind()) && scim.internal(a.scimUrl(), false)) {
+                throw CabinetProblem.SCIM_ADDRESS_INTERNAL.failure();
+            }
             if (newToken && !sealer.available()) {
                 throw CabinetProblem.ENCRYPTION_KEY_MISSING.failure();
             }

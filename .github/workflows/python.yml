@@ -4,6 +4,10 @@ on:
     paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'tests/**', 'pyproject.toml', 'uv.lock']
   pull_request:
     paths: ['apps/python/**', 'libs/python/**', 'schemas/**', 'infra/airflow/**', 'tools/**', 'tests/**', 'pyproject.toml', 'uv.lock']
+# The token of every job reads the code and nothing more
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -12,7 +16,7 @@ jobs:
       # the row policies test must not skip here (ADR 0035)
       CLICKHOUSE_ACCESS_TEST: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # schemas/clickhouse/tests run against it; without CLICKHOUSE_TEST_URL they are skipped. Started here and not as
       # a service: it needs the config of the checkout that lets the default user manage access (row policies).
       - name: ClickHouse
@@ -26,7 +30,7 @@ jobs:
           done
           docker logs clickhouse
           exit 1
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with: { version: '0.5.11' }
       - run: uv python install 3.12
       - run: uv sync --frozen --all-packages
@@ -64,7 +68,7 @@ jobs:
     env:
       BACKUP_TEST_PG_ADMIN: postgresql://postgres:p@127.0.0.1:5432/postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: pg_dump 17 (the version of Managed PostgreSQL) and age
         run: |
           sudo apt-get update
@@ -72,7 +76,7 @@ jobs:
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y --no-install-recommends postgresql-client-17
           echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with: { version: '0.5.11' }
       - run: uv python install 3.12
       - run: uv sync --frozen --all-packages
@@ -91,7 +95,7 @@ jobs:
           - { name: connectors, module: costguard_connectors }
           - { name: reports, module: costguard_reports }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: docker build -f apps/python/${{ matrix.service.name }}/Dockerfile -t costguard-${{ matrix.service.name }}:${{ github.sha }} .
       - run: docker run --rm costguard-${{ matrix.service.name }}:${{ github.sha }} python -c "import ${{ matrix.service.module }}; from costguard_common import schemas; assert schemas.topics()"
       # the commands start with the python of the venv where it lies in the image, or they cannot run at all

@@ -84,8 +84,10 @@ export function downloadText(fileName: string, content: string, mime = 'text/pla
 
 export function toCsv(rows: (string | number)[][]): string {
   const esc = (v: string | number) => {
-    const s = String(v);
-    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    // Текст, который Excel принял бы за формулу (=, +, -, @, таб, возврат каретки в начале), начинается с апострофа:
+    // название подписки «=HYPERLINK(...)» в выгрузке не должно выполниться у того, кто её откроет
+    const s = typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : String(v);
+    return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   // Точка с запятой и BOM: так Excel в русской локали откроет файл без мастера импорта
   return '﻿' + rows.map((r) => r.map(esc).join(';')).join('\n');

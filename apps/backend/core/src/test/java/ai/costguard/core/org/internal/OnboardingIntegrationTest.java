@@ -193,6 +193,56 @@ class OnboardingIntegrationTest extends PostgresTestSupport {
         assertThat(MICROSOFT.disabled).contains(email);
     }
 
+    /**
+     * Finding of 2026-11-13: an it_admin puts the owner's address (another case) on an employee card and dismisses
+     * that employee. Only the employee's own logins close; the owner's account and mailbox stay.
+     */
+    @Test
+    void aDismissalNeverClosesTheAccessOfWhoeverHasTheCardAddress() throws Exception {
+        connect(true);
+        String dept = department();
+        String ownerBody = add(dept, null, true).andExpect(status().isCreated()).andReturn().getResponse()
+                .getContentAsString();
+        String ownerEmail = JsonPath.read(ownerBody, "$.email");
+        String ownerAccount = ACCOUNTS.stored(ownerEmail).orElseThrow().id();
+
+        String body = mvc.perform(post("/api/v1/employees/onboarding").with(as("owner"))
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"firstName":"Пётр","lastName":"Ершов","departmentId":"%s","position":"Менеджер",
+                         "email":null,"createMailbox":true}
+                        """.formatted(dept))).andExpect(status().isCreated()).andReturn().getResponse()
+                .getContentAsString();
+        String email = JsonPath.read(body, "$.email");
+        String employee = JsonPath.read(body, "$.employee.id");
+        String account = ACCOUNTS.stored(email).orElseThrow().id();
+
+        mvc.perform(put("/api/v1/employees/{id}", employee).with(as("it_admin"))
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"name":"Пётр Ершов","email":"%s","departmentId":"%s","position":"Менеджер"}
+                                """.formatted(ownerEmail.toUpperCase(java.util.Locale.ROOT), dept)))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/employees/{id}/dismissal", employee).with(as("it_admin")))
+                .andExpect(status().isOk());
+
+        JdbcClient db = JdbcClient.create(superuserAppDataSource());
+        String outcome = null;
+        for (int i = 0; i < 100 && outcome == null; i++) {
+            outcome = db.sql("select action from activity_entry where tenant_id = ? and target_id = ? "
+                            + "and action like 'employee.access.%'")
+                    .params(tenant, UUID.fromString(employee)).query(String.class).optional().orElse(null);
+            if (outcome == null) {
+                Thread.sleep(100);
+            }
+        }
+        // the dismissed person's own logins are closed
+        assertThat(ACCOUNTS.disabled).contains(account);
+        assertThat(MICROSOFT.disabled).contains(email);
+        // the owner's are not, and a person is asked to look at the shared address
+        assertThat(ACCOUNTS.disabled).doesNotContain(ownerAccount);
+        assertThat(MICROSOFT.disabled).doesNotContain(ownerEmail);
+        assertThat(outcome).isEqualTo("employee.access.close_failed");
+    }
+
     @Test
     void theMicrosoftSignInLogMarksLicensesUsed() throws Exception {
         connect(false);

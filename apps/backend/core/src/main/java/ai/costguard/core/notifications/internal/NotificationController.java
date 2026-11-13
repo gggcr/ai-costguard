@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +25,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping("/api/v1/notifications")
 @Tag(name = "Notifications", description = "The company feed, its live stream, e-mail and Telegram")
 class NotificationController {
+
+    private static final String PEOPLE = "hasAnyRole('owner', 'finance', 'it_admin', 'agent_owner', 'auditor')";
 
     private final NotificationService service;
     private final NotificationStream stream;
@@ -73,7 +76,10 @@ class NotificationController {
         return stream.open(TenantClaim.of(jwt));
     }
 
+    // The feed is the company's: people mark it read, service accounts (connector, importer, forecast) do not, and
+    // only those who run the company clear it, not an auditor (finding of 2026-11-13).
     @PutMapping("/{id}/read")
+    @PreAuthorize(PEOPLE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Mark one as read")
     void read(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
@@ -81,6 +87,7 @@ class NotificationController {
     }
 
     @PutMapping("/read")
+    @PreAuthorize(PEOPLE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Mark all as read")
     void readAll(@AuthenticationPrincipal Jwt jwt) {
@@ -88,6 +95,7 @@ class NotificationController {
     }
 
     @DeleteMapping
+    @PreAuthorize("hasAnyRole('owner', 'finance', 'it_admin')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Clear the feed")
     void clear(@AuthenticationPrincipal Jwt jwt) {

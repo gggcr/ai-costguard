@@ -10,6 +10,12 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  # The ingress and the web client's nginx take 50 MB (a scanned invoice, a document); Spring's own default is 1 MB,
+  # which refused such a file. The parsers bound what they unpack themselves (PayrollFile).
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:50MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:52MB}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/costguard}
     username: ${DB_USER:costguard}

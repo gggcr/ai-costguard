@@ -7,11 +7,15 @@ RETRAIN new rows. Until then the agent is scored by the rules alone. Both give a
 
 All agents' models form one bundle, saved as a new version of the registered model `costguard-anomaly-risk`
 whenever enough changed, and loaded on start, so a restart does not forget what was learned. The bundle is a
-pickle: it is read only from the platform's own MLflow, never from a client.
+pickle, and unpickling runs code: so it is signed with HMAC-SHA256 under ANOMALY_MODEL_KEY and a bundle whose
+signature does not match is never unpickled (finding of 2026-11-13: whoever could write to MLflow could run code in
+the detector). Without the key the models are neither saved nor loaded; they learn again after a restart.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import pickle
 import tempfile
@@ -95,9 +99,29 @@ class Store(Protocol):
     def save(self, payload: bytes, metrics: dict[str, float]) -> str: ...
 
 
+MAGIC = b"CGAM1"
+
+
+def seal(body: bytes, key: bytes) -> bytes:
+    """MAGIC, the HMAC-SHA256 of the pickle under the key, the pickle."""
+    return MAGIC + hmac.new(key, body, hashlib.sha256).digest() + body
+
+
+def unseal(payload: bytes, key: bytes) -> bytes:
+    """The pickle of a bundle this key sealed; ValueError for anything else, which is then never unpickled."""
+    head = len(MAGIC) + hashlib.sha256().digest_size
+    if len(payload) < head or not payload.startswith(MAGIC):
+        raise ValueError("the risk models bundle is not signed")
+    body = payload[head:]
+    if not hmac.compare_digest(payload[len(MAGIC):head], hmac.new(key, body, hashlib.sha256).digest()):
+        raise ValueError("the signature of the risk models bundle does not match")
+    return body
+
+
 class Models:
-    def __init__(self, store: Store | None = None, save_every: int = 5000) -> None:
+    def __init__(self, store: Store | None = None, save_every: int = 5000, key: bytes | None = None) -> None:
         self.store = store
+        self.key = key or None
         self.save_every = save_every
         self.agents: dict[uuid.UUID, AgentModels] = {}
         self.changes = 0
@@ -124,19 +148,26 @@ class Models:
     def save(self) -> str | None:
         if self.store is None:
             return None
+        if self.key is None:
+            log.warning("ANOMALY_MODEL_KEY is not set: the risk models are not saved")
+            self.changes = 0
+            return None
         metrics = {"agents": float(len(self.agents)),
                    "agents_with_forest": float(sum(1 for m in self.agents.values() if m.forest is not None)),
                    "agents_trained": float(sum(1 for m in self.agents.values() if m.trained))}
-        self.version = self.store.save(self.dump(), metrics)
+        self.version = self.store.save(seal(self.dump(), self.key), metrics)
         self.changes = 0
         log.info("Risk models saved as version %s of %s", self.version, REGISTERED)
         return self.version
 
     def load(self) -> bool:
+        if self.store is not None and self.key is None:
+            log.warning("ANOMALY_MODEL_KEY is not set: the risk models are not loaded")
+            return False
         payload = self.store.load() if self.store is not None else None
         if payload is None:
             return False
-        self.restore(payload)
+        self.restore(unseal(payload, self.key))
         return True
 
 

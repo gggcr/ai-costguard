@@ -35,6 +35,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /** Доступ у поставщика (ADR 0065): a seat follows in Microsoft Entra or through the vendor's SCIM API. */
 @SpringBootTest(properties = {"costguard.registration.rate-limit.per-ip=4",
         "costguard.registration.rate-limit.per-email=3",
+        // the test SCIM server listens on 127.0.0.1 (ScimClientTest checks the guard itself)
+        "costguard.access.scim-private-addresses=true",
         "costguard.connections.encryption-key=" + VendorAccessIntegrationTest.KEY})
 @AutoConfigureMockMvc
 @Import({RegistrationIntegrationTest.Fakes.class, OnboardingIntegrationTest.Graph.class})

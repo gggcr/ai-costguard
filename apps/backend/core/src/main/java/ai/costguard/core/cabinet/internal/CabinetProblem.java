@@ -32,6 +32,8 @@ enum CabinetProblem implements ProblemCode {
     PURCHASE_AMOUNT(HttpStatus.BAD_REQUEST, "The amount cannot be negative"),
     SHADOW_NOT_FOUND(HttpStatus.NOT_FOUND, "Report not found"),
     SHADOW_COLUMNS(HttpStatus.BAD_REQUEST, "The sheet needs the columns: сервис, сумма, дата; назначение is optional"),
+    SCIM_ADDRESS_INTERNAL(HttpStatus.BAD_REQUEST, "The SCIM address must be the vendor's on the internet, not an "
+            + "address inside the network"),
     ACCESS_SETTINGS(HttpStatus.BAD_REQUEST,
             "Entra needs the enterprise app; SCIM needs the https address and, the first time, the token"),
     ENCRYPTION_KEY_MISSING(HttpStatus.SERVICE_UNAVAILABLE,

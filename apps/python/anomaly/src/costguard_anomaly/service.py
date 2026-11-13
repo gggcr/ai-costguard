@@ -37,6 +37,8 @@ SIGNAL_MINUTES = 10
 
 class AnomalySettings(Settings):
     mlflow_tracking_uri: str = ""
+    # signs the risk models kept in MLflow; without it they are neither saved nor loaded
+    anomaly_model_key: str = ""
     anomaly_time_zone: str = "Europe/Moscow"
     anomaly_models_save_every: int = 5000
 
@@ -63,7 +65,8 @@ def signal_key(s: Score) -> str:
 def scorer(settings: AnomalySettings, store: modelling.Store | None = None) -> Scorer:
     if store is None and settings.mlflow_tracking_uri:
         store = modelling.MlflowStore(settings.mlflow_tracking_uri)
-    models = modelling.Models(store, settings.anomaly_models_save_every)
+    models = modelling.Models(store, settings.anomaly_models_save_every,
+                              settings.anomaly_model_key.encode() if settings.anomaly_model_key else None)
     try:
         if models.load():
             log.info("Risk models of %d agents loaded from MLflow", len(models.agents))

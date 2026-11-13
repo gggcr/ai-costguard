@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import fastavro
+import pytest
 
 from costguard_anomaly import models, risk, scorer, service
 from costguard_common import schemas
@@ -222,14 +223,62 @@ def test_only_the_rules_count_until_the_models_learned_the_agent():
 def test_the_models_are_saved_and_loaded_as_versions():
     store = models.MemoryStore()
     rng = random.Random(2)
-    m = models.Models(store, save_every=100)
+    m = models.Models(store, save_every=100, key=b"k3y")
     for _ in range(models.MIN_TRAIN + 10):
         m.score_and_learn(AGENT, normal_features(rng))
     assert len(store.versions) >= 2
     assert store.versions[-1][1]["agents_with_forest"] == 1.0
 
-    again = service.scorer(service.AnomalySettings(), store)
+    again = service.scorer(service.AnomalySettings(anomaly_model_key="k3y"), store)
     assert again.models.of(AGENT).forest is not None
+
+
+class Boom:
+    """Unpickling it would run code: what a bundle planted in MLflow could do."""
+
+    ran = False
+
+    def __reduce__(self):
+        return (Boom.mark, ())
+
+    @staticmethod
+    def mark():
+        Boom.ran = True
+        return {}
+
+
+def test_a_bundle_not_signed_with_the_key_is_never_unpickled():
+    import pickle
+
+    store = models.MemoryStore()
+    m = models.Models(store, key=b"k3y")
+    planted = [pickle.dumps(Boom()),  # no signature at all
+               models.seal(pickle.dumps(Boom()), b"other key"),  # signed with another key
+               models.seal(pickle.dumps({}), b"k3y")[:-1] + pickle.dumps(Boom())]  # signed, then swapped
+    for payload in planted:
+        store.save(payload, {})
+        with pytest.raises(ValueError):
+            m.load()
+    assert not Boom.ran
+
+    # the detector starts with the rules alone rather than with that bundle
+    scorer = service.scorer(service.AnomalySettings(anomaly_model_key="k3y"), store)
+    assert scorer.models.agents == {} and not Boom.ran
+
+
+def test_without_the_key_the_models_are_neither_saved_nor_loaded():
+    store = models.MemoryStore()
+    store.save(models.seal(pickle_of_nothing(), b"k3y"), {})
+    m = models.Models(store, save_every=1)
+    assert m.load() is False
+    m.score_and_learn(AGENT, normal_features(random.Random(1)))
+    assert len(store.versions) == 1
+
+
+def pickle_of_nothing() -> bytes:
+    import pickle
+
+    return pickle.dumps({})
 
 
 class FakeClient:

@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import javax.xml.stream.XMLInputFactory;
@@ -52,6 +53,10 @@ final class PayrollFile {
 
     /** Every row of the first sheet of an .xlsx, or of a .csv, as text cells. */
     static List<List<String>> table(String fileName, byte[] content) {
+        if (content.length > MAX_FILE) {
+            // a pay sheet or a list of purchases is far smaller; uploads take up to 50 MB for scanned documents
+            throw CabinetProblem.PAYROLL_FILE.failure();
+        }
         return fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? xlsx(content) : csv(content);
     }
 
@@ -147,6 +152,7 @@ final class PayrollFile {
         List<List<String>> rows = new ArrayList<>();
         String[] lines = text.split("\r?\n");
         char separator = lines.length > 0 && lines[0].contains(";") ? ';' : ',';
+        long count = 0;
         for (String line : lines) {
             List<String> cells = new ArrayList<>();
             StringBuilder cur = new StringBuilder();
@@ -161,11 +167,17 @@ final class PayrollFile {
                         quoted = !quoted;
                     }
                 } else if (c == separator && !quoted) {
+                    if (++count > MAX_CELLS) {
+                        throw CabinetProblem.PAYROLL_FILE.failure();
+                    }
                     cells.add(cur.toString());
                     cur.setLength(0);
                 } else {
                     cur.append(c);
                 }
+            }
+            if (++count > MAX_CELLS) {
+                throw CabinetProblem.PAYROLL_FILE.failure();
             }
             cells.add(cur.toString());
             rows.add(cells);
@@ -175,24 +187,62 @@ final class PayrollFile {
 
     // --- XLSX: shared strings and the first worksheet ---
 
+    /** The largest pay sheet or purchase list taken, as uploaded. */
+    static final int MAX_FILE = 10 * 1024 * 1024;
+    /** One part of a workbook (shared strings, a sheet) is at most this much XML once unpacked. */
+    static final int MAX_PART = 20 * 1024 * 1024;
+    /** Everything unpacked from one workbook: a small zip must not unpack into the heap (a zip bomb). */
+    static final long MAX_UNPACKED = 48L * 1024 * 1024;
+    static final int MAX_ENTRIES = 10_000;
+    /** XFD, the last column of Excel. */
+    static final int MAX_COLUMN = 16_383;
+    static final int MAX_CELLS = 2_000_000;
+
+    private static final Pattern SHEET = Pattern.compile("xl/worksheets/sheet(\\d{1,9})\\.xml");
+
+    /**
+     * Reads the shared strings and the sheet with the smallest number; every other entry is skipped unread. A part
+     * over {@link #MAX_PART}, more than {@link #MAX_UNPACKED} unpacked in all or more than {@link #MAX_ENTRIES}
+     * entries is not a pay sheet: 400.
+     */
     private static List<List<String>> xlsx(byte[] content) {
-        Map<String, byte[]> parts = new HashMap<>();
+        byte[] strings = null;
+        byte[] sheet = null;
+        long sheetNumber = Long.MAX_VALUE;
+        long unpacked = 0;
+        int entries = 0;
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(content))) {
             for (ZipEntry e; (e = zip.getNextEntry()) != null; ) {
-                if (e.getName().equals("xl/sharedStrings.xml") || e.getName().matches("xl/worksheets/sheet\\d+\\.xml")) {
-                    parts.put(e.getName(), zip.readNBytes(20 * 1024 * 1024));
+                if (++entries > MAX_ENTRIES) {
+                    throw CabinetProblem.PAYROLL_FILE.failure();
+                }
+                var m = SHEET.matcher(e.getName());
+                boolean isStrings = e.getName().equals("xl/sharedStrings.xml");
+                long number = m.matches() ? Long.parseLong(m.group(1)) : Long.MAX_VALUE;
+                if (!isStrings && number >= sheetNumber) {
+                    continue;
+                }
+                byte[] part = zip.readNBytes(MAX_PART + 1);
+                unpacked += part.length;
+                if (part.length > MAX_PART || unpacked > MAX_UNPACKED) {
+                    throw CabinetProblem.PAYROLL_FILE.failure();
+                }
+                if (isStrings) {
+                    strings = part;
+                } else {
+                    sheet = part;
+                    sheetNumber = number;
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw CabinetProblem.PAYROLL_FILE.failure();
         }
-        String sheet = parts.keySet().stream().filter(n -> n.startsWith("xl/worksheets/")).sorted().findFirst()
-                .orElseThrow(CabinetProblem.PAYROLL_FILE::failure);
+        if (sheet == null) {
+            throw CabinetProblem.PAYROLL_FILE.failure();
+        }
         try {
-            List<String> strings = parts.containsKey("xl/sharedStrings.xml")
-                    ? sharedStrings(parts.get("xl/sharedStrings.xml")) : List.of();
-            return cells(parts.get(sheet), strings);
-        } catch (XMLStreamException e) {
+            return cells(sheet, strings == null ? List.of() : sharedStrings(strings));
+        } catch (XMLStreamException | NumberFormatException e) {
             throw CabinetProblem.PAYROLL_FILE.failure();
         }
     }
@@ -236,6 +286,7 @@ final class PayrollFile {
         XMLStreamReader r = xml(bytes);
         List<String> row = null;
         int column = 0;
+        long cells = 0;
         String type = null;
         StringBuilder value = null;
         while (r.hasNext()) {
@@ -246,6 +297,10 @@ final class PayrollFile {
                     case "c" -> {
                         String ref = r.getAttributeValue(null, "r");
                         column = ref == null ? (row == null ? 0 : row.size()) : columnOf(ref);
+                        if (column > MAX_COLUMN) {
+                            // a cell far to the right would pad the row with millions of empty cells
+                            throw CabinetProblem.PAYROLL_FILE.failure();
+                        }
                         type = r.getAttributeValue(null, "t");
                         value = new StringBuilder();
                     }
@@ -259,6 +314,10 @@ final class PayrollFile {
                     if ("s".equals(type) && !v.isBlank()) {
                         int i = Integer.parseInt(v.strip());
                         v = i < strings.size() ? strings.get(i) : "";
+                    }
+                    cells += Math.max(1, column + 1 - row.size());
+                    if (cells > MAX_CELLS) {
+                        throw CabinetProblem.PAYROLL_FILE.failure();
                     }
                     while (row.size() < column) {
                         row.add("");
@@ -277,8 +336,11 @@ final class PayrollFile {
     private static int columnOf(String ref) {
         int n = 0;
         for (char c : ref.toCharArray()) {
-            if (Character.isLetter(c)) {
+            if (c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z') {
                 n = n * 26 + (Character.toUpperCase(c) - 'A' + 1);
+                if (n > MAX_COLUMN + 1) {
+                    return Integer.MAX_VALUE;
+                }
             } else {
                 break;
             }
