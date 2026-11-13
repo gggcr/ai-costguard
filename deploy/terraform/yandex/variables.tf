@@ -39,9 +39,20 @@ variable "cidr" {
   default = "10.20.0.0/16"
 }
 
+# Versions Yandex Cloud still offers (checked 2026-11-14: Kubernetes 1.32-1.35, ClickHouse LTS 26.3 and 26.8)
 variable "kubernetes_version" {
   type    = string
-  default = "1.30"
+  default = "1.33"
+}
+
+variable "kafka_version" {
+  type    = string
+  default = "3.9"
+}
+
+variable "clickhouse_version" {
+  type    = string
+  default = "26.8"
 }
 
 variable "node_cores" {

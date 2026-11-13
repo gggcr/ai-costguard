@@ -226,7 +226,7 @@ resource "yandex_mdb_kafka_cluster" "main" {
   network_id  = yandex_vpc_network.main.id
   subnet_ids  = [for s in yandex_vpc_subnet.main : s.id]
   config {
-    version          = "3.6"
+    version          = var.kafka_version
     brokers_count    = 1
     zones            = local.zones
     schema_registry  = true
@@ -269,7 +269,7 @@ resource "yandex_mdb_clickhouse_cluster" "main" {
   name        = local.name
   environment = var.environment == "prod" ? "PRODUCTION" : "PRESTABLE"
   network_id  = yandex_vpc_network.main.id
-  version     = "24.8"
+  version     = var.clickhouse_version
   clickhouse {
     resources {
       resource_preset_id = var.clickhouse_preset

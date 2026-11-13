@@ -62,3 +62,11 @@ __pycache__/
 
 # Скачанный чужой архив (roadmap.sh), к проекту не относится
 developer-roadmap-master/
+
+# Terraform: working files, state (holds generated passwords), local values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+deploy/terraform/**/backend.tf
+deploy/terraform/**/*.tfvars
