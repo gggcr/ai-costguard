@@ -1,10 +1,79 @@
 # AI CostGuard
 
-A single platform that controls a company's digital spending: it decides on each paid AI agent
-operation before the money is spent, and turns invoices, exports and access logs into findings with
-estimated savings.
+**Одна платформа, которая держит под контролем цифровые расходы компании:** ИИ-агентов, подписки на ПО, лицензии и
+технику сотрудников.
 
-Architecture: [Miro board](https://miro.com/app/board/uXjVES7uH9I=/).
+![Обзор: расходы компании, находки аудита, согласования](docs/screenshots/dashboard.png)
+
+## Зачем это нужно
+
+Компании платят за ИИ-агентов, которые сами тратят деньги через API, и за десятки подписок, где половина мест никому не
+нужна. Узнают об этом из счёта в конце месяца. CostGuard решает это в двух контурах:
+
+- **Контур А, ИИ-агенты.** Каждый платный вызов агента проходит через шлюз CostGuard *до* оплаты: проверяются бюджет,
+  мандат (что агенту разрешено), риск и петли. Крупную операцию подтверждает человек, а подтверждение записывается в
+  блокчейн NEAR, чтобы его нельзя было подделать задним числом.
+- **Контур Б, ПО и техника.** CostGuard читает счета, выгрузки из 1С и банка, журналы входов Microsoft 365 и сам находит
+  переплаты: дубли подписок, свободные места, лицензии уволенных, технику, которую не вернули. У каждой находки есть
+  оценка экономии в рублях.
+
+**Для кого:** финансовый директор и ИТ видят все цифровые расходы в одном месте; сотрудник в своём кабинете просит
+лицензию или технику, видит свои документы, отпуска и зарплату и подписывает документы электронной подписью.
+
+| Находки аудита с экономией | Подписки: сколько мест реально используется |
+|---|---|
+| ![Находки](docs/screenshots/findings.png) | ![Подписки](docs/screenshots/subscriptions.png) |
+
+| Кабинет сотрудника |
+|---|
+| ![Кабинет сотрудника](docs/screenshots/employee-cabinet.png) |
+
+## Как запустить у себя
+
+Нужны **Docker Desktop**, **JDK 25**, **Python 3.12+** с [uv](https://docs.astral.sh/uv/) и **Node.js 22+**.
+
+```bash
+git clone -b goidochka https://github.com/gggcr/ai-costguard.git
+cd ai-costguard
+cp .env.example .env
+make demo-lite     # кабинет, оргструктура, подписки и находки; около 2 ГБ памяти Docker
+make demo          # всё целиком, со шлюзом агентов, Kafka и ClickHouse; нужно 8 ГБ памяти Docker и больше
+```
+
+Откройте http://localhost:3000 → «Войти по логину и паролю»:
+- `demo` / `demo` — владелец компании ООО «Ромашка», видит всё;
+- `ivanov` / `demo` — сотрудник, видит только свой кабинет.
+
+Находки аудита появляются примерно через минуту после запуска.
+
+**На Windows без `make`** (PowerShell, из папки проекта) то же, что `make demo-lite`:
+
+```powershell
+./gradlew :core:bootJar
+docker compose -f infra/local/docker-compose.yml --env-file .env up -d --wait postgres keycloak mailpit s3
+$env:KAFKA_LISTENERS="false"; $env:CORE_CLICKHOUSE_URL=""; $env:CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC"
+docker compose -f infra/local/docker-compose.yml --env-file .env --profile demo up -d --build --no-deps --wait core frontend
+python tools/seed/seed.py | docker compose -f infra/local/docker-compose.yml --env-file .env exec -T postgres psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
+```
+
+Если порт 5432 занят своим PostgreSQL, перед командами задайте другой: `$env:POSTGRES_PORT="15432"` (на Windows
+порты 5433–5532 часто зарезервированы системой).
+
+## Что внутри
+
+Java 25 и Spring Boot 4 (ядро и шлюз агентов), Python (разбор счетов и выгрузок, детектор аномалий, нотариус NEAR,
+коннекторы к 1С, Bitrix24, Яндекс 360, Microsoft 365 и др.), React + TypeScript (веб-интерфейс), Rust (смарт-контракт
+NEAR), PostgreSQL с изоляцией компаний на уровне строк, Kafka, ClickHouse, Redis, Keycloak, Kubernetes (Helm, Argo CD,
+Terraform для Yandex Cloud). Решения описаны в [docs/adr](docs/adr) (71 запись), инструкции по эксплуатации — в
+[docs/runbooks](docs/runbooks). Архитектура: [доска Miro](https://miro.com/app/board/uXjVES7uH9I=/).
+
+Безопасность: аудит 2026-11-12/13 ([ADR 0069](docs/adr/0069-identity-by-keycloak-subject.md),
+[0070](docs/adr/0070-payroll-matching.md), [0071](docs/adr/0071-security-audit-2026-11-13.md)), на каждую найденную
+дыру есть тест.
+
+---
+
+*Ниже — для разработчиков.*
 
 ## Java part of the monorepo
 
@@ -61,7 +130,7 @@ make demo-lite          # на слабой машине: только каби�
 
 | Что | Где |
 |---|---|
-| API ядра (Swagger) | http://localhost:8080/swagger-ui.html |
+| Описание API ядра (OpenAPI) | [schemas/openapi/core.yaml](schemas/openapi/core.yaml); вживую — http://localhost:8080/v3/api-docs |
 | Шлюз агентов | http://localhost:8081 |
 | Keycloak | http://localhost:8180, вход `demo` / `demo` |
 | Фронтенд | http://localhost:3000, вход `demo` / `demo` (Keycloak) |

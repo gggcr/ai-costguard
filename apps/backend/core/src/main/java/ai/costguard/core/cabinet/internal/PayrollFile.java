@@ -150,10 +150,12 @@ final class PayrollFile {
     private static List<List<String>> csv(byte[] content) {
         String text = new String(content, StandardCharsets.UTF_8).replace("\uFEFF", "");
         List<List<String>> rows = new ArrayList<>();
-        String[] lines = text.split("\r?\n");
-        char separator = lines.length > 0 && lines[0].contains(";") ? ';' : ',';
+        // line by line, not text.split(): a file of millions of short lines must not become millions of strings first
+        java.util.Iterator<String> lines = text.lines().iterator();
+        String first = lines.hasNext() ? lines.next() : null;
+        char separator = first != null && first.contains(";") ? ';' : ',';
         long count = 0;
-        for (String line : lines) {
+        for (String line = first; line != null; line = lines.hasNext() ? lines.next() : null) {
             List<String> cells = new ArrayList<>();
             StringBuilder cur = new StringBuilder();
             boolean quoted = false;
@@ -182,6 +184,10 @@ final class PayrollFile {
             cells.add(cur.toString());
             rows.add(cells);
         }
+        // as split() did: blank lines at the end are not rows
+        while (!rows.isEmpty() && rows.get(rows.size() - 1).size() == 1 && rows.get(rows.size() - 1).get(0).isEmpty()) {
+            rows.remove(rows.size() - 1);
+        }
         return rows;
     }
 
@@ -196,7 +202,7 @@ final class PayrollFile {
     static final int MAX_ENTRIES = 10_000;
     /** XFD, the last column of Excel. */
     static final int MAX_COLUMN = 16_383;
-    static final int MAX_CELLS = 2_000_000;
+    static final int MAX_CELLS = 500_000;
 
     private static final Pattern SHEET = Pattern.compile("xl/worksheets/sheet(\\d{1,9})\\.xml");
 

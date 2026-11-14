@@ -54,6 +54,6 @@ demo:
 demo-lite:
 	./gradlew :core:bootJar
 	$(COMPOSE) up -d --wait postgres keycloak mailpit s3
-	KAFKA_LISTENERS=false CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC" $(COMPOSE) --profile demo up -d --build --no-deps --wait core frontend
+	KAFKA_LISTENERS=false CORE_CLICKHOUSE_URL= CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC" $(COMPOSE) --profile demo up -d --build --no-deps --wait core frontend
 	$(MAKE) seed
 	@echo "Frontend http://localhost:3000 (demo / demo — owner, ivanov / demo — employee)"

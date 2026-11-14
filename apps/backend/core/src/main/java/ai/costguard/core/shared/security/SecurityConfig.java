@@ -42,6 +42,8 @@ class SecurityConfig {
         tokens.setJwtGrantedAuthoritiesConverter(realmRoles);
         return http
                 .authorizeHttpRequests(auth -> auth
+                        // An error of a request that was let in is shown as it is, not as 403 for the error page
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/prometheus", "/v3/api-docs/**").permitAll()
                         // Self-registration and payment provider notices come without a token (ADR 0036, 0038)
                         .requestMatchers(HttpMethod.POST, "/api/v1/registrations",

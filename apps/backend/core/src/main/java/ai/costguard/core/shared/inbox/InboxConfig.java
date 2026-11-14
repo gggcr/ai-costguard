@@ -46,8 +46,13 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "costguard.events.kafka.enabled", havingValue = "true", matchIfMissing = true)
 class InboxConfig {
 
+    /**
+     * {@code spring.kafka.listener.auto-startup} reaches only Spring Boot's own factory, so this one reads it too:
+     * {@code make demo-lite} runs the core without Kafka (ADR 0064), and a listener that starts there stops the core.
+     */
     @Bean
-    ConcurrentKafkaListenerContainerFactory<String, byte[]> inboxListenerFactory(KafkaProperties properties) {
+    ConcurrentKafkaListenerContainerFactory<String, byte[]> inboxListenerFactory(KafkaProperties properties,
+            @Value("${spring.kafka.listener.auto-startup:true}") boolean autoStartup) {
         var config = properties.buildConsumerProperties();
         config.put("key.deserializer", StringDeserializer.class);
         config.put("value.deserializer", ByteArrayDeserializer.class);
@@ -55,6 +60,7 @@ class InboxConfig {
         config.put("auto.offset.reset", "earliest");
         var factory = new ConcurrentKafkaListenerContainerFactory<String, byte[]>();
         factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(config));
+        factory.setAutoStartup(autoStartup);
         return factory;
     }
 

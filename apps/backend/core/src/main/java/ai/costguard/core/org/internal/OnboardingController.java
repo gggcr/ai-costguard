@@ -45,7 +45,13 @@ class OnboardingController {
     @GetMapping("/me/sign-in")
     @Operation(summary = "My way of logging in: a code of an authenticator app instead of the password")
     MySignIn signIn(@AuthenticationPrincipal Jwt jwt) {
-        IdentityProvider.SignIn s = accounts.signIn(jwt.getSubject());
+        IdentityProvider.SignIn s;
+        try {
+            s = accounts.signIn(jwt.getSubject());
+        } catch (IdentityProvider.Unavailable e) {
+            // 503, not an unhandled error: that went to /error, which an employee may not read, and said 403
+            throw CompanyLoginProblem.LOGIN_UNAVAILABLE.failure();
+        }
         return new MySignIn(s.otp(), s.otpFirst(), issuer + "/account/account-security/signing-in");
     }
 
@@ -53,6 +59,10 @@ class OnboardingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Ask the code of the authenticator app first, the password stays another way")
     void otpFirst(@AuthenticationPrincipal Jwt jwt) {
-        accounts.preferOtp(jwt.getSubject());
+        try {
+            accounts.preferOtp(jwt.getSubject());
+        } catch (IdentityProvider.Unavailable e) {
+            throw CompanyLoginProblem.LOGIN_UNAVAILABLE.failure();
+        }
     }
 }

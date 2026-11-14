@@ -165,7 +165,8 @@ services:
       KEYCLOAK_REGISTRATION_CLIENT_SECRET: ${KEYCLOAK_REGISTRATION_CLIENT_SECRET:-costguard-registration-local}
       # Payments succeed without money here (ADR 0038); never in staging or prod.
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-dummy}
-      CLICKHOUSE_URL: http://clickhouse:8123
+      # make demo-lite sets CORE_CLICKHOUSE_URL to empty: without ClickHouse the journal answers at once, empty
+      CLICKHOUSE_URL: ${CORE_CLICKHOUSE_URL-http://clickhouse:8123}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-costguard}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-costguard}
       # Findings appear a minute after the seed instead of an hour.
