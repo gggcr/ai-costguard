@@ -5,6 +5,7 @@ import { useStore } from '../api/store';
 import { ROLE_LABEL, useAuth, type Section } from '../auth/auth';
 import { Forbidden, Icon, Toasts } from './ui';
 import { fmtRelative } from '../lib';
+import { LangSwitch } from '../i18n/LangSwitch';
 
 const NAV: { section: Section; to: string; label: string; group: string }[] = [
   { section: 'cabinet', to: '/cabinet', label: 'Мой кабинет', group: '' },
@@ -208,6 +209,7 @@ export function Layout() {
             <button className={`live-toggle ${live ? 'on' : ''}`} onClick={() => setLive(!live)} title={mode === 'demo' ? 'Имитация событий SSE от ядра: новые операции агентов, согласования' : 'Живые уведомления ядра (SSE) и обновление журнала операций'}>
               <span className="live-dot" aria-hidden="true" /> {live ? 'Поток событий: вкл' : 'Поток событий: выкл'}
             </button>
+            <LangSwitch />
             <NotificationsBell />
             <UserMenu />
           </div>

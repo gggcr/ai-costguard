@@ -393,3 +393,9 @@ details summary { cursor: pointer; color: var(--accent); margin-top: 8px; }
 .sign-state { display: inline-flex; flex-direction: column; gap: 2px; }
 .sign-parties { border: 0; padding: 0; margin: 8px 0 12px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
 .sign-parties .check { display: inline-flex; gap: 6px; align-items: center; }
+
+/* RU | EN switch */
+.lang-switch { display: inline-flex; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); }
+.lang-switch button { border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; cursor: pointer; }
+.lang-switch button.on { background: var(--accent, #2563eb); color: #fff; }
+.login-brand .lang-switch { margin-left: auto; }

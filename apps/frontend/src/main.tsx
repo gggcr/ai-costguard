@@ -22,6 +22,9 @@ import { NotFound, Notifications } from './pages/Notifications';
 import { Cabinet } from './pages/Cabinet';
 import { People } from './pages/People';
 import './styles.css';
+import { initLang } from './i18n';
+
+initLang();
 
 function Protected() {
   const { user } = useAuth();

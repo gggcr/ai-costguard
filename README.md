@@ -129,12 +129,22 @@ Build and test the contract: `cd contracts/notary && cargo test && cargo build -
 
 1. Install Docker Desktop (give it 8 GB of memory), JDK 25, Python 3.12+ with uv, Node.js 22+.
 2. Run `cp .env.example .env && make demo`. The first run builds the images, 5–10 minutes.
-3. Open http://localhost:3000, choose "Войти по логину и паролю" and sign in as `demo` / `demo` (company owner): you
-   see the spend overview, audit findings with savings in rubles, subscriptions with unused seats, and approvals.
+3. Open http://localhost:3000, press **EN** in the top right corner, choose "Sign in with login and password" and
+   sign in as `demo` / `demo` (company owner): you see the spend overview, audit findings with savings in rubles,
+   subscriptions with unused seats, and approvals.
 4. Sign in as `ivanov` / `demo` (an employee): you see only the employee cabinet.
 
-The UI is in Russian: the first customers are Russian companies (1C, Bitrix24, Yandex 360 connectors). In `make demo`
-the notary service is off, because it needs a funded NEAR key; the NEAR part is shown by `tools/near/demo.py` above.
+On a machine with less than 8 GB for Docker, `make demo-lite` (about 2 GB) runs the same UI without the agent gateway,
+Kafka and ClickHouse.
+
+**RU / EN.** The interface is written in Russian (the first customers are Russian companies: 1C, Bitrix24, Yandex 360
+connectors); the RU | EN switch translates all of it, including what arrives later: finding titles from the core,
+names, and text people type in. Interface strings come from a dictionary (`apps/frontend/src/i18n`); other text is
+translated in the browser by Chrome's on-device Translator API when it is available, otherwise names are
+transliterated and unknown free text stays in Russian. Nothing is sent to a translation service.
+
+In `make demo` the notary service is off, because it needs a funded NEAR key; the NEAR part is shown by
+`tools/near/demo.py` above.
 
 ### Disclosure
 

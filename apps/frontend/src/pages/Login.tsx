@@ -5,6 +5,7 @@ import { ROLE_HINT, ROLE_LABEL, useAuth } from '../auth/auth';
 import { completeLogin, currentClaims, login as startLogin } from '../auth/oidc';
 import { api } from '../api/http';
 import { Button, Icon } from '../components/ui';
+import { LangSwitch } from '../i18n/LangSwitch';
 
 export function Login() {
   const { mode } = useStore();
@@ -51,6 +52,7 @@ function KeycloakLogin() {
         <div className="brand login-brand">
           <span className="brand-mark"><Icon name="policies" size={20} /></span>
           <span>AI CostGuard</span>
+          <LangSwitch />
         </div>
         <h1>Вход</h1>
         {busy && <p className="muted">Проверяем вход…</p>}
@@ -82,6 +84,7 @@ function DemoLogin() {
         <div className="brand login-brand">
           <span className="brand-mark"><Icon name="policies" size={20} /></span>
           <span>AI CostGuard</span>
+          <LangSwitch />
         </div>
         <h1>Вход</h1>
         <p className="muted">В рабочей версии здесь будет перенаправление на Keycloak (realm <code>costguard</code>). В прототипе выберите демо-пользователя: от роли зависят меню и доступные действия.</p>
