@@ -1,0 +1,88 @@
+{
+  "contract_id": "costguard-notary-11141117.testnet",
+  "batch_id": "71202bce-a705-5696-8bb1-5bec541027cf",
+  "merkle_root": "21f722590a38bc22eba727288b5546bc1250b2c50eb21f5a2bc70446ae65f898",
+  "anchor_tx": "HYmCtmZCcBpmPJkhjRo3sGCfe1XoJgeP5adxdEaMwTrh",
+  "receipts": [
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 120,
+        "decision": "allowed",
+        "seq": 1
+      },
+      "hash": "c609fdb4ef0a750ef394b1f507002fd1314348d64213616e61a6c9793d64c1d1"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 157,
+        "decision": "allowed",
+        "seq": 2
+      },
+      "hash": "f2a7d7d1f79a9060efac412ff1cf8f8e77698eb244c606cd606515199fe921da"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 194,
+        "decision": "allowed",
+        "seq": 3
+      },
+      "hash": "c22f8dca2c6590a21127e41f0cf34d4e557e6137c22eb91387f806c2eee9e873"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 231,
+        "decision": "allowed",
+        "seq": 4
+      },
+      "hash": "c270323afd087331e657e324948809bc7403753b1d76ea6f0385ec440aabb0fc"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 268,
+        "decision": "allowed",
+        "seq": 5
+      },
+      "hash": "47596f6fd5afd4063af841d61b0dbfdb068ee77a6c3bf32a9367639a631a868c"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 305,
+        "decision": "allowed",
+        "seq": 6
+      },
+      "hash": "1d494e833180bb4dfdd39f6176e149a647f47ff00075ea1fc45dfae9b80ab0d6"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 342,
+        "decision": "allowed",
+        "seq": 7
+      },
+      "hash": "ff7d59b86d92a53fe73e64b01f9bb32ba2570bf3c8b8f720ce95863ac1e98968"
+    },
+    {
+      "entry": {
+        "agent": "procurement-bot",
+        "vendor": "api.openai.com",
+        "amount_rub": 379,
+        "decision": "allowed",
+        "seq": 8
+      },
+      "hash": "7773a28f51a95e48182ff08587bf2378e6227a05bebdc3dba2bb8d501b7b2b6e"
+    }
+  ]
+}

@@ -3,6 +3,8 @@
 **Одна платформа, которая держит под контролем цифровые расходы компании:** ИИ-агентов, подписки на ПО, лицензии и
 технику сотрудников.
 
+> **English summary for NEAR HACKATHON judges** is [below](#near-hackathon-english). Русское описание идёт дальше.
+
 ![Обзор: расходы компании, находки аудита, согласования](docs/screenshots/dashboard.png)
 
 ## Зачем это нужно
@@ -79,6 +81,72 @@ Terraform для Yandex Cloud). Решения описаны в [docs/adr](docs
 Безопасность: аудит 2026-11-12/13 ([ADR 0069](docs/adr/0069-identity-by-keycloak-subject.md),
 [0070](docs/adr/0070-payroll-matching.md), [0071](docs/adr/0071-security-audit-2026-11-13.md)), на каждую найденную
 дыру есть тест.
+
+## NEAR HACKATHON (English)
+
+**What it is.** AI CostGuard controls a company's digital spend: what its AI agents pay for through APIs, and what it
+pays for software subscriptions, licenses and employee hardware.
+
+**The problem.** AI agents spend money on their own, and the company finds out from the invoice at the end of the
+month. When something goes wrong, the only record of who allowed a payment is CostGuard's own database, which the
+operator of CostGuard can edit.
+
+**What NEAR does here.** Every paid agent call goes through the CostGuard gateway *before* it is paid: budget, mandate
+(what the agent may buy), risk and loop checks. Each decision is written to a hash-chained journal. The NEAR contract
+`contracts/notary` (Rust, near-sdk) makes that journal provable outside CostGuard:
+
+- `anchor` stores the Merkle root of each batch of journal receipts; anyone can call `verify` with a receipt and its
+  Merkle proof, without trusting CostGuard. A receipt changed after the fact no longer verifies.
+- `register_mandate` stores the hash of every published version of an agent's mandate, so the rules an agent ran under
+  cannot be rewritten later.
+- `confirm_operation` records that a person approved a large payment (the approver is a salted hash, never a name).
+- No company id or personal data goes on chain, only hashes ([ADR 0006](docs/adr/0006-notary-near.md),
+  [ADR 0009](docs/adr/0009-notary-mandates-confirmations.md)).
+
+The off-chain notary service is `apps/python/notary` (Kafka consumer, its own JSON-RPC client and ed25519 signer).
+
+### Try the NEAR part (2 minutes, no Docker, no NEAR key)
+
+Contract on NEAR testnet: **[`costguard-notary-11141117.testnet`](https://testnet.nearblocks.io/address/costguard-notary-11141117.testnet)**.
+Anchor of a demo batch: [transaction](https://testnet.nearblocks.io/txns/HYmCtmZCcBpmPJkhjRo3sGCfe1XoJgeP5adxdEaMwTrh);
+a human approval of a large payment: [transaction](https://testnet.nearblocks.io/txns/97yVpCpQQwnkQFfV8HCn9U5vYmStpcDrSD4ADbfyEgoA).
+The batch with its receipts is in [tools/near/demo-batch.json](tools/near/demo-batch.json).
+
+```bash
+git clone -b goidochka https://github.com/gggcr/ai-costguard.git && cd ai-costguard
+uv sync --all-packages
+uv run python tools/near/demo.py verify
+```
+
+You will see the anchored batch read from the contract, a link to its transaction in the testnet explorer,
+`contract verify -> True` for a real receipt, and `contract verify -> False` for the same receipt with the amount
+changed to 1 RUB. With your own testnet account added as a notary, `demo.py anchor` and `demo.py confirm` write new
+transactions (`NEAR_ACCOUNT_ID`, `NEAR_PRIVATE_KEY`, `NEAR_CONTRACT_ID`).
+
+Build and test the contract: `cd contracts/notary && cargo test && cargo build --target wasm32-unknown-unknown --release`.
+
+### Try the whole product
+
+1. Install Docker Desktop (give it 8 GB of memory), JDK 25, Python 3.12+ with uv, Node.js 22+.
+2. Run `cp .env.example .env && make demo`. The first run builds the images, 5–10 minutes.
+3. Open http://localhost:3000, choose "Войти по логину и паролю" and sign in as `demo` / `demo` (company owner): you
+   see the spend overview, audit findings with savings in rubles, subscriptions with unused seats, and approvals.
+4. Sign in as `ivanov` / `demo` (an employee): you see only the employee cabinet.
+
+The UI is in Russian: the first customers are Russian companies (1C, Bitrix24, Yandex 360 connectors). In `make demo`
+the notary service is off, because it needs a funded NEAR key; the NEAR part is shown by `tools/near/demo.py` above.
+
+### Disclosure
+
+- **Built during the hackathon.** The repository starts on 2026-11-02 (first commit `bd505f5`); there is no
+  pre-hackathon code and no earlier version of this product on NEAR or any other chain.
+- **AI-generated code.** Most of the code was written with AI coding assistants (Claude Code) under the team's
+  direction and review.
+- **Libraries and templates.** No project template. Main libraries: near-sdk (Rust) for the contract; Spring Boot,
+  Spring Cloud Gateway and Spring Modulith (Java); Python services on confluent-kafka, httpx and cryptography; React, Vite and TypeScript for the UI; PostgreSQL, Kafka, ClickHouse, Redis, Keycloak, SeaweedFS.
+  Exact versions: `gradle/libs.versions.toml`, `uv.lock`, `apps/frontend/package-lock.json`,
+  `contracts/notary/Cargo.lock`.
+- **License:** [MIT](LICENSE).
 
 ---
 
