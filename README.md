@@ -30,34 +30,43 @@
 
 ## Как запустить у себя
 
-Нужны **Docker Desktop**, **JDK 25**, **Python 3.12+** с [uv](https://docs.astral.sh/uv/) и **Node.js 22+**.
+Нужны **Docker Desktop** (дайте ему **8 ГБ памяти** или больше: Settings → Resources), **JDK 25**, **Python 3.12+** с
+[uv](https://docs.astral.sh/uv/) и **Node.js 22+**.
 
 ```bash
 git clone -b goidochka https://github.com/gggcr/ai-costguard.git
 cd ai-costguard
 cp .env.example .env
-make demo-lite     # кабинет, оргструктура, подписки и находки; около 2 ГБ памяти Docker
-make demo          # всё целиком, со шлюзом агентов, Kafka и ClickHouse; нужно 8 ГБ памяти Docker и больше
+make demo
 ```
 
+`make demo` поднимает всё: ядро, шлюз ИИ-агентов, Kafka, ClickHouse, Keycloak, разбор счетов, и заливает демо-компанию
+ООО «Ромашка». Первый запуск собирает образы, это 5–10 минут.
+
 Откройте http://localhost:3000 → «Войти по логину и паролю»:
-- `demo` / `demo` — владелец компании ООО «Ромашка», видит всё;
+- `demo` / `demo` — владелец компании, видит всё;
 - `ivanov` / `demo` — сотрудник, видит только свой кабинет.
 
 Находки аудита появляются примерно через минуту после запуска.
 
-**На Windows без `make`** (PowerShell, из папки проекта) то же, что `make demo-lite`:
+**На Windows без `make`** (PowerShell, из папки проекта) — те же шаги:
 
 ```powershell
-./gradlew :core:bootJar
-docker compose -f infra/local/docker-compose.yml --env-file .env up -d --wait postgres keycloak mailpit s3
-$env:KAFKA_LISTENERS="false"; $env:CORE_CLICKHOUSE_URL=""; $env:CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC"
-docker compose -f infra/local/docker-compose.yml --env-file .env --profile demo up -d --build --no-deps --wait core frontend
+./gradlew :core:bootJar :gateway:bootJar
+docker compose -f infra/local/docker-compose.yml --env-file .env --profile demo up -d --build --wait
+$env:CLICKHOUSE_URL="http://localhost:8123"; $env:CLICKHOUSE_USER="costguard"; $env:CLICKHOUSE_PASSWORD="costguard"
+$env:CLICKHOUSE_ACCESS_MANAGEMENT="1"; $env:CLICKHOUSE_READER_PASSWORD="costguard-reader"
+$env:KAFKA_BROKERS="kafka:29092"; $env:SCHEMA_REGISTRY_URL="http://schema-registry:8081"
+uv run python schemas/clickhouse/apply.py
 python tools/seed/seed.py | docker compose -f infra/local/docker-compose.yml --env-file .env exec -T postgres psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
 ```
 
 Если порт 5432 занят своим PostgreSQL, перед командами задайте другой: `$env:POSTGRES_PORT="15432"` (на Windows
 порты 5433–5532 часто зарезервированы системой).
+
+Компьютер слабый (меньше 8 ГБ для Docker)? Есть облегчённый режим `make demo-lite`, около 2 ГБ: кабинет сотрудника,
+оргструктура, подписки и находки работают, а шлюза агентов, Kafka и ClickHouse в нём нет, поэтому журнал операций и
+графики трат агентов пустые. Его шаги без `make` — в цели `demo-lite` в [Makefile](Makefile).
 
 ## Что внутри
 
