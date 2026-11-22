@@ -8,6 +8,7 @@ import java.util.UUID;
 /**
  * What the gateway must know about an agent. Published after every change, in full, because the topic it feeds
  * is compacted. {@code mandateVersion} is null while the mandate was never published: the gateway denies then.
+ * {@code timeZone} is the company's (ADR 0073): the hours of the mandate are its hours.
  */
 public record AgentStateChanged(
         UUID tenantId,
@@ -17,5 +18,6 @@ public record AgentStateChanged(
         Integer mandateVersion,
         String mandateExpression,
         BigDecimal approvalThreshold,
-        Instant updatedAt) {
+        Instant updatedAt,
+        String timeZone) {
 }

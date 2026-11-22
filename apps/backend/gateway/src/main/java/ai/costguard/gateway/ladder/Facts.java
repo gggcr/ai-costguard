@@ -5,7 +5,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-/** The facts a mandate or rule sees. Time and weekday are in the configured company time zone. */
+/** The facts a mandate or rule sees. Time and weekday are in the company's time zone (ADR 0073). */
 public final class Facts {
 
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");

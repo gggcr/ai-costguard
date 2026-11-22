@@ -28,7 +28,7 @@ public class MandateFilter implements CheckStep {
         if (op.estimatedCost() == null) {
             return Mono.just(new StepResult.Refuse(403, "price_unknown"));
         }
-        OperationFacts facts = Facts.of(op, zone);
+        OperationFacts facts = Facts.of(op, zoneOf(op));
         if (!rules.mandateAllows(op.agent().getMandateExpression(), facts)) {
             return Mono.just(new StepResult.Refuse(403, "policy_denied"));
         }
@@ -40,6 +40,19 @@ public class MandateFilter implements CheckStep {
             }
             case ALLOW -> new StepResult.Pass();
         });
+    }
+
+    /** The company's zone, as the core sent it with the agent (ADR 0073); the configured one for an older core. */
+    ZoneId zoneOf(Operation op) {
+        String named = op.agent().getTimeZone();
+        if (named != null && named.contains("/")) {
+            try {
+                return ZoneId.of(named);
+            } catch (java.time.DateTimeException e) {
+                return zone;
+            }
+        }
+        return zone;
     }
 
     @Override

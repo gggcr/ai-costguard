@@ -63,7 +63,7 @@ final class EventMapping {
                 .setTenantId(e.tenantId()).setAgentId(e.agentId()).setVirtualKeyHashes(e.virtualKeyHashes())
                 .setSuspended(e.suspended()).setMandateVersion(e.mandateVersion())
                 .setMandateExpression(e.mandateExpression()).setApprovalThreshold(money(e.approvalThreshold()))
-                .setUpdatedAt(e.updatedAt()).build());
+                .setUpdatedAt(e.updatedAt()).setTimeZone(e.timeZone()).build());
     }
 
     static Message of(PolicySnapshotPublished e) {

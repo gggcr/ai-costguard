@@ -55,7 +55,7 @@ class AvroPublisherTest {
 
     private static AgentStateChanged state() {
         return new AgentStateChanged(UUID.randomUUID(), UUID.randomUUID(), List.of("hash"), false, 3,
-                "cost <= 1.0", new BigDecimal("300"), Instant.parse("2026-11-07T10:00:00Z"));
+                "cost <= 1.0", new BigDecimal("300"), Instant.parse("2026-11-07T10:00:00Z"), "America/Chicago");
     }
 
     @Test

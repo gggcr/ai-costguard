@@ -1,6 +1,7 @@
 package ai.costguard.core.org.internal;
 
 import ai.costguard.core.org.AmountsInCurrency;
+import ai.costguard.core.org.CompanyTimeZoneChanged;
 import ai.costguard.core.org.DismissalChecklistSection;
 import ai.costguard.core.org.EmployeeDismissed;
 import ai.costguard.core.plans.Limit;
@@ -67,7 +68,12 @@ class OrgService {
         if (settings.timeZone() != null && TimeZones.parse(settings.timeZone()).isEmpty()) {
             throw OrgProblem.TIME_ZONE_UNKNOWN.failure();
         }
+        String zoneBefore = org.company().map(Company::timeZone).orElse(null);
         org.saveCompany(tenantId, settings);
+        String zoneAfter = org.company().map(Company::timeZone).orElse(null);
+        if (zoneAfter != null && !zoneAfter.equals(zoneBefore)) {
+            events.publishEvent(new CompanyTimeZoneChanged(tenantId, zoneAfter));
+        }
         events.publishEvent(ActionTaken.of(tenantId, "company.saved", "company", tenantId,
                 Map.of("currency", settings.currency())));
         return org.company().orElseThrow(OrgProblem.COMPANY_NOT_FOUND::failure);

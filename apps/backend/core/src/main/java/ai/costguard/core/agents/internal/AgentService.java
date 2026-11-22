@@ -4,6 +4,7 @@ import ai.costguard.core.plans.Limit;
 import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.agents.AgentStateChanged;
 import ai.costguard.core.agents.MandatePublished;
+import ai.costguard.core.org.CompanyTimeZoneChanged;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import ai.costguard.core.shared.activity.ActionTaken;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,7 +123,7 @@ class AgentService {
         agents.deleteAgent(id);
         events.publishEvent(ActionTaken.of(actor.tenantId(), "agent.deleted", "agent", id, Map.of()));
         events.publishEvent(new AgentStateChanged(actor.tenantId(), agent.id(), List.of(), true, null, null, null,
-                clock.instant()));
+                clock.instant(), null));
     }
 
     @Transactional(readOnly = true)
@@ -243,6 +245,13 @@ class AgentService {
                 String.join(",", d.vendors()), "hours", d.hours());
     }
 
+    /** The company named another time zone: the gateway checks the hours of every mandate in it (ADR 0073). */
+    @ApplicationModuleListener
+    void on(CompanyTimeZoneChanged e) {
+        session.bind(e.tenantId());
+        agents.agents().forEach(agent -> publish(e.tenantId(), agent));
+    }
+
     /** A mandate never published has no terms, so the gateway gets no expression and denies the agent. */
     private void publish(UUID tenantId, Agent agent) {
         Optional<PublishedTerms> terms = agents.publishedTerms(agent.mandateId());
@@ -251,6 +260,7 @@ class AgentService {
                 terms.map(PublishedTerms::version).orElse(null),
                 terms.map(PublishedTerms::expression).orElse(null),
                 terms.map(PublishedTerms::approvalThreshold).orElse(null),
-                clock.instant()));
+                clock.instant(),
+                directory.company().map(c -> c.zone().getId()).orElse(null)));
     }
 }

@@ -67,6 +67,15 @@
         "type": "long",
         "logicalType": "timestamp-millis"
       }
+    },
+    {
+      "name": "time_zone",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "The company's time zone, IANA: the hours of the mandate are its hours (ADR 0073). Null: the gateway's costguard.gateway.time-zone."
     }
   ]
 }
