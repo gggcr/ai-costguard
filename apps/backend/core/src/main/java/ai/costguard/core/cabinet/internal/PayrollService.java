@@ -3,6 +3,7 @@ package ai.costguard.core.cabinet.internal;
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.WrittenValues;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -168,10 +169,16 @@ class PayrollService {
         List<PayrollImport.Skipped> skipped = new ArrayList<>();
         List<ReportedPayment> good = new ArrayList<>();
         List<Integer> lines = new ArrayList<>();
-        for (PayrollFile.Row row : PayrollFile.read(fileName, content)) {
-            LocalDate payDate = PayrollFile.date(row.payDate());
-            LocalDate period = row.period().isBlank() ? payDate : PayrollFile.date(row.period());
-            BigDecimal amount = PayrollFile.amount(row.amount());
+        List<PayrollFile.Row> rows = PayrollFile.read(fileName, content);
+        var company = PayrollFile.style(fileName, employees.company().map(EmployeeDirectory.CompanyCard::country)
+                .orElse(null));
+        var amounts = WrittenValues.amounts(rows.stream().map(PayrollFile.Row::amount).toList(), company);
+        var days = WrittenValues.dates(rows.stream().flatMap(r -> java.util.stream.Stream.of(r.payDate(), r.period()))
+                .toList(), company);
+        for (PayrollFile.Row row : rows) {
+            LocalDate payDate = PayrollFile.date(row.payDate(), days);
+            LocalDate period = row.period().isBlank() ? payDate : PayrollFile.date(row.period(), days);
+            BigDecimal amount = PayrollFile.amount(row.amount(), amounts);
             if (payDate == null || period == null) {
                 skipped.add(new PayrollImport.Skipped(row.line(), "bad date"));
                 continue;

@@ -85,6 +85,12 @@ def reader(settings: IngestSettings, files: storage.Files | None = None,
     return documents.Reader(engine, from_text)
 
 
+def company_style(message: dict) -> values.Style:
+    """How the company of a file writes numbers and dates, as the core says (ADR 0072). A message of an older core
+    does not say, and nothing is assumed."""
+    return values.style_of(message.get("country"))
+
+
 def result_of(file: dict, parsed: pipeline.Parsed | None, failure: str | None) -> dict:
     return {
         "file_id": str(file["file_id"]), "tenant_id": str(file["tenant_id"]),
@@ -117,9 +123,10 @@ class Handler:
 
     def on_file(self, file: dict) -> list[pipeline.Message]:
         key = str(file["file_id"])
+        style = company_style(file)
         try:
             parsed = pipeline.parse(file["file_name"], self._files.get(file["s3_key"]),
-                                    self._read(file["tenant_id"], file["s3_key"]))
+                                    self._read(file["tenant_id"], file["s3_key"]), style)
         except tables.Unsupported as e:
             return [pipeline.Message(RESULTS, key, result_of(file, None, str(e)))]
         except FileNotFoundError:
@@ -130,13 +137,14 @@ class Handler:
         """Rows of an accepted file. A file that cannot be read writes nothing and is logged: reading the message
         again would fail the same way and stop every file behind it."""
         vendor = accepted.get("vendor_id")
+        style = company_style(accepted)
         try:
             messages, skipped = pipeline.accept(
                 uuid.UUID(str(accepted["tenant_id"])), uuid.UUID(str(accepted["file_id"])), accepted["s3_key"],
                 accepted["file_name"], None if vendor is None else uuid.UUID(str(vendor)), accepted["mapping"],
                 accepted["corrections"], self._files.get(accepted["s3_key"]),
                 read=self._read(accepted["tenant_id"], accepted["s3_key"]), intermediaries=self._intermediaries,
-                services=self._services)
+                services=self._services, style=style)
         except (tables.Unsupported, FileNotFoundError) as e:
             log.error("Accepted file %s not written: %s", accepted["file_id"], e or "not in storage")
             return []

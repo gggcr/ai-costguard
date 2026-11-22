@@ -12,6 +12,8 @@
     {"name": "mapping", "type": {"type": "map", "values": "string"}},
     {"name": "corrections", "type": {"type": "map", "values": {"type": "map", "values": "string"}},
      "doc": "Row number (as text) to field to the value people entered."},
-    {"name": "accepted_at", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+    {"name": "accepted_at", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "country", "type": ["null", "string"], "default": null,
+     "doc": "The company's country, ISO 3166-1 alpha-2: how its people write numbers and dates (ADR 0072)."}
   ]
 }

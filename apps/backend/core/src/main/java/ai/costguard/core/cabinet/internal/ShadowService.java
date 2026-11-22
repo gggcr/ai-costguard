@@ -3,6 +3,7 @@ package ai.costguard.core.cabinet.internal;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.names.KnownServices;
 import ai.costguard.core.shared.names.Names;
+import ai.costguard.core.shared.names.WrittenValues;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -149,14 +150,19 @@ class ShadowService {
         }
         List<PayrollImport.Skipped> skipped = new ArrayList<>();
         int stored = 0;
+        var company = PayrollFile.style(fileName, employees.company().map(EmployeeDirectory.CompanyCard::country)
+                .orElse(null));
+        List<List<String>> body = table.subList(1, table.size());
+        var amounts = WrittenValues.amounts(body.stream().map(row -> cell(row, at.get("amount"))).toList(), company);
+        var days = WrittenValues.dates(body.stream().map(row -> cell(row, at.get("date"))).toList(), company);
         for (int r = 1; r < table.size(); r++) {
             List<String> row = table.get(r);
             if (row.stream().allMatch(String::isBlank)) {
                 continue;
             }
             String service = cell(row, at.get("service"));
-            BigDecimal amount = PayrollFile.amount(cell(row, at.get("amount")));
-            LocalDate date = PayrollFile.date(cell(row, at.get("date")));
+            BigDecimal amount = PayrollFile.amount(cell(row, at.get("amount")), amounts);
+            LocalDate date = PayrollFile.date(cell(row, at.get("date")), days);
             if (service.isBlank()) {
                 skipped.add(new PayrollImport.Skipped(r + 1, "no service"));
             } else if (amount == null || amount.signum() < 0) {

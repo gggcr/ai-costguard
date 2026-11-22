@@ -25,6 +25,7 @@ from costguard_common.focus import CostRecord, CostSource
 from costguard_ingest import mapping, tables, values
 
 DEFAULT_CURRENCY = "RUB"
+DATE_FIELDS = ("period_start", "period_end", "last_active")
 
 
 @dataclass
@@ -55,29 +56,46 @@ def _by_field(row: dict[str, object], columns_to_fields: dict[str, str]) -> dict
 Read = Callable[[str, bytes], tables.Table]
 
 
-def parse(file_name: str, content: bytes, read: Read = tables.read) -> Parsed:
-    """read is tables.read, or documents.Reader where scans and text invoices are read too."""
+def styles(table: tables.Table, columns_to_fields: dict[str, str],
+           company: values.Style = values.UNKNOWN) -> dict[str, values.Style]:
+    """How each field of the file is read (ADR 0072): as the values of its own column show, else as the company's
+    country writes. One program writes all the dates of a file the same way, so its date columns settle the order
+    together. A bank statement is written by a program, with a decimal dot and dd.mm.yyyy."""
+    if table.kind == "statement":
+        return {f: values.EXACT for f in ("amount", *DATE_FIELDS)}
+    rows = [_by_field(row, columns_to_fields) for _, row in table.rows]
+    found = {"amount": values.amounts_style((r.get("amount") for r in rows), company)}
+    dates = values.dates_style((r.get(f) for r in rows for f in DATE_FIELDS), company)
+    found.update(dict.fromkeys(DATE_FIELDS, dates))
+    return found
+
+
+def parse(file_name: str, content: bytes, read: Read = tables.read, style: values.Style = values.UNKNOWN
+          ) -> Parsed:
+    """read is tables.read, or documents.Reader where scans and text invoices are read too. style is how the
+    company's country writes numbers and dates."""
     table = read(file_name, content)
     suggested = mapping.suggest(table.columns)
     result = Parsed(table.columns, suggested, len(table.rows), Decimal(0))
     equipment = bool({"inventory_number", "serial_number"} & set(suggested.values()))
     if "amount" not in suggested.values() and not equipment:  # a list of equipment may have no cost
         result.errors.append((1, "No column looks like an amount; choose it in the mapping"))
+    read_as = styles(table, suggested, style)
     for number, row in table.rows:
         cells = _by_field(row, suggested)
         if "amount" in cells:
             raw = cells["amount"]
-            value, confidence = values.amount(raw)
+            value, confidence = values.amount(raw, read_as["amount"])
             if value is None:
                 result.errors.append((number, f"Amount '{values.text(raw)}' is not a number"))
             else:
                 result.total += value
                 if confidence < values.CONFIDENT:
                     result.uncertain.append((number, "amount", values.text(raw), confidence))
-        for f in ("period_start", "period_end", "last_active"):
+        for f in DATE_FIELDS:
             if f not in cells or values.text(cells[f]) == "":
                 continue
-            parsed, confidence = values.day(cells[f])
+            parsed, confidence = values.day(cells[f], read_as[f])
             if parsed is None:
                 result.errors.append((number, f"Date '{values.text(cells[f])}' in {f} is not a date"))
             elif confidence < values.CONFIDENT:
@@ -108,11 +126,12 @@ def _normalized(tenant: uuid.UUID, file_id: uuid.UUID, kind: str, key: str, payl
 def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: str, vendor_id: uuid.UUID | None,
            columns_to_fields: dict[str, str], corrections: dict[str, dict[str, str]], content: bytes,
            now: datetime | None = None, read: Read = tables.read,
-           intermediaries: Iterable[paying.Intermediary] = (), services: dict[str, str] | None = None
-           ) -> tuple[list[Message], list[tuple[int, str]]]:
+           intermediaries: Iterable[paying.Intermediary] = (), services: dict[str, str] | None = None,
+           style: values.Style = values.UNKNOWN) -> tuple[list[Message], list[tuple[int, str]]]:
     """Messages to publish, and rows that still could not be written (they are logged, not retried).
 
-    A payment through an intermediary is split into the service and the agent's commission (ADR 0015)."""
+    A payment through an intermediary is split into the service and the agent's commission (ADR 0015). style is
+    the company's, as in parse."""
     now = now or datetime.now(UTC)
     table = read(file_name, content)
     messages: list[Message] = []
@@ -125,6 +144,12 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
             messages.append(m)
 
     payments = table.kind == "statement"
+    read_as = styles(table, columns_to_fields, style)
+
+    def style_of_cell(f: str, fixed: dict[str, str]) -> values.Style:
+        # what people typed in is written as they write, not as the program that made the statement
+        return style if payments and f in fixed else read_as[f]
+
     source = CostSource.PAYMENT if payments else CostSource.INVOICE_LINE
     invoice_total = Decimal(0)
     invoice_vendor: str | None = None
@@ -137,9 +162,10 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
     equipment = not payments and bool({"inventory_number", "serial_number"} & set(columns_to_fields.values()))
     for number, row in table.rows:
         cells = _by_field(row, columns_to_fields)
-        cells.update(corrections.get(str(number), {}))
+        fixed = corrections.get(str(number), {})
+        cells.update(fixed)
         if equipment:
-            _device(tenant, file_id, file_name, cells, now, once, skipped, number)
+            _device(tenant, file_id, file_name, cells, now, once, skipped, number, style_of_cell("amount", fixed))
             continue
         vendor = values.text(cells.get("vendor"))
         product = values.text(cells.get("product"))
@@ -152,7 +178,7 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                                    or row.get("ИНН поставщика"))
         parts: list[paying.Part] = []
         if payments and vendor and amount_text(cells):
-            value, _ = values.amount(cells["amount"])
+            value, _ = values.amount(cells["amount"], style_of_cell("amount", fixed))
             if value is not None:
                 parts = paying.split(vendor, inn, product, value, intermediaries, services)
         # the header of an extracted invoice repeats in every row; a person's correction of it comes by column
@@ -165,11 +191,12 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                 once(_normalized(tenant, file_id, "VENDOR", normalized.vendor_key(tenant, name, code),
                                  {"name": name, "vendor_id": vendor_id if name == vendor else None, "inn": code},
                                  now))
+        paid_on, _ = values.day(cells.get("period_start"), style_of_cell("period_start", fixed))
         for part in parts:
             once(_normalized(tenant, file_id, "PAYMENT",
                              _entity_key(tenant, "payment", storage_key, str(number), *_suffix(part)),
                              {"vendor": part.vendor, "purpose": product or None, "amount": str(part.amount),
-                              "date": values.text(cells.get("period_start")) or None, "inn": part.inn,
+                              "date": paid_on.isoformat() if paid_on else None, "inn": part.inn,
                               "intermediary": part.intermediary, "role": part.role, "note": part.note}, now))
         if vendor and product and not payments:
             once(_normalized(tenant, file_id, "SUBSCRIPTION", _entity_key(tenant, "subscription", vendor, product),
@@ -180,7 +207,7 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                              {"name": employee or None, "email": email or None, "department": department or None},
                              now))
         if person and product and not payments:
-            last_active, _ = values.day(cells.get("last_active"))
+            last_active, _ = values.day(cells.get("last_active"), style_of_cell("last_active", fixed))
             once(_normalized(tenant, file_id, "LICENSE_ASSIGNMENT",
                              _entity_key(tenant, "license", vendor, product, person),
                              {"vendor": vendor or None, "product": product, "employee": person,
@@ -188,12 +215,12 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
 
         if "amount" not in cells or values.text(cells["amount"]) == "":
             continue
-        amount, _ = values.amount(cells["amount"])
+        amount, _ = values.amount(cells["amount"], style_of_cell("amount", fixed))
         if amount is None:
             skipped.append((number, "amount is not a number"))
             continue
-        start, _ = values.day(cells.get("period_start"))
-        end, _ = values.day(cells.get("period_end"))
+        start = paid_on
+        end, _ = values.day(cells.get("period_end"), style_of_cell("period_end", fixed))
         start = start or end or _file_day(now)
         end = end or start
         if end < start:
@@ -226,7 +253,8 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
 
 
 def _device(tenant: uuid.UUID, file_id: uuid.UUID, file_name: str, cells: dict[str, object], now: datetime,
-            once: Callable[[Message], None], skipped: list[tuple[int, str]], number: int) -> None:
+            once: Callable[[Message], None], skipped: list[tuple[int, str]], number: int,
+            style: values.Style = values.UNKNOWN) -> None:
     """One row of a list of equipment: the ASSET entity, keyed as the connectors key it, and the person who holds it."""
     serial = values.text(cells.get("serial_number")) or None
     inventory = values.text(cells.get("inventory_number")) or None
@@ -236,7 +264,7 @@ def _device(tenant: uuid.UUID, file_id: uuid.UUID, file_name: str, cells: dict[s
     model = values.text(cells.get("asset_model")) or values.text(cells.get("product")) or None
     cost = None
     if amount_text(cells):
-        cost, _ = values.amount(cells["amount"])
+        cost, _ = values.amount(cells["amount"], style)
     email = values.text(cells.get("email")).lower() or None
     employee = values.text(cells.get("employee")) or None
     if email or employee:

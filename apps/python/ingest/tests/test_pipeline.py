@@ -75,6 +75,76 @@ def test_currencies():
     assert values.currency_in(1500) is None
 
 
+# how a country writes (ADR 0072)
+
+US, RU, DE, GB = (values.style_of(c) for c in ("US", "RU", "DE", "GB"))
+
+
+@pytest.mark.parametrize("raw, style, expected, sure", [
+    ("$1,500", US, Decimal("1500"), True),  # 1.5 at full confidence before ADR 0072
+    ("$12,000", US, Decimal("12000"), True),
+    ("1,234,567.89", US, Decimal("1234567.89"), True),
+    ("1,234,567", US, Decimal("1234567"), True),
+    ("($1,200)", US, Decimal("-1200"), True),
+    ("1.5", US, Decimal("1.5"), True),
+    ("1.500", US, Decimal("1.5"), False),  # a German 1500, or 1.5 with three decimals
+    ("1,500", RU, Decimal("1.5"), False),  # a Russian 1.5, or fifteen hundred from an American export
+    ("1 500,50", RU, Decimal("1500.50"), True),
+    ("12,5", RU, Decimal("12.5"), True),
+    ("1.500", DE, Decimal("1500"), True),
+    ("1.000.000", DE, Decimal("1000000"), True),
+    ("0,500", RU, Decimal("0.5"), True),  # no thousands group starts with a zero
+    ("$1,500", values.UNKNOWN, Decimal("1.5"), False),
+    ("1500.000", values.EXACT, Decimal("1500.000"), True),
+])
+def test_amounts_as_the_country_writes(raw, style, expected, sure):
+    value, confidence = values.amount(raw, style)
+    assert value == expected
+    assert (confidence >= values.CONFIDENT) is sure
+
+
+def test_a_column_settles_its_own_separators():
+    american = values.amounts_style(["1,234.56", "$1,500", "99.90"], RU)
+    assert values.amount("1,500", american) == (Decimal("1500"), 1.0)
+    russian = values.amounts_style(["1 500,50", "12,5", "1.500"], US)
+    assert values.amount("1.500", russian) == (Decimal("1500"), 1.0)
+    assert values.amount("1,500", russian) == (Decimal("1.500"), 1.0)
+    mixed = values.amounts_style(["1,234.56", "1.234,56"], US)
+    assert mixed == US  # the column contradicts itself: the country decides
+    assert values.amounts_style([1500, None, "", "abc"], RU) == RU
+
+
+def test_dates_as_the_country_writes():
+    assert values.day("11/22/2026", values.UNKNOWN) == (date(2026, 11, 22), 1.0)  # 22 is no month
+    assert values.day("03/04/2026", US) == (date(2026, 3, 4), 0.95)
+    assert values.day("03/04/2026", GB) == (date(2026, 4, 3), 0.95)
+    ambiguous, confidence = values.day("03/04/2026", RU)  # slashes in Russia: often a foreign program
+    assert ambiguous == date(2026, 4, 3) and confidence < values.CONFIDENT
+    assert values.day("03.04.2026", US) == (date(2026, 4, 3), 1.0)  # dots are day first everywhere
+    assert values.day("11/22/26", US) == (date(2026, 11, 22), 0.95)
+    assert values.day("13/13/2026", US) == (None, 0.0)
+    assert values.day("02/30/2026", US) == (None, 0.0)
+    for written in ("Nov 22, 2026", "November 22, 2026", "22 Nov 2026", "22-Nov-2026", "Nov 22 2026"):
+        assert values.day(written) == (date(2026, 11, 22), 1.0), written
+    assert values.day("2026-11-22 10:30:00") == (date(2026, 11, 22), 1.0)
+    assert values.day("22.11.2026 г.") == (date(2026, 11, 22), 1.0)
+
+
+def test_a_column_settles_its_own_date_order():
+    american = values.dates_style(["11/22/2026", "03/04/2026", "", None], RU)
+    assert values.day("03/04/2026", american) == (date(2026, 3, 4), 0.95)
+    british = values.dates_style(["25/10/2026", "03/04/2026"], US)
+    assert values.day("03/04/2026", british) == (date(2026, 4, 3), 0.95)
+    assert values.dates_style(["25/10/2026", "10/25/2026"], US) == US
+
+
+@pytest.mark.parametrize("country", [None, "", "us", " US ", "x" * 200, "ООО «Ромашка»", "ZZ"])
+def test_any_country_text_gives_a_style(country):
+    style = values.style_of(country)
+    assert isinstance(style, values.Style)
+    assert values.style_of("us") == values.style_of(" US ") == US
+
+
 # mapping
 
 
@@ -90,6 +160,10 @@ def test_mapping_russian_and_english():
 
 def test_mapping_gives_each_field_once():
     assert mapping.suggest(["Сумма", "Итого"]) == {"Сумма": "amount", "Итого": "skip"}
+
+
+def test_mapping_of_english_period_columns():
+    assert mapping.suggest(["Start date", "End date"]) == {"Start date": "period_start", "End date": "period_end"}
 
 
 def test_mapping_fields_match_the_core():
@@ -232,6 +306,55 @@ def test_every_output_fits_its_schema():
         assert roundtrip(m.topic, m.value)
 
 
+AMERICAN = (
+    b"Vendor,Product,Email,Amount,Start date,End date\n"
+    b'Acme Cloud,Storage,ann@corp.com,"$1,500",11/01/2026,11/30/2026\n'
+    b'Acme Cloud,Compute,bob@corp.com,"$12,000.50",11/01/2026,11/30/2026\n'
+    b'Acme Cloud,Support,ann@corp.com,"$250",03/04/2026,03/04/2026\n'
+)
+
+
+def test_an_american_file_of_an_american_company_reads_as_written():
+    parsed = pipeline.parse("acme.csv", AMERICAN, style=US)
+    assert parsed.total == Decimal("13750.50")
+    assert parsed.uncertain == []
+    messages, skipped = pipeline.accept(TENANT, FILE, "k", "acme.csv", None, parsed.suggested_mapping, {}, AMERICAN,
+                                        now=NOW, style=US)
+    assert skipped == []
+    costs = [m.value for m in messages if m.topic == "cost.records.v1"]
+    assert [c["billed_cost"] for c in costs] == [Decimal("1500"), Decimal("12000.50"), Decimal("250")]
+    assert costs[2]["charge_period_start"] == date(2026, 3, 4)
+
+
+def test_the_same_file_in_a_russian_company_is_read_by_its_own_columns():
+    """Its own values show the American writing (12,000.50; 11/30/2026), so a Russian company reads it right too."""
+    parsed = pipeline.parse("acme.csv", AMERICAN, style=RU)
+    assert parsed.total == Decimal("13750.50")
+    assert parsed.uncertain == []
+
+
+def test_an_american_file_without_a_country_goes_to_people():
+    file = b"Vendor,Amount,Start date\nAcme,\"$1,500\",03/04/2026\n"
+    parsed = pipeline.parse("acme.csv", file)
+    assert {(f, v) for _, f, v, _ in parsed.uncertain} == {("amount", "$1,500"), ("period_start", "03/04/2026")}
+
+
+def test_a_payment_carries_its_day_for_the_core():
+    """The core reads an ISO date only: before ADR 0072 a statement's 05.10.2026 reached it as text and was lost."""
+    columns = pipeline.parse("выписка.txt", STATEMENT).suggested_mapping
+    messages, _ = pipeline.accept(TENANT, FILE, "k", "выписка.txt", None, columns, {}, STATEMENT, now=NOW, style=US)
+    payment = json.loads(next(m for m in messages if m.value.get("entity_type") == "PAYMENT").value["payload"])
+    assert payment["date"] == "2026-10-05"
+
+
+def test_a_corrected_statement_amount_is_read_as_people_write():
+    columns = pipeline.parse("выписка.txt", STATEMENT).suggested_mapping
+    messages, _ = pipeline.accept(TENANT, FILE, "k", "выписка.txt", None, columns, {"2": {"amount": "11 500,50"}},
+                                  STATEMENT, now=NOW, style=RU)
+    [cost] = [m.value for m in messages if m.topic == "cost.records.v1"]
+    assert cost["billed_cost"] == Decimal("11500.50")
+
+
 # service
 
 
@@ -279,6 +402,18 @@ def test_handler_accepts():
         "vendor_id": str(uuid.uuid4()), "mapping": pipeline.parse("invoice.csv", CSV).suggested_mapping,
         "corrections": {}, "accepted_at": NOW})
     assert {m.topic for m in out} == {"cost.records.v1", "ingest.normalized.v1"}
+
+
+def test_handler_reads_a_file_as_its_company_writes():
+    handler = service.Handler(MemoryFiles({"k": b"Vendor,Amount\nAcme,\"1,500\"\n"}))
+    event = file_event("k", "acme.csv") | {"country": "US"}
+    decoded = roundtrip("ingest.results.v1", handler.on_file(event)[0].value)
+    assert decoded["total"] == Decimal("1500.000000") and decoded["uncertain"] == []
+    out = handler.on_accepted({
+        "file_id": str(FILE), "tenant_id": str(TENANT), "s3_key": "k", "file_name": "acme.csv", "vendor_id": None,
+        "mapping": {"Vendor": "vendor", "Amount": "amount"}, "corrections": {}, "accepted_at": NOW, "country": "US"})
+    [cost] = [m.value for m in out if m.topic == "cost.records.v1"]
+    assert cost["billed_cost"] == Decimal("1500")
 
 
 # storage

@@ -141,7 +141,7 @@ final class EventMapping {
                 .setFileId(e.fileId()).setTenantId(e.tenantId()).setS3Key(e.storageKey()).setSha256(e.sha256())
                 .setFileName(e.fileName()).setContentType(e.contentType() == null ? "application/octet-stream"
                         : e.contentType())
-                .setSourceTemplateId(null).setUploadedAt(e.uploadedAt()).build());
+                .setSourceTemplateId(null).setUploadedAt(e.uploadedAt()).setCountry(e.country()).build());
     }
 
     static Message of(ImportAccepted e) {
@@ -150,7 +150,7 @@ final class EventMapping {
         return new Message("ingest.accepted.v1", e.fileId().toString(), IngestAccepted.newBuilder()
                 .setFileId(e.fileId()).setTenantId(e.tenantId()).setS3Key(e.storageKey()).setFileName(e.fileName())
                 .setVendorId(e.vendorId()).setMapping(e.mapping()).setCorrections(corrections)
-                .setAcceptedAt(e.acceptedAt()).build());
+                .setAcceptedAt(e.acceptedAt()).setCountry(e.country()).build());
     }
 
     static Message of(OperationCharged e) {

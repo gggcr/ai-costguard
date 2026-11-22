@@ -1,11 +1,11 @@
 package ai.costguard.core.cabinet.internal;
 
+import ai.costguard.core.shared.names.WrittenValues;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,8 +28,10 @@ import javax.xml.stream.XMLStreamReader;
  *   <li>вид, вид выплаты — аванс, зарплата, отпускные, премия, else other;</li>
  *   <li>период, месяц — the month (01.10.2026, 2026-10 or a date of it);</li>
  *   <li>дата выплаты, дата — the day it is paid;</li>
- *   <li>сумма, к выплате — the amount, a comma or a dot.</li>
+ *   <li>сумма, к выплате — the amount.</li>
  * </ul>
+ * Amounts and dates are read as the company's country writes them, and as the other rows of the column show
+ * ({@link WrittenValues}, ADR 0072).
  * Only the first sheet of a workbook is read. The core has no spreadsheet library: an .xlsx is a zip of XML, and
  * this reads its shared strings and the first sheet's cells with the JDK.
  */
@@ -111,38 +113,38 @@ final class PayrollFile {
         return PayKind.other;
     }
 
-    private static final DateTimeFormatter RU = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    /**
+     * How a sheet of the company is read (ADR 0072): as its country writes numbers and dates; the number cells of a
+     * workbook are exact.
+     */
+    static WrittenValues.Style style(String fileName, String country) {
+        WrittenValues.Style style = WrittenValues.of(country);
+        return fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? style.inSheet() : style;
+    }
 
-    /** 15.10.2026, 2026-10-15, 2026-10 (the first day) or an Excel day number. */
-    static LocalDate date(String text) {
+    /**
+     * 15.10.2026, 2026-10-15, 2026-10 (the first day), an Excel day number, or a day as the style writes it
+     * (10/15/2026 in the United States). Null when it is no date, or a day and a month only the country could tell
+     * apart.
+     */
+    static LocalDate date(String text, WrittenValues.Style style) {
         String t = text.strip();
         try {
-            if (t.matches("\\d{1,2}\\.\\d{1,2}\\.\\d{4}")) {
-                String[] p = t.split("\\.");
-                return LocalDate.of(Integer.parseInt(p[2]), Integer.parseInt(p[1]), Integer.parseInt(p[0]));
-            }
             if (t.matches("\\d{4}-\\d{2}")) {
                 return LocalDate.parse(t + "-01");
-            }
-            if (t.matches("\\d{4}-\\d{2}-\\d{2}.*")) {
-                return LocalDate.parse(t.substring(0, 10));
             }
             if (t.matches("\\d+(\\.0+)?")) {
                 return LocalDate.of(1899, 12, 30).plusDays(Long.parseLong(t.replaceAll("\\..*", "")));
             }
-            return LocalDate.parse(t, RU);
         } catch (DateTimeParseException | NumberFormatException e) {
             return null;
         }
+        return WrittenValues.date(t, style).orElse(null);
     }
 
-    static BigDecimal amount(String text) {
-        String t = text.replace("\u00a0", "").replace(" ", "").replace("₽", "").replace(",", ".");
-        try {
-            return new BigDecimal(t);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+    /** An amount as the style writes it: 1 500,50 in Russia, 1,500.50 in the United States; null when unclear. */
+    static BigDecimal amount(String text, WrittenValues.Style style) {
+        return WrittenValues.amount(text, style).orElse(null);
     }
 
     // --- CSV: ; or , separated, quotes allowed, UTF-8 with or without BOM ---

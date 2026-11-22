@@ -80,6 +80,6 @@ class UserEmployeeDirectory implements EmployeeDirectory {
 
     @Override
     public Optional<CompanyCard> company() {
-        return org.company().map(c -> new CompanyCard(c.name(), c.currency()));
+        return org.companyCard();
     }
 }

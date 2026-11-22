@@ -44,6 +44,17 @@ class OrgRepository {
         return jdbc.sql("select id, name, currency, plan from tenant").query(COMPANY).optional();
     }
 
+    Optional<EmployeeDirectory.CompanyCard> companyCard() {
+        return jdbc.sql("select name, currency, country from tenant")
+                .query((rs, n) -> new EmployeeDirectory.CompanyCard(rs.getString("name"),
+                        rs.getString("currency").strip(), country(rs.getString("country"))))
+                .optional();
+    }
+
+    private static String country(String code) {
+        return code == null || code.isBlank() ? null : code.strip();
+    }
+
     void saveCompany(UUID tenantId, CompanySettings settings) {
         jdbc.sql("""
                 insert into tenant (id, name, currency) values (?, ?, ?)

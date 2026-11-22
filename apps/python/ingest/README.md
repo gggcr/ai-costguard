@@ -20,6 +20,10 @@ A long-running Kafka consumer (`service.py`).
   invoice fields by an LLM through the gateway ([ADR 0013](../../../docs/adr/0013-llm-invoice-extraction.md)).
 - Bank statements: 1C client-bank, MT940, CAMT.053, OFX (`statements.py`); payments through intermediaries
   ([ADR 0015](../../../docs/adr/0015-bank-connector-intermediaries.md)).
+- Amounts and dates are read as the company's country writes them, unless the column shows its own way (`values.py`,
+  [ADR 0072](../../../docs/adr/0072-company-currency-and-country.md)): `1,500` is fifteen hundred in the United States,
+  `03/04/2026` is March 4 there. A value only the country could settle, of a company that did not say its country,
+  goes to people.
 
 The offset is committed only after every output is acknowledged, so a crash replays the input.
 

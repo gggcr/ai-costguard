@@ -173,8 +173,9 @@ class PayrollIntegrationTest extends PostgresTestSupport {
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).person()).isEqualTo("Иванов Иван");
         assertThat(PayrollFile.kind(rows.get(0).kind())).isEqualTo(PayKind.bonus);
-        assertThat(PayrollFile.date(rows.get(0).payDate())).isEqualTo(LocalDate.of(2026, 11, 10));
-        assertThat(PayrollFile.amount(rows.get(0).amount())).isEqualByComparingTo("15000");
+        var style = PayrollFile.style("премии.xlsx", "RU");
+        assertThat(PayrollFile.date(rows.get(0).payDate(), style)).isEqualTo(LocalDate.of(2026, 11, 10));
+        assertThat(PayrollFile.amount(rows.get(0).amount(), style)).isEqualByComparingTo("15000");
     }
 
     /** A minimal .xlsx: shared strings for text, numbers inline. */

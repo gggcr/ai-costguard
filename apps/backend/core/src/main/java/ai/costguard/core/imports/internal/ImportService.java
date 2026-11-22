@@ -3,6 +3,7 @@ package ai.costguard.core.imports.internal;
 import ai.costguard.core.imports.ImportAccepted;
 import ai.costguard.core.imports.ImportFileUploaded;
 import ai.costguard.core.imports.ImportResults;
+import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.org.UserDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import java.io.ByteArrayInputStream;
@@ -29,15 +30,22 @@ class ImportService implements ImportResults {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final UserDirectory users;
+    private final EmployeeDirectory company;
 
     ImportService(ImportRepository imports, FileStore files, TenantSession session, Clock clock,
-            ApplicationEventPublisher events, UserDirectory users) {
+            ApplicationEventPublisher events, UserDirectory users, EmployeeDirectory company) {
         this.imports = imports;
         this.files = files;
         this.session = session;
         this.clock = clock;
         this.events = events;
         this.users = users;
+        this.company = company;
+    }
+
+    /** The company of the bound tenant: how its files are read (ADR 0072). Empty values until it is saved. */
+    private EmployeeDirectory.CompanyCard card() {
+        return company.company().orElse(new EmployeeDirectory.CompanyCard(null, null, null));
     }
 
     record Upload(ImportJob job, boolean created) {
@@ -67,8 +75,9 @@ class ImportService implements ImportResults {
         if (!imports.insert(tenantId, id, fileName, type, vendorId, now, by, sha, key, content.length)) {
             return new Upload(imports.bySha(sha).orElseThrow(), false);
         }
+        var card = card();
         events.publishEvent(new ImportFileUploaded(id, tenantId, key, sha, fileName, contentType, vendorId,
-                now.toInstant()));
+                now.toInstant(), card.country()));
         return new Upload(imports.find(id).orElseThrow(), true);
     }
 
@@ -158,7 +167,8 @@ class ImportService implements ImportResults {
         Map<Integer, Map<String, String>> corrections = new HashMap<>();
         job.reviewTasks().forEach(t -> corrections.computeIfAbsent(t.row(), r -> new HashMap<>())
                 .put(t.field(), t.resolvedValue()));
+        var card = card();
         events.publishEvent(new ImportAccepted(tenantId, job.id(), tenantId + "/" + job.sha256(), job.fileName(),
-                job.vendorId(), job.mapping(), corrections, clock.instant()));
+                job.vendorId(), job.mapping(), corrections, clock.instant(), card.country()));
     }
 }

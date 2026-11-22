@@ -46,10 +46,10 @@ class EventMappingTest {
         encodes(EventMapping.of(new ai.costguard.core.approvals.ApprovalDecided(tenant, id, id, id, "approved",
                 new BigDecimal("1500"), now)));
         encodes(EventMapping.of(new ReceiptIssued(id, tenant, id, "a".repeat(64), "0".repeat(64), "sig", "k", now)));
-        encodes(EventMapping.of(new ImportFileUploaded(id, tenant, "t/sha", "sha", "a.csv", null, null, now)));
+        encodes(EventMapping.of(new ImportFileUploaded(id, tenant, "t/sha", "sha", "a.csv", null, null, now, "US")));
         encodes(EventMapping.of(new OperationCharged(tenant, id, id, new BigDecimal("12.345678"), "RUB", now)));
         encodes(EventMapping.of(new ImportAccepted(tenant, id, tenant + "/sha", "a.csv", null,
-                java.util.Map.of("Сумма", "amount"), java.util.Map.of(2, java.util.Map.of("amount", "1500")), now)));
+                java.util.Map.of("Сумма", "amount"), java.util.Map.of(2, java.util.Map.of("amount", "1500")), now, null)));
         encodes(EventMapping.of(new AssetChanged(tenant, id, "INV-1", "ThinkPad", "LAPTOP", new BigDecimal("80000"),
                 "ASSIGNED", id, LocalDate.of(2026, 11, 1), null, now)));
         encodes(EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, id, 2, "a".repeat(64), now)));
