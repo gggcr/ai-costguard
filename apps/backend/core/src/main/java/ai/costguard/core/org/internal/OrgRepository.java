@@ -1,6 +1,7 @@
 package ai.costguard.core.org.internal;
 
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.TimeZones;
 import java.time.LocalDate;
 import java.util.List;
@@ -19,7 +20,8 @@ class OrgRepository {
 
     private static final RowMapper<Company> COMPANY = (rs, n) -> new Company(rs.getObject("id", UUID.class),
             rs.getString("name"), rs.getString("currency"), rs.getString("plan"),
-            TimeZones.of(rs.getString("time_zone"), rs.getString("country")).getId());
+            TimeZones.of(rs.getString("time_zone"), rs.getString("country")).getId(),
+            Language.of(rs.getString("language"), rs.getString("country")).code());
 
     private static final RowMapper<Department> DEPARTMENT = (rs, n) ->
             new Department(rs.getObject("id", UUID.class), rs.getString("name"),
@@ -43,14 +45,16 @@ class OrgRepository {
     }
 
     Optional<Company> company() {
-        return jdbc.sql("select id, name, currency, plan, time_zone, country from tenant").query(COMPANY).optional();
+        return jdbc.sql("select id, name, currency, plan, time_zone, country, language from tenant").query(COMPANY)
+                .optional();
     }
 
     Optional<EmployeeDirectory.CompanyCard> companyCard() {
-        return jdbc.sql("select name, currency, country, time_zone from tenant")
+        return jdbc.sql("select name, currency, country, time_zone, language from tenant")
                 .query((rs, n) -> new EmployeeDirectory.CompanyCard(rs.getString("name"),
                         rs.getString("currency").strip(), country(rs.getString("country")),
-                        TimeZones.of(rs.getString("time_zone"), country(rs.getString("country")))))
+                        TimeZones.of(rs.getString("time_zone"), country(rs.getString("country"))),
+                        Language.of(rs.getString("language"), country(rs.getString("country")))))
                 .optional();
     }
 
@@ -60,10 +64,13 @@ class OrgRepository {
 
     void saveCompany(UUID tenantId, CompanySettings settings) {
         jdbc.sql("""
-                insert into tenant (id, name, currency, time_zone) values (?, ?, ?, ?)
+                insert into tenant (id, name, currency, time_zone, language) values (?, ?, ?, ?, ?)
                 on conflict (id) do update set name = excluded.name, currency = excluded.currency,
-                    time_zone = coalesce(excluded.time_zone, tenant.time_zone)
-                """).params(tenantId, settings.name(), settings.currency(), settings.timeZone()).update();
+                    time_zone = coalesce(excluded.time_zone, tenant.time_zone),
+                    language = coalesce(excluded.language, tenant.language)
+                """).params(tenantId, settings.name(), settings.currency(), settings.timeZone(),
+                        settings.language() == null ? null : Language.parse(settings.language()).orElseThrow().code())
+                .update();
     }
 
     List<Department> departments() {

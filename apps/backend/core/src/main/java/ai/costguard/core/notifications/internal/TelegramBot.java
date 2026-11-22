@@ -1,5 +1,7 @@
 package ai.costguard.core.notifications.internal;
 
+import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,24 +28,32 @@ class TelegramBot {
 
     static final String LINKED = "Готово: уведомления CostGuard будут приходить в этот чат. "
             + "Уровни и отключение — в CostGuard, раздел «Уведомления».";
+    static final String LINKED_EN = "Done: CostGuard notifications will come to this chat. "
+            + "Levels and turning them off are in CostGuard, Notifications.";
+    /** Before a chat is linked nobody knows the company, so the bot says it in both languages (ADR 0074). */
     static final String EXPIRED = "Ссылка устарела или уже использована. Получите новую в CostGuard: "
-            + "«Уведомления» → «Подключить Telegram».";
+            + "«Уведомления» → «Подключить Telegram».\n\nThe link expired or was used already. Get a new one "
+            + "in CostGuard: Notifications → Connect Telegram.";
     static final String HELP = "Это бот уведомлений CostGuard. Чтобы получать уведомления, нажмите "
-            + "«Подключить Telegram» в разделе «Уведомления» CostGuard и откройте ссылку.";
+            + "«Подключить Telegram» в разделе «Уведомления» CostGuard и откройте ссылку.\n\nThis is the "
+            + "CostGuard notification bot. To get notifications, press Connect Telegram in CostGuard, "
+            + "Notifications, and open the link.";
 
     private final TelegramApi api;
     private final DeliveryRepository deliveries;
     private final TenantSession session;
     private final TransactionTemplate tx;
     private final Clock clock;
+    private final EmployeeDirectory company;
 
     TelegramBot(TelegramApi api, DeliveryRepository deliveries, TenantSession session,
-            PlatformTransactionManager transactions, Clock clock) {
+            PlatformTransactionManager transactions, Clock clock, EmployeeDirectory company) {
         this.api = api;
         this.deliveries = deliveries;
         this.session = session;
         this.tx = new TransactionTemplate(transactions);
         this.clock = clock;
+        this.company = company;
     }
 
     @Scheduled(fixedDelayString = "${costguard.notifications.telegram.poll-every:PT3S}",
@@ -88,7 +98,8 @@ class TelegramBot {
             if (target.isPresent() && target.get().expiresAt().isAfter(now)) {
                 session.bind(target.get().tenantId());
                 deliveries.linkTelegram(target.get().tenantId(), target.get().userId(), u.chatId(), now);
-                reply = LINKED;
+                reply = company.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU)
+                        .pick(LINKED, LINKED_EN);
             } else {
                 reply = EXPIRED;
             }

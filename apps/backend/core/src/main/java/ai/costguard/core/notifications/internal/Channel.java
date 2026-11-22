@@ -11,7 +11,8 @@ interface Channel {
     void send(Message message, String address);
 
     /** What goes out: the text of the notification and an absolute link into the web client. */
-    record Message(String text, String url, Level level) {
+    /** {@code language}: the company's, for what the channel adds around the text (ADR 0074). */
+    record Message(String text, String url, Level level, ai.costguard.core.shared.names.Language language) {
     }
 
     /** {@code permanent}: retrying will not help (bad address, the user blocked the bot). */

@@ -1,5 +1,7 @@
 package ai.costguard.core.assets.internal;
 
+import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.findings.FindingsIntake;
 import java.util.Set;
 import java.util.UUID;
@@ -18,15 +20,19 @@ class ReturnedEquipment {
 
     private final FindingsIntake findings;
     private final AssetRepository assets;
+    private final EmployeeDirectory company;
 
-    ReturnedEquipment(FindingsIntake findings, AssetRepository assets) {
+    ReturnedEquipment(FindingsIntake findings, AssetRepository assets, EmployeeDirectory company) {
         this.findings = findings;
         this.assets = assets;
+        this.company = company;
     }
 
     /** Called after {@code closed} was closed in the repository. */
     void returned(UUID tenantId, Asset asset, Assignment closed) {
-        String what = "Техника возвращена: " + asset.model() + " (инв. № " + asset.inventoryNumber() + ")";
+        Language lang = company.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
+        String what = lang.pick("Техника возвращена: ", "Hardware returned: ") + asset.model()
+                + lang.pick(" (инв. № ", " (inv. # ") + asset.inventoryNumber() + ")";
         findings.settled(tenantId, AssetAuditRules.NOT_RETURNED + ":" + closed.id(), what);
         findings.settled(tenantId, AssetAuditRules.OVERDUE + ":" + closed.id(), what);
         if (COUNTED.contains(asset.type())) {

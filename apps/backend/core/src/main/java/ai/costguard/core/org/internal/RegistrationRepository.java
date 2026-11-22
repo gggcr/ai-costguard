@@ -33,10 +33,11 @@ class RegistrationRepository {
 
     // --- Companies
 
-    void insertTenant(UUID id, String name, String currency, String country, String timeZone) {
+    void insertTenant(UUID id, String name, String currency, String country, String timeZone, String language) {
         jdbc.sql("""
-                insert into tenant (id, name, currency, country, time_zone, status) values (?, ?, ?, ?, ?, 'pending')
-                """).params(id, name, currency, country, timeZone).update();
+                insert into tenant (id, name, currency, country, time_zone, language, status)
+                values (?, ?, ?, ?, ?, ?, 'pending')
+                """).params(id, name, currency, country, timeZone, language).update();
     }
 
     Optional<String> tenantStatus() {

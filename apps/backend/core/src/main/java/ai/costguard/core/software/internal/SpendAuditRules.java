@@ -6,6 +6,7 @@ import ai.costguard.core.findings.AuditRules;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.names.Currencies;
 import ai.costguard.core.shared.names.KnownServices;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.Names;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -99,6 +100,7 @@ class SpendAuditRules implements AuditRules {
     public List<Detection> detect(UUID tenantId, LocalDate today) {
         LocalDate since = today.minusDays(days);
         String currency = company.company().map(EmployeeDirectory.CompanyCard::currency).orElse(Currencies.DEFAULT);
+        Language lang = company.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
         List<Spend> spends = new ArrayList<>();
         for (InvoiceRepository.Keyed k : invoices.invoicesBetween(since, today)) {
             Invoice i = k.invoice();
@@ -117,12 +119,12 @@ class SpendAuditRules implements AuditRules {
         List<Detection> found = new ArrayList<>();
         List<Spend> invoices = spends.stream().filter(s -> s.type().equals("INVOICE"))
                 .sorted(Comparator.comparing(Spend::firstSeen).thenComparing(Spend::key)).toList();
-        Set<String> duplicates = duplicates(invoices, names, found);
-        overcharges(invoices.stream().filter(i -> !duplicates.contains(i.key())).toList(), names, found, currency);
+        Set<String> duplicates = duplicates(invoices, names, found, lang);
+        overcharges(invoices.stream().filter(i -> !duplicates.contains(i.key())).toList(), names, found, currency, lang);
         List<Spend> payments = spends.stream()
                 .filter(s -> s.type().equals("PAYMENT") && !"commission".equals(s.role())).toList();
-        shadow(payments, names, found, currency);
-        bypass(payments, names, found, currency);
+        shadow(payments, names, found, currency, lang);
+        bypass(payments, names, found, currency, lang);
         return found;
     }
 
@@ -134,7 +136,8 @@ class SpendAuditRules implements AuditRules {
         return number.toLowerCase(Locale.ROOT).replaceAll("[\\s№#]", "");
     }
 
-    private static Set<String> duplicates(List<Spend> invoices, Map<UUID, String> names, List<Detection> found) {
+    private static Set<String> duplicates(List<Spend> invoices, Map<UUID, String> names, List<Detection> found,
+            Language lang) {
         Set<String> duplicates = new HashSet<>();
         for (int j = 0; j < invoices.size(); j++) {
             Spend later = invoices.get(j);
@@ -153,12 +156,16 @@ class SpendAuditRules implements AuditRules {
                 }
                 duplicates.add(later.key());
                 String vendor = names.getOrDefault(later.vendorId(), "");
-                String what = later.number().isBlank() ? "от " + later.day() : "№ " + later.number();
+                String what = later.number().isBlank() ? lang.pick("от ", "of ") + later.day()
+                        : lang.pick("№ ", "No. ") + later.number();
                 found.add(new Detection(DUPLICATE, DUPLICATE + ":" + later.key(),
-                        "Счёт пришёл дважды: " + vendor + " " + what,
-                        "Счёт " + vendor + " " + what + " на " + money(later.amount(), later.currency())
-                                + " получен ещё раз" + sources(earlier, later)
-                                + ". Проверьте, что его не оплатили дважды.",
+                        lang.pick("Счёт пришёл дважды: ", "Invoice came twice: ") + vendor + " " + what,
+                        lang.pick("Счёт " + vendor + " " + what + " на " + money(later.amount(), later.currency())
+                                        + " получен ещё раз" + sources(earlier, later, lang)
+                                        + ". Проверьте, что его не оплатили дважды.",
+                                "Invoice " + vendor + " " + what + " for " + money(later.amount(), later.currency())
+                                        + " came again" + sources(earlier, later, lang)
+                                        + ". Check that it was not paid twice."),
                         later.base() == null ? BigDecimal.ZERO : later.base(), null));
                 break;
             }
@@ -166,15 +173,16 @@ class SpendAuditRules implements AuditRules {
         return duplicates;
     }
 
-    private static String sources(Spend a, Spend b) {
+    private static String sources(Spend a, Spend b, Language lang) {
         if (a.source().isBlank() || b.source().isBlank()) {
             return "";
         }
-        return a.source().equals(b.source()) ? " из " + a.source() : " (" + a.source() + " и " + b.source() + ")";
+        return a.source().equals(b.source()) ? lang.pick(" из ", " from ") + a.source()
+                : " (" + a.source() + lang.pick(" и ", " and ") + b.source() + ")";
     }
 
     private void overcharges(List<Spend> invoices, Map<UUID, String> names, List<Detection> found,
-            String currency) {
+            String currency, Language lang) {
         Map<UUID, List<Subscription>> byVendor = software.subscriptions().stream()
                 .collect(Collectors.groupingBy(Subscription::vendorId));
         for (Spend invoice : invoices) {
@@ -191,12 +199,17 @@ class SpendAuditRules implements AuditRules {
             }
             BigDecimal over = invoice.base().subtract(expected);
             String vendor = names.getOrDefault(invoice.vendorId(), "");
-            String what = invoice.number().isBlank() ? "от " + invoice.day() : "№ " + invoice.number();
+            String what = invoice.number().isBlank() ? lang.pick("от ", "of ") + invoice.day()
+                    : lang.pick("№ ", "No. ") + invoice.number();
             found.add(new Detection(OVERCHARGE, OVERCHARGE + ":" + invoice.key(),
-                    "Счёт больше подписок: " + vendor + " " + what,
-                    "Счёт " + vendor + " " + what + " на " + money(invoice.base(), currency) + ", а подписки стоят "
-                            + money(expected, currency) + (yearly ? " в год" : " в месяц")
-                            + ". Сверьте счёт с договором и числом мест.",
+                    lang.pick("Счёт больше подписок: ", "Invoice above the subscriptions: ") + vendor + " " + what,
+                    lang.pick("Счёт " + vendor + " " + what + " на " + money(invoice.base(), currency)
+                                    + ", а подписки стоят " + money(expected, currency)
+                                    + (yearly ? " в год" : " в месяц") + ". Сверьте счёт с договором и числом мест.",
+                            "Invoice " + vendor + " " + what + " is for " + money(invoice.base(), currency)
+                                    + ", and the subscriptions cost " + money(expected, currency)
+                                    + (yearly ? " a year" : " a month")
+                                    + ". Check the invoice against the contract and the seats."),
                     yearly ? over.divide(TWELVE, 2, RoundingMode.HALF_EVEN) : over,
                     billing.size() == 1 ? billing.getFirst().id() : null));
         }
@@ -218,7 +231,8 @@ class SpendAuditRules implements AuditRules {
         return false;
     }
 
-    private void shadow(List<Spend> payments, Map<UUID, String> names, List<Detection> found, String currency) {
+    private void shadow(List<Spend> payments, Map<UUID, String> names, List<Detection> found, String currency,
+            Language lang) {
         Set<UUID> registered = new HashSet<>(software.registeredVendors());
         Map<UUID, List<Spend>> byVendor = new LinkedHashMap<>();
         for (Spend p : payments) {
@@ -234,10 +248,15 @@ class SpendAuditRules implements AuditRules {
             BigDecimal total = sum(paid);
             BigDecimal month = total.multiply(BigDecimal.valueOf(30))
                     .divide(BigDecimal.valueOf(days), 2, RoundingMode.HALF_EVEN);
-            found.add(new Detection(SHADOW, SHADOW + ":" + vendorId, "Теневая подписка: " + vendor,
-                    "За " + days + " дней " + paid.size() + " " + payments(paid.size()) + " " + vendor + " на "
-                            + money(total, currency) + ", а подписки или договора в реестре нет. Внесите подписку "
-                            + "в реестр, если сервис нужен, или откажитесь от него.", month, null));
+            found.add(new Detection(SHADOW, SHADOW + ":" + vendorId,
+                    lang.pick("Теневая подписка: ", "Shadow subscription: ") + vendor,
+                    lang.pick("За " + days + " дней " + paid.size() + " " + payments(paid.size(), lang) + " " + vendor
+                                    + " на " + money(total, currency) + ", а подписки или договора в реестре нет. "
+                                    + "Внесите подписку в реестр, если сервис нужен, или откажитесь от него.",
+                            "In " + days + " days, " + paid.size() + " " + payments(paid.size(), lang) + " to " + vendor
+                                    + " for " + money(total, currency) + ", and the registry has no subscription or "
+                                    + "contract. Add the subscription if the service is needed, or cancel it."),
+                    month, null));
         });
     }
 
@@ -245,7 +264,8 @@ class SpendAuditRules implements AuditRules {
         return KnownServices.aiProvider(vendor).or(() -> KnownServices.aiProvider(p.purpose()));
     }
 
-    private void bypass(List<Spend> payments, Map<UUID, String> names, List<Detection> found, String currency) {
+    private void bypass(List<Spend> payments, Map<UUID, String> names, List<Detection> found, String currency,
+            Language lang) {
         Set<String> routed = new TreeSet<>();
         for (String v : gateway.vendors()) {
             routed.add(Names.clean(v));
@@ -265,14 +285,22 @@ class SpendAuditRules implements AuditRules {
             }
             byVendor.computeIfAbsent(p.vendorId(), k -> new ArrayList<>()).add(p);
             why.computeIfAbsent(p.vendorId(), k -> new TreeSet<>())
-                    .add(p.card() ? "оплата картой" : "поставщика нет в мандатах шлюза");
+                    .add(p.card() ? lang.pick("оплата картой", "paid by card")
+                            : lang.pick("поставщика нет в мандатах шлюза", "no gateway mandate names the vendor"));
         }
         byVendor.forEach((vendorId, paid) -> {
             String vendor = names.getOrDefault(vendorId, "");
-            found.add(new Detection(AI_BYPASS, AI_BYPASS + ":" + vendorId, "ИИ-расходы мимо шлюза: " + vendor,
-                    "За " + days + " дней " + paid.size() + " " + payments(paid.size()) + " " + vendor + " на "
-                            + money(sum(paid), currency) + " прошли мимо шлюза (" + String.join(", ", why.get(vendorId))
-                            + "): у них нет бюджета, мандата и журнала. Переведите эти расходы на шлюз CostGuard.",
+            found.add(new Detection(AI_BYPASS, AI_BYPASS + ":" + vendorId,
+                    lang.pick("ИИ-расходы мимо шлюза: ", "AI spend past the gateway: ") + vendor,
+                    lang.pick("За " + days + " дней " + paid.size() + " " + payments(paid.size(), lang) + " " + vendor
+                                    + " на " + money(sum(paid), currency) + " прошли мимо шлюза ("
+                                    + String.join(", ", why.get(vendorId))
+                                    + "): у них нет бюджета, мандата и журнала. Переведите эти расходы на шлюз CostGuard.",
+                            "In " + days + " days, " + paid.size() + " " + payments(paid.size(), lang) + " to " + vendor
+                                    + " for " + money(sum(paid), currency) + " went past the gateway ("
+                                    + String.join(", ", why.get(vendorId))
+                                    + "): they have no budget, mandate or journal. Move this spend to the CostGuard "
+                                    + "gateway."),
                     BigDecimal.ZERO, null));
         });
     }
@@ -281,7 +309,10 @@ class SpendAuditRules implements AuditRules {
         return spends.stream().map(Spend::base).filter(r -> r != null).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private static String payments(int n) {
+    private static String payments(int n, Language lang) {
+        if (lang == Language.EN) {
+            return n == 1 ? "payment" : "payments";
+        }
         int last = n % 10;
         int lastTwo = n % 100;
         if (last == 1 && lastTwo != 11) {

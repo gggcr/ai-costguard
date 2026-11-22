@@ -4,7 +4,9 @@ import ai.costguard.core.findings.FindingOpened;
 import ai.costguard.core.findings.FindingsIntake;
 import ai.costguard.core.findings.InvoiceEvidence;
 import ai.costguard.core.findings.SavingsConfirmed;
+import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.org.UserDirectory;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.Currencies;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
@@ -23,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class FindingService implements FindingsIntake {
 
-    private static final String SYSTEM = "Движок аудита";
     /** Two invoices in a row without the saving send the finding back to review: frame 8. */
     private static final int INVOICES_BEFORE_REVIEW = 2;
 
@@ -33,6 +34,7 @@ class FindingService implements FindingsIntake {
     private final ApplicationEventPublisher events;
     private final BigDecimal confirmShare;
     private final UserDirectory users;
+    private final EmployeeDirectory company;
 
     /**
      * @param confirmShare the share of the expected saving an invoice has to show to confirm it
@@ -40,8 +42,10 @@ class FindingService implements FindingsIntake {
      *     month
      */
     FindingService(FindingRepository findings, TenantSession session, Clock clock, ApplicationEventPublisher events,
-            @Value("${costguard.findings.confirm-share:0.9}") BigDecimal confirmShare, UserDirectory users) {
+            @Value("${costguard.findings.confirm-share:0.9}") BigDecimal confirmShare, UserDirectory users,
+            EmployeeDirectory company) {
         this.users = users;
+        this.company = company;
         this.findings = findings;
         this.session = session;
         this.clock = clock;
@@ -57,15 +61,15 @@ class FindingService implements FindingsIntake {
         Instant now = clock.instant();
         UUID id = UUID.randomUUID();
         if (findings.insert(tenantId, id, fingerprint, rule, title, description, savings, subscriptionId, agentId, now)) {
-            findings.log(tenantId, id, now, SYSTEM, "Находка создана по правилу " + rule);
+            findings.log(tenantId, id, now, system(), t("Находка создана по правилу ", "Finding opened by rule ") + rule);
             events.publishEvent(new FindingOpened(tenantId, id, title, savings));
             return id;
         }
         Finding existing = findings.lockByFingerprint(fingerprint).orElseThrow();
         findings.refresh(existing.id(), title, description, savings);
         if (FindingStatus.of(existing.status()) == FindingStatus.auto_closed) {
-            move(tenantId, existing, FindingStatus.new_, existing.ownerId(), null, null, 0, SYSTEM,
-                    "Условие вернулось. Находка открыта снова");
+            move(tenantId, existing, FindingStatus.new_, existing.ownerId(), null, null, 0, system(),
+                    t("Условие вернулось. Находка открыта снова", "The condition is back. The finding is open again"));
             events.publishEvent(new FindingOpened(tenantId, existing.id(), title, savings));
         }
         return existing.id();
@@ -77,8 +81,8 @@ class FindingService implements FindingsIntake {
         session.bind(tenantId);
         findings.lockByFingerprint(fingerprint)
                 .filter(f -> Transitions.AUTO_CLOSABLE.contains(FindingStatus.of(f.status())))
-                .ifPresent(f -> move(tenantId, f, FindingStatus.auto_closed, f.ownerId(), null, null, 0, SYSTEM,
-                        "Условие исчезло. Закрыта автоматически"));
+                .ifPresent(f -> move(tenantId, f, FindingStatus.auto_closed, f.ownerId(), null, null, 0, system(),
+                        t("Условие исчезло. Закрыта автоматически", "The condition is gone. Closed automatically")));
     }
 
     @Override
@@ -88,12 +92,12 @@ class FindingService implements FindingsIntake {
         findings.lockByFingerprint(fingerprint).ifPresent(f -> {
             FindingStatus status = FindingStatus.of(f.status());
             if (status == FindingStatus.accepted || status == FindingStatus.in_progress) {
-                move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, SYSTEM,
-                        what + ". Экономия подтверждена");
+                move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, system(),
+                        what + t(". Экономия подтверждена", ". Savings confirmed"));
                 events.publishEvent(new SavingsConfirmed(tenantId, f.id(), f.title(), f.expectedSavings()));
             } else if (Transitions.AUTO_CLOSABLE.contains(status)) {
-                move(tenantId, f, FindingStatus.auto_closed, f.ownerId(), null, null, 0, SYSTEM,
-                        what + ". Закрыта автоматически");
+                move(tenantId, f, FindingStatus.auto_closed, f.ownerId(), null, null, 0, system(),
+                        what + t(". Закрыта автоматически", ". Closed automatically"));
             }
         });
     }
@@ -116,32 +120,50 @@ class FindingService implements FindingsIntake {
                     .filter(e -> task == null ? !e.issuedOn().isAfter(invoice.issuedOn()) : e.issuedOn().isBefore(task))
                     .findFirst();
             if (before.isEmpty()) {
-                findings.log(tenantId, f.id(), clock.instant(), SYSTEM, "Пришёл счёт " + invoice.label()
-                        + ", но счёта до задачи нет: сравнить не с чем. Подтвердите экономию вручную");
+                findings.log(tenantId, f.id(), clock.instant(), system(), t("Пришёл счёт " + invoice.label()
+                        + ", но счёта до задачи нет: сравнить не с чем. Подтвердите экономию вручную",
+                        "Invoice " + invoice.label() + " came, but there is no invoice from before the task to compare "
+                                + "with. Confirm the savings by hand"));
                 continue;
             }
             BigDecimal expected = f.expectedSavings().multiply(BigDecimal.valueOf(invoice.yearly() ? 12 : 1));
             BigDecimal less = before.get().total().subtract(invoice.total());
-            String compared = "было " + money(before.get().total(), invoice.currency()) + ", стало "
-                    + money(invoice.total(), invoice.currency()) + ", ожидалось меньше на "
-                    + money(expected, invoice.currency());
+            String compared = t("было ", "was ") + money(before.get().total(), invoice.currency())
+                    + t(", стало ", ", now ") + money(invoice.total(), invoice.currency())
+                    + t(", ожидалось меньше на ", ", expected less by ") + money(expected, invoice.currency());
             if (less.compareTo(expected.multiply(confirmShare)) >= 0) {
-                move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, SYSTEM,
-                        "Экономия видна в счёте " + invoice.label() + " (" + compared + "). Подтверждена");
+                move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, system(),
+                        t("Экономия видна в счёте ", "The savings show in invoice ") + invoice.label() + " (" + compared
+                                + t("). Подтверждена", "). Confirmed"));
                 events.publishEvent(new SavingsConfirmed(tenantId, f.id(), f.title(), f.expectedSavings()));
                 continue;
             }
             int missed = f.missedInvoices() + 1;
             if (missed >= INVOICES_BEFORE_REVIEW) {
-                move(tenantId, f, FindingStatus.review, f.ownerId(), null, null, 0, SYSTEM,
-                        "Экономии нет и в счёте " + invoice.label() + " (" + compared
-                                + "): два счёта подряд. Вернулась на проверку");
+                move(tenantId, f, FindingStatus.review, f.ownerId(), null, null, 0, system(),
+                        t("Экономии нет и в счёте ", "No savings in invoice ") + invoice.label() + " (" + compared
+                                + t("): два счёта подряд. Вернулась на проверку",
+                                        "): two invoices in a row. Back to review"));
             } else {
-                move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, missed, SYSTEM,
-                        "Экономии нет в счёте " + invoice.label() + " (" + compared + "), " + missed + " из "
-                                + INVOICES_BEFORE_REVIEW);
+                move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, missed, system(),
+                        t("Экономии нет в счёте ", "No savings in invoice ") + invoice.label() + " (" + compared + "), "
+                                + missed + t(" из ", " of ") + INVOICES_BEFORE_REVIEW);
             }
         }
+    }
+
+    /** The company's language (ADR 0074); the session is bound. */
+    private Language lang() {
+        return company.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
+    }
+
+    private String t(String ru, String en) {
+        return lang().pick(ru, en);
+    }
+
+    /** Who the history names for what the engine did itself. */
+    private String system() {
+        return t("Движок аудита", "Audit engine");
     }
 
     private static String money(BigDecimal amount, String currency) {
@@ -199,37 +221,38 @@ class FindingService implements FindingsIntake {
         switch (request.action()) {
             case assign -> {
                 require(request.ownerId() != null);
-                move(tenantId, f, FindingStatus.review, request.ownerId(), null, null, 0, by, "Назначен владелец");
+                move(tenantId, f, FindingStatus.review, request.ownerId(), null, null, 0, by, t("Назначен владелец", "Owner assigned"));
             }
-            case accept -> move(tenantId, f, FindingStatus.accepted, f.ownerId(), null, null, 0, by, "Принята");
+            case accept -> move(tenantId, f, FindingStatus.accepted, f.ownerId(), null, null, 0, by, t("Принята", "Accepted"));
             case postpone -> {
                 require(request.date() != null && request.date().isAfter(LocalDate.now(clock)));
                 move(tenantId, f, FindingStatus.postponed, f.ownerId(), request.date(), null, 0, by,
-                        "Отложена до " + request.date());
+                        t("Отложена до ", "Postponed until ") + request.date());
             }
             case reject -> {
                 require(request.reason() != null && !request.reason().isBlank());
                 move(tenantId, f, FindingStatus.rejected, f.ownerId(), null, request.reason(), 0, by,
-                        "Отклонена: " + request.reason());
+                        t("Отклонена: ", "Rejected: ") + request.reason());
             }
             case createTask -> {
                 move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, 0, by,
-                        "Создана задача" + (request.reason() == null ? "" : ": " + request.reason()));
+                        t("Создана задача", "Task created") + (request.reason() == null ? "" : ": " + request.reason()));
                 findings.taskCreated(f.id(), clock.instant());
             }
             case confirm -> {
                 move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, by,
-                        "Экономия видна в следующем счёте. Подтверждена");
+                        t("Экономия видна в следующем счёте. Подтверждена", "The savings show in the next invoice. Confirmed"));
                 events.publishEvent(new SavingsConfirmed(tenantId, f.id(), f.title(), f.expectedSavings()));
             }
             case missInvoice -> {
                 int missed = f.missedInvoices() + 1;
                 if (missed >= INVOICES_BEFORE_REVIEW) {
                     move(tenantId, f, FindingStatus.review, f.ownerId(), null, null, 0, by,
-                            "Экономии нет два счёта подряд. Вернулась на проверку");
+                            t("Экономии нет два счёта подряд. Вернулась на проверку", "No savings for two invoices in a row. Back to review"));
                 } else {
                     move(tenantId, f, FindingStatus.in_progress, f.ownerId(), null, null, missed, by,
-                            "Экономии нет в очередном счёте (" + missed + " из " + INVOICES_BEFORE_REVIEW + ")");
+                            t("Экономии нет в очередном счёте (", "No savings in the next invoice (") + missed + t(" из ", " of ")
+                                    + INVOICES_BEFORE_REVIEW + ")");
                 }
             }
         }
@@ -252,8 +275,8 @@ class FindingService implements FindingsIntake {
         session.bind(due.tenantId());
         Optional<Finding> f = findings.lock(due.findingId());
         if (f.filter(x -> FindingStatus.of(x.status()) == FindingStatus.postponed).isPresent()) {
-            move(due.tenantId(), f.get(), FindingStatus.new_, f.get().ownerId(), null, null, 0, SYSTEM,
-                    "Наступила дата. Находка снова новая");
+            move(due.tenantId(), f.get(), FindingStatus.new_, f.get().ownerId(), null, null, 0, system(),
+                    t("Наступила дата. Находка снова новая", "The date came. The finding is new again"));
         } else {
             findings.removeWakeup(due.findingId());
         }

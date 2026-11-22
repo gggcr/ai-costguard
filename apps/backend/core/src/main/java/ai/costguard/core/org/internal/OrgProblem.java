@@ -16,6 +16,7 @@ enum OrgProblem implements ProblemCode {
     EMPLOYEE_LINK_OWNER_ONLY(HttpStatus.FORBIDDEN,
             "Only the owner links a user to an employee: the user then sees that employee's pay and documents"),
     EMPLOYEE_ERASED(HttpStatus.CONFLICT, "The employee's data was erased; add the person again if they return"),
+    LANGUAGE_UNKNOWN(HttpStatus.BAD_REQUEST, "language must be ru or en"),
     TIME_ZONE_UNKNOWN(HttpStatus.BAD_REQUEST, "timeZone must be an IANA zone, such as America/Chicago"),
     CURRENCY_IN_USE(HttpStatus.CONFLICT, "Budgets, limits, prices or invoices are already kept in the company's "
             + "currency, and changing it would not convert them; the operator moves a company to another currency");

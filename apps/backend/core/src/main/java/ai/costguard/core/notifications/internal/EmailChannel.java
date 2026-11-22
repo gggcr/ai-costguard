@@ -43,8 +43,11 @@ class EmailChannel implements Channel {
         m.setTo(address);
         String subject = "CostGuard: " + message.text();
         m.setSubject(subject.length() > SUBJECT ? subject.substring(0, SUBJECT - 1) + "…" : subject);
-        m.setText(message.text() + (message.url() == null ? "" : "\n\nОткрыть в CostGuard: " + message.url())
-                + "\n\nНастроить уведомления: CostGuard → Уведомления.");
+        var lang = message.language();
+        m.setText(message.text() + (message.url() == null ? ""
+                : lang.pick("\n\nОткрыть в CostGuard: ", "\n\nOpen in CostGuard: ") + message.url())
+                + lang.pick("\n\nНастроить уведомления: CostGuard → Уведомления.",
+                        "\n\nNotification settings: CostGuard → Notifications."));
         try {
             sender.send(m);
         } catch (MailParseException e) {

@@ -7,6 +7,7 @@ import ai.costguard.core.org.EmployeeDismissed;
 import ai.costguard.core.plans.Limit;
 import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
@@ -67,6 +68,9 @@ class OrgService {
         }
         if (settings.timeZone() != null && TimeZones.parse(settings.timeZone()).isEmpty()) {
             throw OrgProblem.TIME_ZONE_UNKNOWN.failure();
+        }
+        if (settings.language() != null && Language.parse(settings.language()).isEmpty()) {
+            throw OrgProblem.LANGUAGE_UNKNOWN.failure();
         }
         String zoneBefore = org.company().map(Company::timeZone).orElse(null);
         org.saveCompany(tenantId, settings);

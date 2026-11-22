@@ -2,6 +2,7 @@ package ai.costguard.core.software.internal;
 
 import ai.costguard.core.findings.AuditRules;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.Names;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -98,6 +99,7 @@ class SoftwareAuditRules implements AuditRules {
     @Override
     public List<Detection> detect(UUID tenantId, LocalDate today) {
         List<Detection> found = new ArrayList<>();
+        Language lang = people.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
         Map<UUID, Vendor> vendors = new HashMap<>();
         software.vendors().forEach(v -> vendors.put(v.id(), v));
         Map<UUID, LocalDate> dismissed = people.dismissed();
@@ -108,20 +110,29 @@ class SoftwareAuditRules implements AuditRules {
             BigDecimal price = monthly(s);
             for (License l : software.licenses(s.id())) {
                 if (dismissed.containsKey(l.employeeId())) {
-                    found.add(new Detection(DISMISSED, DISMISSED + ":" + l.id(), "Лицензия уволенного: " + name,
-                            "Сотрудник уволен " + dismissed.get(l.employeeId()) + ", а место " + name
-                                    + " всё ещё за ним. Отзовите лицензию.", price, s.id()));
+                    found.add(new Detection(DISMISSED, DISMISSED + ":" + l.id(),
+                            lang.pick("Лицензия уволенного: ", "License of a leaver: ") + name,
+                            lang.pick("Сотрудник уволен " + dismissed.get(l.employeeId()) + ", а место " + name
+                                            + " всё ещё за ним. Отзовите лицензию.",
+                                    "The employee left on " + dismissed.get(l.employeeId()) + ", and still holds a "
+                                            + name + " seat. Revoke the license."), price, s.id()));
                 } else if (l.lastActive() != null && l.lastActive().isBefore(today.minusDays(unusedDays))) {
-                    found.add(new Detection(UNUSED, UNUSED + ":" + l.id(), "Лицензия не используется: " + name,
-                            "Последняя активность " + l.lastActive() + ", больше " + unusedDays
-                                    + " дней назад. Отзовите лицензию или уменьшите число мест.", price, s.id()));
+                    found.add(new Detection(UNUSED, UNUSED + ":" + l.id(),
+                            lang.pick("Лицензия не используется: ", "License not used: ") + name,
+                            lang.pick("Последняя активность " + l.lastActive() + ", больше " + unusedDays
+                                            + " дней назад. Отзовите лицензию или уменьшите число мест.",
+                                    "Last active on " + l.lastActive() + ", more than " + unusedDays
+                                            + " days ago. Revoke the license or buy fewer seats."), price, s.id()));
                 }
             }
             int idle = s.seats() - s.assigned();
             if (idle > 0) {
-                found.add(new Detection(IDLE_SEATS, IDLE_SEATS + ":" + s.id(), "Свободные места: " + name,
-                        "Оплачено " + s.seats() + " мест, занято " + s.assigned() + ". Уберите " + idle
-                                + " при продлении.", price.multiply(BigDecimal.valueOf(idle)), s.id()));
+                found.add(new Detection(IDLE_SEATS, IDLE_SEATS + ":" + s.id(),
+                        lang.pick("Свободные места: ", "Free seats: ") + name,
+                        lang.pick("Оплачено " + s.seats() + " мест, занято " + s.assigned() + ". Уберите " + idle
+                                        + " при продлении.",
+                                s.seats() + " seats are paid for, " + s.assigned() + " are taken. Drop " + idle
+                                        + " at renewal."), price.multiply(BigDecimal.valueOf(idle)), s.id()));
             }
         }
 
@@ -138,8 +149,11 @@ class SoftwareAuditRules implements AuditRules {
                             .compareTo(monthly(b).multiply(BigDecimal.valueOf(b.seats()))))
                     .orElseThrow();
             String name = vendors.get(cheaper.vendorId()).name() + " " + cheaper.product();
-            found.add(new Detection(DUPLICATE, DUPLICATE + ":" + cheaper.id(), "Две подписки на " + name,
-                    "У компании " + same.size() + " подписки на " + name + ". Перенесите пользователей в одну.",
+            found.add(new Detection(DUPLICATE, DUPLICATE + ":" + cheaper.id(),
+                    lang.pick("Две подписки на ", "Two subscriptions to ") + name,
+                    lang.pick("У компании " + same.size() + " подписки на " + name + ". Перенесите пользователей в одну.",
+                            "The company has " + same.size() + " subscriptions to " + name
+                                    + ". Move the users to one."),
                     monthly(cheaper).multiply(BigDecimal.valueOf(cheaper.seats())), cheaper.id()));
         }
 
@@ -153,22 +167,27 @@ class SoftwareAuditRules implements AuditRules {
                         rs.getString("number"), rs.getObject("last_day", LocalDate.class)))
                 .list()
                 .forEach(c -> found.add(new Detection(RENEWAL, RENEWAL + ":" + c.id() + ":" + c.lastDay(),
-                        "Договор продлится сам: " + vendors.get(c.vendorId()).name() + " № " + c.number(),
-                        "Отказаться от продления можно до " + c.lastDay() + ". Решите, нужен ли договор.",
+                        lang.pick("Договор продлится сам: " + vendors.get(c.vendorId()).name() + " № " + c.number(),
+                                "Contract renews automatically: " + vendors.get(c.vendorId()).name() + " No. "
+                                        + c.number()),
+                        lang.pick("Отказаться от продления можно до " + c.lastDay() + ". Решите, нужен ли договор.",
+                                "The renewal can be declined until " + c.lastDay()
+                                        + ". Decide whether the contract is needed."),
                         BigDecimal.ZERO, null)));
 
-        overlaps(subscriptions, vendors, found);
+        overlaps(subscriptions, vendors, found, lang);
         List<Plan> plans = software.plans();
         for (Subscription s : subscriptions) {
             String name = vendors.get(s.vendorId()).name() + " " + s.product();
             Plan plan = planOf(s, plans).orElse(null);
-            oversized(s, name, plan, plans, found);
-            monthlyBilling(s, name, plan, found);
+            oversized(s, name, plan, plans, found, lang);
+            monthlyBilling(s, name, plan, found, lang);
         }
         return found;
     }
 
-    private void overlaps(List<Subscription> subscriptions, Map<UUID, Vendor> vendors, List<Detection> found) {
+    private void overlaps(List<Subscription> subscriptions, Map<UUID, Vendor> vendors, List<Detection> found,
+            Language lang) {
         Map<UUID, Set<UUID>> holders = new HashMap<>();
         software.holdings().forEach(h -> holders.computeIfAbsent(h.subscriptionId(), k -> new HashSet<>())
                 .add(h.employeeId()));
@@ -210,12 +229,17 @@ class SoftwareAuditRules implements AuditRules {
                 String dropName = vendors.get(drop.vendorId()).name() + " " + drop.product();
                 String keepName = vendors.get(keep.vendorId()).name() + " " + keep.product();
                 String pair = a.id().compareTo(b.id()) < 0 ? a.id() + ":" + b.id() : b.id() + ":" + a.id();
-                String who = both.isEmpty() ? "Оба оплачены для одного отдела"
-                        : "Места в обоих у " + both.size() + " сотрудников";
+                String who = both.isEmpty()
+                        ? lang.pick("Оба оплачены для одного отдела", "Both are paid for one department")
+                        : lang.pick("Места в обоих у " + both.size() + " сотрудников",
+                                both.size() + " employees hold seats in both");
                 found.add(new Detection(OVERLAP, OVERLAP + ":" + pair,
-                        "Пересекающиеся инструменты: " + keepName + " и " + dropName,
-                        keepName + " и " + dropName + " решают одну задачу (" + String.join(", ", common)
-                                + "). " + who + ". Оставьте один инструмент.", saving, drop.id()));
+                        lang.pick("Пересекающиеся инструменты: " + keepName + " и " + dropName,
+                                "Overlapping tools: " + keepName + " and " + dropName),
+                        lang.pick(keepName + " и " + dropName + " решают одну задачу (" + String.join(", ", common)
+                                        + "). " + who + ". Оставьте один инструмент.",
+                                keepName + " and " + dropName + " do the same job (" + String.join(", ", common)
+                                        + "). " + who + ". Keep one tool."), saving, drop.id()));
             }
         }
     }
@@ -241,7 +265,8 @@ class SoftwareAuditRules implements AuditRules {
         return p.perSeat() ? price.multiply(BigDecimal.valueOf(users)) : price;
     }
 
-    private static void oversized(Subscription s, String name, Plan plan, List<Plan> plans, List<Detection> found) {
+    private static void oversized(Subscription s, String name, Plan plan, List<Plan> plans, List<Detection> found,
+            Language lang) {
         // a plan with no user limit is priced per seat, and seats nobody holds are subscription.idle-seats
         if (plan == null || plan.maxUsers() == null || s.assigned() == 0) {
             return;
@@ -262,13 +287,18 @@ class SoftwareAuditRules implements AuditRules {
         if (cheapest == null) {
             return;
         }
-        found.add(new Detection(OVERSIZED_PLAN, OVERSIZED_PLAN + ":" + s.id(), "Избыточный тариф: " + name,
-                "Тариф «" + plan.name() + "» рассчитан на " + plan.maxUsers() + " пользователей, а лицензии у "
-                        + s.assigned() + ". Тариф «" + cheapest.name() + "» дешевле; проверьте, хватит ли его функций.",
+        found.add(new Detection(OVERSIZED_PLAN, OVERSIZED_PLAN + ":" + s.id(),
+                lang.pick("Избыточный тариф: ", "Excessive plan: ") + name,
+                lang.pick("Тариф «" + plan.name() + "» рассчитан на " + plan.maxUsers() + " пользователей, а лицензии у "
+                                + s.assigned() + ". Тариф «" + cheapest.name()
+                                + "» дешевле; проверьте, хватит ли его функций.",
+                        "Plan «" + plan.name() + "» is for " + plan.maxUsers() + " users, and " + s.assigned()
+                                + " hold licenses. Plan «" + cheapest.name()
+                                + "» is cheaper; check that its features are enough."),
                 perMonth(paid.subtract(best), s.billingPeriod()), s.id()));
     }
 
-    private void monthlyBilling(Subscription s, String name, Plan plan, List<Detection> found) {
+    private void monthlyBilling(Subscription s, String name, Plan plan, List<Detection> found, Language lang) {
         if (s.billingPeriod() != BillingPeriod.month || s.seats() == 0 || s.assigned() < STEADY_SHARE * s.seats()) {
             return;
         }
@@ -281,23 +311,26 @@ class SoftwareAuditRules implements AuditRules {
             BigDecimal month = plan.priceYear().divide(TWELVE, 2, RoundingMode.HALF_EVEN);
             BigDecimal less = plan.priceMonth().subtract(month);
             saving = plan.perSeat() ? less.multiply(BigDecimal.valueOf(s.seats())) : less;
-            why = "По тарифу «" + plan.name() + "» год стоит " + plan.priceYear().toPlainString() + ", это "
-                    + month.toPlainString() + " в месяц вместо " + plan.priceMonth().toPlainString() + ".";
+            why = lang.pick("По тарифу «" + plan.name() + "» год стоит " + plan.priceYear().toPlainString() + ", это "
+                            + month.toPlainString() + " в месяц вместо " + plan.priceMonth().toPlainString() + ".",
+                    "On plan «" + plan.name() + "» a year costs " + plan.priceYear().toPlainString() + ", that is "
+                            + month.toPlainString() + " a month instead of " + plan.priceMonth().toPlainString() + ".");
         } else {
             if (annualDiscount.signum() <= 0) {
                 return;
             }
             saving = cost(s).multiply(annualDiscount).setScale(2, RoundingMode.HALF_EVEN);
-            why = "Годовая оплата обычно дешевле на "
-                    + annualDiscount.movePointRight(2).stripTrailingZeros().toPlainString()
-                    + "%; уточните цену у поставщика.";
+            String share = annualDiscount.movePointRight(2).stripTrailingZeros().toPlainString();
+            why = lang.pick("Годовая оплата обычно дешевле на " + share + "%; уточните цену у поставщика.",
+                    "Paying for a year is usually " + share + "% cheaper; ask the vendor for the price.");
         }
         if (saving.signum() <= 0) {
             return;
         }
         found.add(new Detection(MONTHLY_BILLING, MONTHLY_BILLING + ":" + s.id(),
-                "Помесячная оплата вместо годовой: " + name,
-                "Занято " + s.assigned() + " из " + s.seats() + " мест, подписка используется. " + why,
+                lang.pick("Помесячная оплата вместо годовой: ", "Monthly instead of annual: ") + name,
+                lang.pick("Занято " + s.assigned() + " из " + s.seats() + " мест, подписка используется. ",
+                        s.assigned() + " of " + s.seats() + " seats are taken, the subscription is in use. ") + why,
                 saving, s.id()));
     }
 }

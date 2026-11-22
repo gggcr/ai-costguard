@@ -119,6 +119,21 @@ class OrgApiIntegrationTest extends PostgresTestSupport {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("time_zone_unknown"));
     }
 
+    /** ADR 0074: the company's texts are in its language; a company without a country stays Russian. */
+    @Test
+    void aCompanySaysItsLanguage() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme\",\"currency\":\"USD\"}").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.language").value("ru"));
+        mvc.perform(json(put("/api/v1/company"), """
+                        {"name":"Acme","currency":"USD","language":"en"}""").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.language").value("en"));
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\"}").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.language").value("en"));
+        mvc.perform(json(put("/api/v1/company"), """
+                        {"name":"Acme","currency":"USD","language":"de"}""").with(admin()))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("language_unknown"));
+    }
+
     /** ADR 0072: amounts without a currency are the company's, so its currency stays once it keeps any. */
     @Test
     void theCurrencyStaysOnceMoneyIsKeptInIt() throws Exception {

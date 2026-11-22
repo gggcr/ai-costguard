@@ -2,6 +2,8 @@ package ai.costguard.core.cabinet.internal;
 
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.Currencies;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.core.software.LicensePool;
@@ -83,8 +85,12 @@ class LeaseService {
         LocalDate endsOn = today().plusDays(days);
         leases.insert(tenantId, licenseId, subscriptionId, employeeId, lender, endsOn, clock.instant());
         if (lender != null) {
-            notices.send(tenantId, lender, "Ваша лицензия " + product + " одолжена коллеге до " + DAY.format(endsOn)
-                    + ": вы ей не пользовались. Она вернётся к вам сама", "/cabinet/licenses", "info");
+            Language lang = lang();
+            notices.send(tenantId, lender, lang.pick(
+                    "Ваша лицензия " + product + " одолжена коллеге до " + day(endsOn, lang)
+                            + ": вы ей не пользовались. Она вернётся к вам сама",
+                    "Your " + product + " license is lent to a colleague until " + day(endsOn, lang)
+                            + ": you did not use it. It comes back to you by itself"), "/cabinet/licenses", "info");
         }
     }
 
@@ -100,8 +106,10 @@ class LeaseService {
             end(tenantId, lease.get(), true);
         } else {
             take(tenantId, held.subscriptionId(), me, licenseId);
-            notices.send(tenantId, me, "Лицензия " + held.product() + " возвращена в общий пул. Спасибо: место "
-                    + "достанется коллеге или не будет оплачено", "/cabinet/licenses", "good");
+            notices.send(tenantId, me, lang().pick("Лицензия " + held.product() + " возвращена в общий пул. "
+                            + "Спасибо: место достанется коллеге или не будет оплачено",
+                    "The " + held.product() + " license is back in the pool. Thank you: a colleague gets the seat, or "
+                            + "it is not paid for"), "/cabinet/licenses", "good");
         }
         events.publishEvent(ActionTaken.of(tenantId, "license.released", "license_assignment", licenseId,
                 ActionTaken.details("employeeId", me, "subscriptionId", held.subscriptionId())));
@@ -133,19 +141,28 @@ class LeaseService {
             end(tenantId, l, false);
             ended++;
         }
+        Language lang = lang();
         for (Lease l : leases.remindOn(today.plusDays(1))) {
-            notices.send(tenantId, l.employeeId(), "Завтра заканчивается срок лицензии " + l.product()
-                    + ". Нужна дольше — запросите её снова в кабинете", "/cabinet/licenses", "warning");
+            notices.send(tenantId, l.employeeId(), lang.pick("Завтра заканчивается срок лицензии " + l.product()
+                            + ". Нужна дольше — запросите её снова в кабинете",
+                    "Your " + l.product() + " license ends tomorrow. Need it longer? Ask for it again in the cabinet"),
+                    "/cabinet/licenses", "warning");
         }
         int reminded = 0;
         String currency = employees.company().map(EmployeeDirectory.CompanyCard::currency).orElse("RUB");
         for (LicensePool.Renewing r : pool.renewing(today, today.plusDays(remindDays), idleDays)) {
             if (leases.remindRenewal(tenantId, r.licenseId(), r.renewalDate(), clock.instant())) {
-                notices.send(tenantId, r.employeeId(), DAY.format(r.renewalDate()) + " продлится подписка "
-                        + r.product() + ". Вы не пользуетесь ей"
-                        + (r.lastActive() == null ? "" : " с " + DAY.format(r.lastActive()))
-                        + ". Не нужна — верните лицензию в пул, и компания не заплатит за место "
-                        + money(r.monthlyPrice(), currency) + " в месяц", "/cabinet/licenses", "warning");
+                String seat = money(r.monthlyPrice(), currency);
+                notices.send(tenantId, r.employeeId(), lang.pick(day(r.renewalDate(), lang) + " продлится подписка "
+                                + r.product() + ". Вы не пользуетесь ей"
+                                + (r.lastActive() == null ? "" : " с " + day(r.lastActive(), lang))
+                                + ". Не нужна — верните лицензию в пул, и компания не заплатит за место "
+                                + seat + " в месяц",
+                        "The " + r.product() + " subscription renews on " + day(r.renewalDate(), lang)
+                                + ". You have not used it" + (r.lastActive() == null ? ""
+                                : " since " + day(r.lastActive(), lang))
+                                + ". Not needed? Return the license to the pool, and the company will not pay "
+                                + seat + " a month for the seat"), "/cabinet/licenses", "warning");
                 reminded++;
             }
         }
@@ -155,20 +172,26 @@ class LeaseService {
     private void end(UUID tenantId, Lease l, boolean early) {
         leases.delete(l.licenseId());
         take(tenantId, l.subscriptionId(), l.employeeId(), l.licenseId());
-        notices.send(tenantId, l.employeeId(), (early ? "Вы вернули лицензию " : "Срок лицензии ") + l.product()
-                + (early ? "" : " закончился") + (l.lenderId() == null ? ": она вернулась в общий пул"
-                : ": она вернулась к коллеге"), "/cabinet/licenses", "info");
+        Language lang = lang();
+        String where = l.lenderId() == null ? lang.pick(": она вернулась в общий пул", ": it went back to the pool")
+                : lang.pick(": она вернулась к коллеге", ": it went back to your colleague");
+        notices.send(tenantId, l.employeeId(), (early
+                ? lang.pick("Вы вернули лицензию " + l.product(), "You returned the " + l.product() + " license")
+                : lang.pick("Срок лицензии " + l.product() + " закончился", "Your " + l.product() + " license ended"))
+                + where, "/cabinet/licenses", "info");
         if (l.lenderId() == null) {
             return;
         }
         boolean active = employees.card(l.lenderId()).filter(c -> c.dismissedAt() == null).isPresent();
         if (active && pool.grant(l.subscriptionId(), l.lenderId()).isPresent()) {
             events.publishEvent(new SeatChanged(tenantId, l.subscriptionId(), l.lenderId(), true));
-            notices.send(tenantId, l.lenderId(), "Лицензия " + l.product() + " вернулась к вам", "/cabinet/licenses",
-                    "good");
+            notices.send(tenantId, l.lenderId(), lang.pick("Лицензия " + l.product() + " вернулась к вам",
+                    "The " + l.product() + " license is back with you"), "/cabinet/licenses", "good");
         } else if (active) {
-            notices.send(tenantId, l.lenderId(), "Лицензия " + l.product() + " вернулась в общий пул: свободного "
-                    + "места сейчас нет. Понадобится — запросите в кабинете", "/cabinet/licenses", "info");
+            notices.send(tenantId, l.lenderId(), lang.pick("Лицензия " + l.product() + " вернулась в общий пул: "
+                            + "свободного места сейчас нет. Понадобится — запросите в кабинете",
+                    "The " + l.product() + " license went back to the pool: no seat is free now. Need it? Ask in "
+                            + "the cabinet"), "/cabinet/licenses", "info");
         }
         events.publishEvent(ActionTaken.of(tenantId, "license.lease.ended", "license_assignment", l.licenseId(),
                 ActionTaken.details("employeeId", l.employeeId(), "lenderId", l.lenderId())));
@@ -180,10 +203,20 @@ class LeaseService {
         }
     }
 
+    /** The company's language (ADR 0074); the session is bound. */
+    private Language lang() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
+    }
+
+    private static String day(LocalDate day, Language lang) {
+        return lang == Language.RU ? DAY.format(day)
+                : DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH).format(day);
+    }
+
     private static String money(BigDecimal amount, String currency) {
         DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.forLanguageTag("ru"));
         symbols.setGroupingSeparator(' ');
         symbols.setDecimalSeparator(',');
-        return new DecimalFormat("#,##0.##", symbols).format(amount) + ("RUB".equals(currency) ? " ₽" : " " + currency);
+        return new DecimalFormat("#,##0.##", symbols).format(amount) + Currencies.suffix(currency);
     }
 }

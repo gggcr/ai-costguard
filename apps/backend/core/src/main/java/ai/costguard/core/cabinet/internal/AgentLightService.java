@@ -9,6 +9,7 @@ import ai.costguard.core.org.DepartmentHeads;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.core.shared.names.Currencies;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -79,13 +80,14 @@ class AgentLightService {
         List<LimitRequest> mine = requests.of(me);
         Map<UUID, LimitRequest> pending = mine.stream().filter(r -> r.status().equals("pending"))
                 .collect(Collectors.toMap(LimitRequest::agentId, Function.identity(), (a, b) -> a));
+        Language lang = lang();
         List<MyAgent> out = agents.stream().map(a -> light(a, budgets.ofAgent(a.id()), pending.get(a.id()),
-                waiting.getOrDefault(a.id(), List.of()))).toList();
+                waiting.getOrDefault(a.id(), List.of()), lang)).toList();
         return new MyAgents(out, mine);
     }
 
     static MyAgent light(AgentOwners.OwnedAgent a, Optional<AgentBudgets.AgentBudget> budget, LimitRequest request,
-            List<OwnerApprovals.Waiting> waiting) {
+            List<OwnerApprovals.Waiting> waiting, Language lang) {
         Integer percent = budget.map(b -> b.limit().signum() == 0 ? (b.spent().signum() > 0 ? 100 : 0)
                 : b.spent().multiply(BigDecimal.valueOf(100)).divide(b.limit(), 0, RoundingMode.DOWN).intValue())
                 .orElse(null);
@@ -93,27 +95,34 @@ class AgentLightService {
         String why;
         if ("suspended".equals(a.status())) {
             light = Light.red;
-            why = "Агент приостановлен администратором";
+            why = lang.pick("Агент приостановлен администратором", "An administrator suspended the agent");
         } else if ("STOP".equals(a.riskAction())) {
             light = Light.red;
-            why = "Агента остановил детектор аномалий: " + reason(a.riskReason());
+            why = lang.pick("Агента остановил детектор аномалий: ", "The anomaly detector stopped the agent: ")
+                    + reason(a.riskReason(), lang);
         } else if (percent != null && percent >= 100) {
             light = Light.red;
-            why = "Лимит исчерпан: шлюз не пропускает новые операции. Попросите продлить лимит";
+            why = lang.pick("Лимит исчерпан: шлюз не пропускает новые операции. Попросите продлить лимит",
+                    "The limit is used up: the gateway lets no new operations through. Ask for more");
         } else if (!waiting.isEmpty()) {
             light = Light.yellow;
-            why = "Операции ждут вашего решения: " + waiting.size();
+            why = lang.pick("Операции ждут вашего решения: ", "Operations waiting for your decision: ")
+                    + waiting.size();
         } else if ("REQUIRE_APPROVAL".equals(a.riskAction()) || "SLOW_DOWN".equals(a.riskAction())) {
             light = Light.yellow;
-            why = ("REQUIRE_APPROVAL".equals(a.riskAction()) ? "Каждая операция требует подтверждения: "
-                    : "Шлюз замедлил агента: ") + reason(a.riskReason());
+            why = ("REQUIRE_APPROVAL".equals(a.riskAction())
+                    ? lang.pick("Каждая операция требует подтверждения: ", "Every operation needs your confirmation: ")
+                    : lang.pick("Шлюз замедлил агента: ", "The gateway slowed the agent down: "))
+                    + reason(a.riskReason(), lang);
         } else if (percent != null && percent >= YELLOW_PERCENT) {
             light = Light.yellow;
-            why = "Израсходовано " + percent + "% лимита";
+            why = lang.pick("Израсходовано " + percent + "% лимита", percent + "% of the limit is spent");
         } else {
             light = Light.green;
-            why = percent == null ? "Своего бюджета у агента нет: тратит из бюджета отдела"
-                    : "В лимите: израсходовано " + percent + "%";
+            why = percent == null
+                    ? lang.pick("Своего бюджета у агента нет: тратит из бюджета отдела",
+                            "The agent has no budget of its own: it spends the department's")
+                    : lang.pick("В лимите: израсходовано " + percent + "%", "Within the limit: " + percent + "% spent");
         }
         return new MyAgent(a.id(), a.name(), a.status(), a.riskAction(), a.riskScore(), a.riskReason(), light, why,
                 budget.map(AgentBudgets.AgentBudget::limit).map(BigDecimal::stripTrailingZeros).orElse(null),
@@ -123,8 +132,8 @@ class AgentLightService {
                         w.createdAt(), w.deadline())).toList());
     }
 
-    private static String reason(String r) {
-        return r == null || r.isBlank() ? "подозрительная активность" : r;
+    private static String reason(String r, Language lang) {
+        return r == null || r.isBlank() ? lang.pick("подозрительная активность", "suspicious activity") : r;
     }
 
     @Transactional
@@ -141,9 +150,14 @@ class AgentLightService {
         UUID id = UUID.randomUUID();
         requests.insert(tenantId, id, me, agentId, budget.budgetId(), budget.limit(), budget.spent(), request.add(),
                 budget.currency(), request.reason(), clock.instant());
-        String name = employees.card(me).map(EmployeeDirectory.EmployeeCard::name).orElse("Сотрудник");
-        heads.headOf(me).ifPresent(head -> notices.send(tenantId, head, name + " просит продлить лимит агента «"
-                + agent.name() + "» на " + money(request.add(), budget.currency()) + ": " + request.reason().strip(),
+        Language lang = lang();
+        String name = employees.card(me).map(EmployeeDirectory.EmployeeCard::name)
+                .orElse(lang.pick("Сотрудник", "An employee"));
+        String more = money(request.add(), budget.currency());
+        heads.headOf(me).ifPresent(head -> notices.send(tenantId, head, lang.pick(
+                name + " просит продлить лимит агента «" + agent.name() + "» на " + more + ": ",
+                name + " asks to raise the limit of agent «" + agent.name() + "» by " + more + ": ")
+                + request.reason().strip(),
                 "/cabinet/agents", "warning"));
         events.publishEvent(ActionTaken.of(tenantId, "agent.limit.requested", "limit_request", id,
                 ActionTaken.details("employeeId", me, "agentId", agentId, "add", request.add().toPlainString())));
@@ -199,9 +213,12 @@ class AgentLightService {
         String text;
         if (decision.approve()) {
             AgentBudgets.AgentBudget raised = budgets.raise(tenantId, r.budgetId(), r.add());
-            text = "Лимит агента «" + r.agentName() + "» продлён: теперь " + money(raised.limit(), raised.currency());
+            String limit = money(raised.limit(), raised.currency());
+            text = lang().pick("Лимит агента «" + r.agentName() + "» продлён: теперь " + limit,
+                    "The limit of agent «" + r.agentName() + "» was raised: now " + limit);
         } else {
-            text = "Лимит агента «" + r.agentName() + "» не продлён";
+            text = lang().pick("Лимит агента «" + r.agentName() + "» не продлён",
+                    "The limit of agent «" + r.agentName() + "» was not raised");
         }
         requests.decide(r.id(), decision.approve() ? "approved" : "rejected", by, clock.instant(), decision.comment());
         String note = decision.comment() == null || decision.comment().isBlank() ? "" : ": " + decision.comment().strip();
@@ -232,18 +249,28 @@ class AgentLightService {
     @ApplicationModuleListener
     void on(ApprovalOpened e) {
         session.bind(e.tenantId());
+        Language lang = lang();
         owners.ownerOf(e.agentId()).ifPresent(owner -> {
             String agent = owners.ownedBy(owner).stream().filter(a -> a.id().equals(e.agentId()))
-                    .map(AgentOwners.OwnedAgent::name).findFirst().orElse("агент");
-            String why = "risk".equals(e.reason()) ? "детектор аномалий счёл операцию необычной"
-                    : "сумма выше порога мандата";
+                    .map(AgentOwners.OwnedAgent::name).findFirst().orElse(lang.pick("агент", "agent"));
+            String why = "risk".equals(e.reason())
+                    ? lang.pick("детектор аномалий счёл операцию необычной", "the anomaly detector found it unusual")
+                    : lang.pick("сумма выше порога мандата", "the amount is above the mandate's threshold");
             // the gateway prices an operation in the currency of the agent's budget, the company's (ADR 0072)
             String currency = budgets.ofAgent(e.agentId()).map(AgentBudgets.AgentBudget::currency)
                     .or(() -> employees.company().map(EmployeeDirectory.CompanyCard::currency)).orElse(null);
-            notices.send(e.tenantId(), owner, "Агент «" + agent + "» хочет потратить "
-                    + money(e.amount(), currency) + " (" + e.description() + "): " + why
-                    + ". Подтвердите или заблокируйте", "/cabinet/agents", "warning");
+            String sum = money(e.amount(), currency);
+            notices.send(e.tenantId(), owner, lang.pick(
+                    "Агент «" + agent + "» хочет потратить " + sum + " (" + e.description() + "): " + why
+                            + ". Подтвердите или заблокируйте",
+                    "Agent «" + agent + "» wants to spend " + sum + " (" + e.description() + "): " + why
+                            + ". Confirm or block it"), "/cabinet/agents", "warning");
         });
+    }
+
+    /** The company's language (ADR 0074); the session is bound. */
+    private Language lang() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
     }
 
     private static String money(BigDecimal amount, String currency) {

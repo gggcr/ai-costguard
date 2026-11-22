@@ -1,6 +1,8 @@
 package ai.costguard.core.notifications.internal;
 
+import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.org.UserDirectory;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.platform.tenant.TenantSession;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -43,11 +45,12 @@ class DeliverySender {
     private final MeterRegistry metrics;
     private final String webUrl;
     private final int maxAttempts;
+    private final EmployeeDirectory company;
 
     DeliverySender(DeliveryRepository deliveries, UserDirectory users, List<Channel> channels, TenantSession session,
             PlatformTransactionManager transactions, Clock clock, MeterRegistry metrics,
             @Value("${costguard.notifications.web-url:http://localhost:3000}") String webUrl,
-            @Value("${costguard.notifications.max-attempts:8}") int maxAttempts) {
+            @Value("${costguard.notifications.max-attempts:8}") int maxAttempts, EmployeeDirectory company) {
         this.deliveries = deliveries;
         this.users = users;
         this.channels = channels.stream().collect(Collectors.toMap(Channel::name, Function.identity()));
@@ -57,6 +60,7 @@ class DeliverySender {
         this.metrics = metrics;
         this.webUrl = webUrl.replaceAll("/+$", "");
         this.maxAttempts = maxAttempts;
+        this.company = company;
     }
 
     @Scheduled(fixedDelayString = "${costguard.notifications.send-every:PT5S}",
@@ -89,13 +93,14 @@ class DeliverySender {
         }
         Map<UUID, UserDirectory.UserCard> byId = users.users().stream()
                 .collect(Collectors.toMap(UserDirectory.UserCard::id, Function.identity()));
+        Language lang = company.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
         for (Delivery d : due) {
-            send(tenantId, d, byId.get(d.userId()), now);
+            send(tenantId, d, byId.get(d.userId()), now, lang);
         }
         return due.size();
     }
 
-    private void send(UUID tenantId, Delivery d, UserDirectory.UserCard user, Instant now) {
+    private void send(UUID tenantId, Delivery d, UserDirectory.UserCard user, Instant now, Language lang) {
         Channel channel = channels.get(d.channel());
         String address = user == null ? null : address(d.channel(), user);
         if (channel == null || !channel.enabled() || address == null) {
@@ -104,7 +109,7 @@ class DeliverySender {
             return;
         }
         try {
-            channel.send(new Channel.Message(d.text(), d.link() == null ? null : webUrl + d.link(), d.level()),
+            channel.send(new Channel.Message(d.text(), d.link() == null ? null : webUrl + d.link(), d.level(), lang),
                     address);
             deliveries.sent(d.id(), now);
             count(d.channel(), "sent");
