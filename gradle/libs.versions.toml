@@ -9,12 +9,22 @@ springdoc = "3.0.0"
 embedded-postgres = "2.1.0"
 pdfbox = "3.0.5"
 aws-sdk = "2.30.0"
+# Security floors above the Spring Boot BOM: versions with fixes for known advisories (OSV, 2026-11-23).
+# Drop a line once the BOM itself manages this version or a newer one.
+jackson2-floor = "2.22.3"
+opentelemetry-floor = "1.67.0"
+snappy-floor = "1.1.10.9"
+lz4-floor = "1.11.4"
 
 [libraries]
 # BOMs: versions of everything below without an explicit version come from these
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
 spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+jackson2-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2-floor" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version.ref = "opentelemetry-floor" }
+snappy-java = { module = "org.xerial.snappy:snappy-java", version.ref = "snappy-floor" }
+lz4-java = { module = "at.yawk.lz4:lz4-java", version.ref = "lz4-floor" }
 aws-sdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-sdk" }
 
 # Spring Boot
