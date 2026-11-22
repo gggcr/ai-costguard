@@ -45,7 +45,7 @@ class ImportService implements ImportResults {
 
     /** The company of the bound tenant: how its files are read (ADR 0072). Empty values until it is saved. */
     private EmployeeDirectory.CompanyCard card() {
-        return company.company().orElse(new EmployeeDirectory.CompanyCard(null, null, null));
+        return company.company().orElse(new EmployeeDirectory.CompanyCard(null, null, null, null));
     }
 
     record Upload(ImportJob job, boolean created) {

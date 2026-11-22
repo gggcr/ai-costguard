@@ -13,10 +13,13 @@ import java.util.UUID;
 /** {@code employee}: only «Мой кабинет», no company data (ADR 0051). */
 enum UserRole { owner, finance, it_admin, agent_owner, auditor, employee }
 
-record Company(UUID id, String name, String currency, String plan) {
+/** {@code timeZone}: the zone the company named, else its country's (ADR 0073). */
+record Company(UUID id, String name, String currency, String plan, String timeZone) {
 }
 
-record CompanySettings(@NotBlank String name, @NotNull @Pattern(regexp = "[A-Z]{3}") String currency) {
+/** {@code timeZone}: IANA (Europe/Berlin); left out, the company keeps its zone. */
+record CompanySettings(@NotBlank String name, @NotNull @Pattern(regexp = "[A-Z]{3}") String currency,
+        String timeZone) {
 }
 
 /** {@code headEmployeeId}: who decides on the vacations of the department (ADR 0053); may be empty. */

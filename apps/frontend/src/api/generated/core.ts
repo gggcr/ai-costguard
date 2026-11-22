@@ -184,6 +184,7 @@ export type Company = {
   name?: string;
   currency?: string;
   plan?: string;
+  timeZone?: string;
 };
 
 export type CompanyErasure = {
@@ -226,6 +227,7 @@ export type CompanyLoginSettings = {
 export type CompanySettings = {
   name: string;
   currency: string;
+  timeZone?: string;
 };
 
 export type Connection = {
@@ -1070,6 +1072,7 @@ export type RegistrationRequest = {
   email: string;
   ownerFirstName: string;
   ownerLastName: string;
+  timeZone?: string;
 };
 
 export type ReportedPayment = {

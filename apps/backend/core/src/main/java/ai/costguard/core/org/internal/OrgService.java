@@ -6,6 +6,7 @@ import ai.costguard.core.org.EmployeeDismissed;
 import ai.costguard.core.plans.Limit;
 import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -62,6 +63,9 @@ class OrgService {
         boolean newCurrency = org.company().filter(c -> !c.currency().strip().equals(settings.currency())).isPresent();
         if (newCurrency && amounts.stream().anyMatch(AmountsInCurrency::holdsAmounts)) {
             throw OrgProblem.CURRENCY_IN_USE.failure();
+        }
+        if (settings.timeZone() != null && TimeZones.parse(settings.timeZone()).isEmpty()) {
+            throw OrgProblem.TIME_ZONE_UNKNOWN.failure();
         }
         org.saveCompany(tenantId, settings);
         events.publishEvent(ActionTaken.of(tenantId, "company.saved", "company", tenantId,

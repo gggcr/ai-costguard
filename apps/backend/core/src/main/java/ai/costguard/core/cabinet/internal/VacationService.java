@@ -3,6 +3,7 @@ package ai.costguard.core.cabinet.internal;
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.DepartmentHeads;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
@@ -25,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 class VacationService {
 
     static final int DAYS_PER_YEAR = 28;
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final VacationRepository vacations;
@@ -51,7 +51,12 @@ class VacationService {
     }
 
     private LocalDate today() {
-        return LocalDate.now(clock.withZone(MOSCOW));
+        return LocalDate.now(clock.withZone(zone()));
+    }
+
+    /** The company's time zone (ADR 0073); the session must be bound to the tenant. */
+    private ZoneId zone() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY);
     }
 
     @Transactional(readOnly = true)

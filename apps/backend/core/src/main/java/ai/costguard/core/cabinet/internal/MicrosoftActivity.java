@@ -43,7 +43,7 @@ class MicrosoftActivity {
         this.idleDays = idleDays;
     }
 
-    @Scheduled(cron = "${costguard.microsoft.activity-cron:0 30 6 * * *}", zone = "Europe/Moscow")
+    @Scheduled(cron = "${costguard.microsoft.activity-cron:0 30 3 * * *}", zone = "UTC")
     void daily() {
         for (UUID tenant : signIns.tenants()) {
             try {

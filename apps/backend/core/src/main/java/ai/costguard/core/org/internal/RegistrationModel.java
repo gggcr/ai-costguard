@@ -11,6 +11,7 @@ import java.util.UUID;
 /**
  * A company registering itself. {@code country}: ISO 3166-1 alpha-2, {@code currency}: ISO 4217. The owner's name
  * is two fields because Keycloak asks for both and would otherwise stop the owner at the first login to fill them.
+ * {@code timeZone} (IANA) is optional: without it the company gets the main zone of its country (ADR 0073).
  */
 record RegistrationRequest(
         @NotBlank @Size(max = 200) String companyName,
@@ -18,7 +19,8 @@ record RegistrationRequest(
         @NotBlank @Pattern(regexp = "[A-Z]{3}") String currency,
         @NotBlank @Email @Size(max = 254) String email,
         @NotBlank @Size(max = 100) String ownerFirstName,
-        @NotBlank @Size(max = 100) String ownerLastName) {
+        @NotBlank @Size(max = 100) String ownerLastName,
+        @Size(max = 64) String timeZone) {
 }
 
 /**

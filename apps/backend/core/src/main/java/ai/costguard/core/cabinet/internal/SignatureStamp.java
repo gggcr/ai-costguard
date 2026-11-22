@@ -25,8 +25,11 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 final class SignatureStamp {
 
     private static final String FONT = "/fonts/DejaVuSans.ttf";
-    private static final DateTimeFormatter MOMENT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm 'МСК'")
-            .withZone(ZoneId.of("Europe/Moscow"));
+    /** The moment of a signature in the company's zone (ADR 0073): МСК for Moscow, as before, else the zone. */
+    static DateTimeFormatter moment(ZoneId zone) {
+        String pattern = zone.equals(ZoneId.of("Europe/Moscow")) ? "dd.MM.yyyy HH:mm 'МСК'" : "dd.MM.yyyy HH:mm z";
+        return DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH).withZone(zone);
+    }
     private static final PDColor BLUE = new PDColor(new float[] {0.11f, 0.30f, 0.62f}, PDDeviceRGB.INSTANCE);
     private static final float MARGIN = 56;
 
@@ -46,12 +49,14 @@ final class SignatureStamp {
         return "totp".equals(method) ? "одноразовый код из приложения-аутентификатора" : "ПИН-код подписи";
     }
 
-    static byte[] stamp(byte[] pdf, String title, UUID documentId, List<DocumentSignature> signatures) {
+    static byte[] stamp(byte[] pdf, String title, UUID documentId, List<DocumentSignature> signatures,
+            ZoneId zone) {
+        DateTimeFormatter moment = moment(zone);
         try (PDDocument doc = Loader.loadPDF(pdf); InputStream fontFile = SignatureStamp.class.getResourceAsStream(FONT)) {
             PDType0Font font = PDType0Font.load(doc, fontFile);
             String line = "Подписано электронной подписью: " + String.join("; ", signatures.stream()
                     .map(s -> s.signerName() + " (" + party(s.party()).toLowerCase() + ") "
-                            + MOMENT.format(s.signedAt()))
+                            + moment.format(s.signedAt()))
                     .toList());
             for (PDPage page : doc.getPages()) {
                 PDRectangle box = page.getMediaBox();
@@ -86,7 +91,7 @@ final class SignatureStamp {
                     ty = text(c, font, 9, MARGIN + 10, ty, "Сторона: " + party(s.party()));
                     ty = text(c, font, 9, MARGIN + 10, ty, fit(font, 9, "Подписант: " + s.signerName() + ", "
                             + s.signerEmail(), width - 20));
-                    ty = text(c, font, 9, MARGIN + 10, ty, "Дата и время: " + MOMENT.format(s.signedAt()));
+                    ty = text(c, font, 9, MARGIN + 10, ty, "Дата и время: " + moment.format(s.signedAt()));
                     ty = text(c, font, 9, MARGIN + 10, ty, "Способ подтверждения: " + method(s.method()));
                     text(c, font, 7, MARGIN + 10, ty, "SHA-256 исходного файла: " + s.documentSha256());
                     y -= h + 12;

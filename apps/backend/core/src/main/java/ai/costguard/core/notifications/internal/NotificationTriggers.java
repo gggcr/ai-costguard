@@ -11,6 +11,7 @@ import ai.costguard.core.org.EmployeeDismissed;
 import ai.costguard.core.plans.PlanAccessEnded;
 import ai.costguard.core.plans.PlanAccessEnding;
 import ai.costguard.core.shared.names.Currencies;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -31,7 +32,6 @@ class NotificationTriggers {
 
     private static final int REASONS = 3;
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
 
     private final NotificationService service;
     private final TenantSession session;
@@ -142,7 +142,9 @@ class NotificationTriggers {
     /** Owners are warned before the trial or the paid period ends, and told when it ended (ADR 0037). */
     @ApplicationModuleListener
     void on(PlanAccessEnding e) {
-        String day = DAY.format(e.accessUntil().atZone(MOSCOW));
+        session.bind(e.tenantId());
+        ZoneId zone = company.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY);
+        String day = DAY.format(e.accessUntil().atZone(zone));
         String text = e.trial()
                 ? "Пробный период заканчивается " + day + ". Выберите тариф, чтобы не потерять возможность вносить изменения"
                 : "Оплаченный период заканчивается " + day + ". Продлите тариф, чтобы не потерять возможность вносить изменения";

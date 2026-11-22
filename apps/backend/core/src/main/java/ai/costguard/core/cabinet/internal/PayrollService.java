@@ -3,6 +3,7 @@ package ai.costguard.core.cabinet.internal;
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.core.shared.names.WrittenValues;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
@@ -39,7 +40,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 class PayrollService {
 
     private static final Logger log = LoggerFactory.getLogger(PayrollService.class);
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
+    /** The hour of the company's morning the pay-day notices go out at (ADR 0073). */
+    static final int PAY_DAY_HOUR = 9;
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     /** Most Russian companies: the advance on the 25th, the salary of the month on the 10th of the next one. */
     static final PayrollSchedule DEFAULT = new PayrollSchedule(25, 10);
@@ -67,7 +69,12 @@ class PayrollService {
     }
 
     private LocalDate today() {
-        return LocalDate.now(clock.withZone(MOSCOW));
+        return LocalDate.now(clock.withZone(zone()));
+    }
+
+    /** The company's time zone (ADR 0073); the session must be bound to the tenant. */
+    private ZoneId zone() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY);
     }
 
     @Transactional(readOnly = true)
@@ -271,12 +278,21 @@ class PayrollService {
         return employees.company().map(EmployeeDirectory.CompanyCard::currency).orElse("RUB");
     }
 
-    /** Every morning: tell each employee about the payments of the day (and any day missed while the job was down). */
-    @Scheduled(cron = "${costguard.payroll.notify-cron:0 0 9 * * *}", zone = "Europe/Moscow")
+    /**
+     * Every morning of each company, at {@value #PAY_DAY_HOUR}:00 its own time: tell each employee about the payments
+     * of the day (and any day missed while the job was down). The job runs every hour and takes the companies whose
+     * morning it is.
+     */
+    @Scheduled(cron = "${costguard.payroll.notify-cron:0 0 * * * *}")
     void payDay() {
         for (UUID tenant : tx.execute(s -> payroll.tenants())) {
             try {
-                tx.executeWithoutResult(s -> tellDue(tenant));
+                tx.executeWithoutResult(s -> {
+                    session.bind(tenant);
+                    if (java.time.ZonedDateTime.now(clock.withZone(zone())).getHour() == PAY_DAY_HOUR) {
+                        tellDue(tenant);
+                    }
+                });
             } catch (RuntimeException e) {
                 log.error("Pay-day notices of tenant {} failed", tenant, e);
             }

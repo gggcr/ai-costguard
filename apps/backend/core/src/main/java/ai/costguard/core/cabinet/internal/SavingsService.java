@@ -1,5 +1,7 @@
 package ai.costguard.core.cabinet.internal;
 
+import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.core.software.LicensePool;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
@@ -26,26 +28,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class SavingsService {
 
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
 
     private final JdbcClient jdbc;
     private final TenantSession session;
     private final LicensePool pool;
     private final Clock clock;
+    private final EmployeeDirectory employees;
 
-    SavingsService(JdbcClient jdbc, TenantSession session, LicensePool pool, Clock clock) {
+    SavingsService(JdbcClient jdbc, TenantSession session, LicensePool pool, Clock clock,
+            EmployeeDirectory employees) {
         this.jdbc = jdbc;
         this.session = session;
         this.pool = pool;
         this.clock = clock;
+        this.employees = employees;
     }
 
     @Transactional(readOnly = true)
     CabinetSavings savings(UUID tenantId, int months) {
         session.bind(tenantId);
-        YearMonth now = YearMonth.now(clock.withZone(MOSCOW));
+        ZoneId zone = employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY);
+        YearMonth now = YearMonth.now(clock.withZone(zone));
         YearMonth first = now.minusMonths(months - 1L);
-        Timestamp from = Timestamp.from(first.atDay(1).atStartOfDay(MOSCOW).toInstant());
+        Timestamp from = Timestamp.from(first.atDay(1).atStartOfDay(zone).toInstant());
         Map<UUID, BigDecimal> prices = pool.monthlySeatPrices();
         TreeMap<YearMonth, BigDecimal> byMonth = new TreeMap<>();
         for (YearMonth m = first; !m.isAfter(now); m = m.plusMonths(1)) {
@@ -70,7 +75,7 @@ class SavingsService {
             BigDecimal price = prices.getOrDefault(s.subscription(), BigDecimal.ZERO);
             seatMonthly = seatMonthly.add(price);
             reassigned += s.idle() ? 1 : 0;
-            byMonth.merge(YearMonth.from(s.at().atZone(MOSCOW)), price, BigDecimal::add);
+            byMonth.merge(YearMonth.from(s.at().atZone(zone)), price, BigDecimal::add);
         }
 
         record Refused(BigDecimal amount, String period, java.time.Instant at) {
@@ -86,7 +91,7 @@ class SavingsService {
             BigDecimal monthly = "year".equals(r.period())
                     ? r.amount().divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP) : r.amount();
             purchaseMonthly = purchaseMonthly.add(monthly);
-            byMonth.merge(YearMonth.from(r.at().atZone(MOSCOW)), monthly, BigDecimal::add);
+            byMonth.merge(YearMonth.from(r.at().atZone(zone)), monthly, BigDecimal::add);
         }
 
         List<CabinetSavings.SavedMonth> series = new ArrayList<>();

@@ -2,6 +2,7 @@ package ai.costguard.core.cabinet.internal;
 
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.core.software.LicensePool;
 import ai.costguard.platform.tenant.TenantSession;
@@ -35,7 +36,8 @@ class LeaseService {
 
     private static final Logger log = LoggerFactory.getLogger(LeaseService.class);
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
+    /** The hour of the company's morning leases end and reminders go out at (ADR 0073). */
+    static final int MORNING_HOUR = 8;
 
     private final LeaseRepository leases;
     private final LicensePool pool;
@@ -67,7 +69,12 @@ class LeaseService {
     }
 
     LocalDate today() {
-        return LocalDate.now(clock.withZone(MOSCOW));
+        return LocalDate.now(clock.withZone(zone()));
+    }
+
+    /** The company's time zone (ADR 0073); the session must be bound to the tenant. */
+    private ZoneId zone() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY);
     }
 
     /** A license given for {@code days}; {@code lender} is the colleague it was taken from, if any. Joins the caller. */
@@ -100,12 +107,18 @@ class LeaseService {
                 ActionTaken.details("employeeId", me, "subscriptionId", held.subscriptionId())));
     }
 
-    @Scheduled(cron = "${costguard.cabinet.morning-cron:0 0 8 * * *}", zone = "Europe/Moscow")
+    /** Every hour; each company once a day, at {@value #MORNING_HOUR}:00 of its own time zone. */
+    @Scheduled(cron = "${costguard.cabinet.morning-cron:0 0 * * * *}")
     void morning() {
-        LocalDate today = today();
         for (UUID tenant : tx.execute(s -> leases.tenants())) {
             try {
-                tx.executeWithoutResult(s -> run(tenant, today));
+                tx.executeWithoutResult(s -> {
+                    session.bind(tenant);
+                    java.time.ZonedDateTime local = java.time.ZonedDateTime.now(clock.withZone(zone()));
+                    if (local.getHour() == MORNING_HOUR) {
+                        run(tenant, local.toLocalDate());
+                    }
+                });
             } catch (RuntimeException e) {
                 log.error("Leases and renewal reminders of tenant {} failed", tenant, e);
             }

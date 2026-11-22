@@ -64,8 +64,8 @@ public interface EmployeeDirectory {
     /**
      * {@code currency} is what every amount of the company without a currency of its own is in (ADR 0072);
      * {@code country} (ISO 3166-1 alpha-2, null for a company that never said) is how its people write numbers and
-     * dates.
+     * dates; {@code zone} is what "today" and "every morning" mean for it (ADR 0073).
      */
-    record CompanyCard(String name, String currency, String country) {
+    record CompanyCard(String name, String currency, String country, java.time.ZoneId zone) {
     }
 }

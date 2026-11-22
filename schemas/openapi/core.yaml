@@ -5350,6 +5350,8 @@ components:
         currency:
           type: string
           pattern: "[A-Z]{3}"
+        timeZone:
+          type: string
       required:
       - currency
       - name
@@ -5364,6 +5366,8 @@ components:
         currency:
           type: string
         plan:
+          type: string
+        timeZone:
           type: string
     CompanyLoginSettings:
       type: object
@@ -5878,6 +5882,10 @@ components:
         ownerLastName:
           type: string
           maxLength: 100
+          minLength: 0
+        timeZone:
+          type: string
+          maxLength: 64
           minLength: 0
       required:
       - companyName

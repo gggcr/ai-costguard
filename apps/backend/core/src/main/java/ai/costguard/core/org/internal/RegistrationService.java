@@ -2,6 +2,7 @@ package ai.costguard.core.org.internal;
 
 import ai.costguard.core.plans.PlanEnrollment;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
 import java.time.Instant;
@@ -84,6 +85,9 @@ class RegistrationService {
             throw RegistrationProblem.REGISTRATION_UNAVAILABLE.failure();
         }
         requireCodes(request.country(), request.currency());
+        if (request.timeZone() != null && TimeZones.parse(request.timeZone()).isEmpty()) {
+            throw RegistrationProblem.TIME_ZONE_UNKNOWN.failure();
+        }
         String email = email(request.email());
         if (!attempts.allow(clientAddress, email)) {
             throw RegistrationProblem.TOO_MANY_REGISTRATIONS.failure();
@@ -106,7 +110,7 @@ class RegistrationService {
                     session.bind(tenantId);
                     Instant now = clock.instant();
                     registrations.insertTenant(tenantId, request.companyName().strip(), request.currency(),
-                            request.country());
+                            request.country(), request.timeZone() == null ? null : request.timeZone().strip());
                     org.insertUser(tenantId, UUID.randomUUID(), new NewUser(request.ownerFirstName().strip() + " "
                             + request.ownerLastName().strip(), email, UserRole.owner, null), accountId);
                     registrations.insertRegistration(tenantId, accountId, email, now,

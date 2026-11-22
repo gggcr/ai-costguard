@@ -1,6 +1,7 @@
 package ai.costguard.core.org.internal;
 
 import ai.costguard.core.org.MicrosoftSignIns;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
 import java.time.Duration;
@@ -19,23 +20,23 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 class GraphSignIns implements MicrosoftSignIns {
 
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
-
     private final JdbcClient jdbc;
     private final TenantSession session;
     private final TransactionTemplate transactions;
     private final CompanyLoginService logins;
     private final MicrosoftDirectory microsoft;
     private final Clock clock;
+    private final OrgRepository org;
 
     GraphSignIns(JdbcClient jdbc, TenantSession session, TransactionTemplate transactions,
-            CompanyLoginService logins, MicrosoftDirectory microsoft, Clock clock) {
+            CompanyLoginService logins, MicrosoftDirectory microsoft, Clock clock, OrgRepository org) {
         this.jdbc = jdbc;
         this.session = session;
         this.transactions = transactions;
         this.logins = logins;
         this.microsoft = microsoft;
         this.clock = clock;
+        this.org = org;
     }
 
     @Override
@@ -47,8 +48,10 @@ class GraphSignIns implements MicrosoftSignIns {
 
     @Override
     public List<SignIn> recent(UUID tenantId, int days) {
+        ZoneId[] zone = {TimeZones.LEGACY};
         Optional<MicrosoftDirectory.App> app = transactions.execute(tx -> {
             session.bind(tenantId);
+            org.companyCard().ifPresent(c -> zone[0] = c.zone()); // the day of a sign-in is the company's (ADR 0073)
             return logins.app(tenantId);
         });
         if (app.isEmpty()) {
@@ -62,7 +65,7 @@ class GraphSignIns implements MicrosoftSignIns {
         }
         Map<String, SignIn> last = new HashMap<>();
         for (MicrosoftDirectory.SignIn s : log) {
-            LocalDate day = s.at().atZone(MOSCOW).toLocalDate();
+            LocalDate day = s.at().atZone(zone[0]).toLocalDate();
             last.merge(s.email() + "\n" + s.app(), new SignIn(s.email(), s.app(), day),
                     (a, b) -> a.day().isAfter(b.day()) ? a : b);
         }

@@ -4,6 +4,7 @@ import ai.costguard.core.assets.EmployeeActs;
 import ai.costguard.core.imports.StoredFiles;
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.TimeZones;
 import ai.costguard.core.shared.activity.ActionTaken;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
@@ -141,7 +142,7 @@ class DocumentService {
         List<DocumentSignature> signed = documents.signatures(d.id());
         if (!signed.isEmpty() && SignatureStamp.isPdf(bytes)) {
             return new DocumentFile(d.fileName(), "application/pdf", SignatureStamp.stamp(bytes, d.title(), d.id(),
-                    signed));
+                    signed, employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY)));
         }
         return new DocumentFile(d.fileName(), d.contentType(), bytes);
     }

@@ -104,6 +104,21 @@ class OrgApiIntegrationTest extends PostgresTestSupport {
         mvc.perform(get("/api/v1/company").with(admin())).andExpect(jsonPath("$.currency").value("USD"));
     }
 
+    /** ADR 0073: a company keeps its own time zone; without one it has Moscow, as every company before countries. */
+    @Test
+    void aCompanySaysItsTimeZone() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme\",\"currency\":\"USD\"}").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.timeZone").value("Europe/Moscow"));
+        mvc.perform(json(put("/api/v1/company"), """
+                        {"name":"Acme","currency":"USD","timeZone":"America/Chicago"}""").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.timeZone").value("America/Chicago"));
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\"}").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.timeZone").value("America/Chicago"));
+        mvc.perform(json(put("/api/v1/company"), """
+                        {"name":"Acme","currency":"USD","timeZone":"+03:00"}""").with(admin()))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("time_zone_unknown"));
+    }
+
     /** ADR 0072: amounts without a currency are the company's, so its currency stays once it keeps any. */
     @Test
     void theCurrencyStaysOnceMoneyIsKeptInIt() throws Exception {
