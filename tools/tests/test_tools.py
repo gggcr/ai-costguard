@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -11,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def load(path):
     spec = importlib.util.spec_from_file_location(path.stem, path)
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses look their module up
     spec.loader.exec_module(module)
     return module
 
@@ -55,6 +57,10 @@ def test_seed_is_stable_and_names_the_demo_tenant():
     assert str(seed.TENANT) in first and "on conflict do nothing" in first
     users = json.loads((ROOT / "infra/keycloak/costguard-users-0.json").read_text("utf-8"))
     assert users["users"][0]["attributes"]["tenant_id"] == [str(seed.TENANT)]
+    # the American company (ADR 0074): its owner and employee sign in with the e-mails the seed gives them
+    us = {u["email"]: u for u in users["users"] if u["attributes"]["tenant_id"] == [str(seed.TENANT_US)]}
+    assert set(us) == {"alex.morgan@brightline.example", "emily.carter@brightline.example"}
+    assert "'USD', 'US', 'America/New_York', 'en'" in first and all(e in first for e in us)
 
 
 def test_the_demo_user_stays_local():
