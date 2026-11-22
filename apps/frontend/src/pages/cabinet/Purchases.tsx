@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api, download, postForm } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, ConfirmButton, Empty, Field } from '../../components/ui';
-import { fmtDate } from '../../lib';
+import { uiLocale, fmtDate } from '../../lib';
 import { errorText, useApi } from './useApi';
 
 interface PurchaseRequest {
@@ -23,7 +23,7 @@ const STATUS: Record<PurchaseRequest['status'], { label: string; tone: 'good' | 
   cancelled: { label: 'Отменён', tone: 'neutral' },
 };
 
-const money = (n: number, currency: string) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+const money = (n: number, currency: string) => new Intl.NumberFormat(uiLocale(), { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
 
 function Row({ r, who, actions, file }: { r: PurchaseRequest; who?: boolean; actions?: React.ReactNode; file: () => void }) {
   return (

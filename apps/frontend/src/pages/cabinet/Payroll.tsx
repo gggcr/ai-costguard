@@ -4,7 +4,7 @@ import type { PayrollUnmatched } from '../../api/generated/core';
 import { api, uploadForm } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, Empty, Field, Stat } from '../../components/ui';
-import { currentCurrency, fmtDate } from '../../lib';
+import { uiLocale, currentCurrency, fmtDate } from '../../lib';
 import { errorText, useApi } from './useApi';
 
 interface Payment { id: string; employeeName: string; kind: string; period: string; payDate: string; amount: number; currency: string; source: string }
@@ -15,8 +15,8 @@ const KIND: Record<string, string> = { advance: 'Аванс', salary: 'Зарп�
 const REASON: Record<string, string> = { 'employee not found': 'сотрудник не найден', 'ambiguous employee': 'адрес у нескольких сотрудников, выплата не назначена', 'bad email': 'неверный адрес почты', 'bad date': 'неверная дата', 'bad amount': 'неверная сумма' };
 
 const money = (n: number, currency = currentCurrency()) =>
-  new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
-const month = (iso: string) => new Date(iso).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  new Intl.NumberFormat(uiLocale(), { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+const month = (iso: string) => new Date(iso).toLocaleDateString(uiLocale(), { month: 'long', year: 'numeric' });
 
 export function MyPay() {
   const { data, error } = useApi<MyPayroll>('/api/v1/me/payroll');

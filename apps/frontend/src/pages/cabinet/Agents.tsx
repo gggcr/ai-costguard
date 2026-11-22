@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { api } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, Empty, Field, Modal, Progress } from '../../components/ui';
-import { currentCurrency, fmtDate } from '../../lib';
+import { uiLocale, currentCurrency, fmtDate } from '../../lib';
 import { errorText, useApi } from './useApi';
 
 type Light = 'green' | 'yellow' | 'red';
@@ -30,7 +30,7 @@ const STATUS: Record<LimitRequest['status'], { label: string; tone: 'good' | 'wa
   cancelled: { label: 'Отменён', tone: 'neutral' },
 };
 
-const money = (n: number, currency: string | null) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: currency ?? currentCurrency(), maximumFractionDigits: 2 }).format(n);
+const money = (n: number, currency: string | null) => new Intl.NumberFormat(uiLocale(), { style: 'currency', currency: currency ?? currentCurrency(), maximumFractionDigits: 2 }).format(n);
 
 function TrafficLight({ light }: { light: Light }) {
   return (

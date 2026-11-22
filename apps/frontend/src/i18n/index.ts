@@ -304,8 +304,17 @@ export function setLang(next: Lang) {
 
 export function onLang(f: (l: Lang) => void): () => void { listeners.add(f); return () => listeners.delete(f); }
 
-/** Called once at startup: applies the saved language. */
+/** The browser's language on a first visit: Russian for a Russian browser, English for any other (ADR 0074). */
+function browserLang(): Lang {
+  const first = (typeof navigator !== 'undefined' && (navigator.languages?.[0] ?? navigator.language)) || 'ru';
+  return first.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+}
+
+/** Called once at startup: applies the saved language, or the browser's on a first visit. */
 export function initLang() {
+  let saved: string | null = null;
+  try { saved = localStorage.getItem(KEY); } catch { /* no storage */ }
+  if (saved !== 'ru' && saved !== 'en') lang = browserLang();
   document.documentElement.lang = lang;
   if (lang === 'en') { start(); void prepareTranslator().then((ok) => { if (ok) walk(document.body); }); }
 }

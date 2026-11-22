@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { Fragment, StrictMode, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { StoreProvider } from './api/store';
@@ -22,7 +22,7 @@ import { NotFound, Notifications } from './pages/Notifications';
 import { Cabinet } from './pages/Cabinet';
 import { People } from './pages/People';
 import './styles.css';
-import { initLang } from './i18n';
+import { getLang, initLang, onLang } from './i18n';
 
 initLang();
 
@@ -35,6 +35,13 @@ function Protected() {
 function Home() {
   const { canView } = useAuth();
   return canView('dashboard') ? <Dashboard /> : <Navigate to="/cabinet" replace />;
+}
+
+/** A new language re-renders every page (numbers and dates follow it, ADR 0074); the store keeps its data. */
+function LangKeyed({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState(getLang());
+  useEffect(() => onLang(setLangState), []);
+  return <Fragment key={lang}>{children}</Fragment>;
 }
 
 function App() {
@@ -76,7 +83,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <StoreProvider>
         <AuthProvider>
-          <App />
+          <LangKeyed><App /></LangKeyed>
         </AuthProvider>
       </StoreProvider>
     </BrowserRouter>

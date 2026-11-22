@@ -5,7 +5,7 @@ import { useAuth } from '../auth/auth';
 import type { Report } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, Modal, PageHeader, Stat, Tabs } from '../components/ui';
 import { LineChart, type LinePoint } from '../components/charts';
-import { currencySign, downloadText, fmtDate, fmtMonth, fmtMoney, toCsv } from '../lib';
+import { uiLocale, currencySign, downloadText, fmtDate, fmtMonth, fmtMoney, toCsv } from '../lib';
 
 type Series = 'total' | 'software' | 'agents';
 
@@ -13,7 +13,7 @@ const NOW = new Date();
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const monthBack = (k: number) => ym(new Date(NOW.getFullYear(), NOW.getMonth() - k, 1));
 const PERIODS = [monthBack(0), monthBack(1), monthBack(2), `${NOW.getFullYear()}-Q${Math.floor(NOW.getMonth() / 3) + 1}`, String(NOW.getFullYear())];
-const MONTH_NAME = NOW.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+const monthName = () => NOW.toLocaleDateString(uiLocale(), { month: 'long', year: 'numeric' });
 
 export function Analytics() {
   const { state, actions } = useStore();
@@ -24,7 +24,7 @@ export function Analytics() {
   const [annual, setAnnual] = useState(true);
   const [agentCut, setAgentCut] = useState(10);
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState(`Расходы и экономия за ${MONTH_NAME}`);
+  const [name, setName] = useState(`Расходы и экономия за ${monthName()}`);
   const [format, setFormat] = useState<'xlsx' | 'pdf'>('xlsx');
   const [period, setPeriod] = useState(PERIODS[0]);
 

@@ -1,6 +1,17 @@
 // Общие утилиты: форматирование, идентификаторы, фейковые хэши для квитанций.
 
-const num = new Intl.NumberFormat('ru-RU');
+import { getLang } from './i18n';
+
+/**
+ * The locale numbers, dates and money are written in: the UI language (ADR 0074). In English, the browser's own
+ * English (en-GB writes 22 Nov 2026, en-US Nov 22, 2026); en-US when it has none.
+ */
+export function uiLocale(): string {
+  if (getLang() !== 'en') return 'ru-RU';
+  const langs = typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]);
+  return langs.find((l) => l?.toLowerCase().startsWith('en')) ?? 'en-US';
+}
+
 
 // Деньги компании — в её валюте (ADR 0072): бюджеты, цены подписок, находки и траты агентов ядро держит в валюте
 // компании, а не в рублях. Хранилище данных сообщает её, как только прочитает /api/v1/company.
@@ -14,13 +25,13 @@ export function setCompanyCurrency(code: string | null | undefined) {
 export const currentCurrency = () => companyCurrency;
 
 function moneyFormat(currency: string, digits: number): Intl.NumberFormat {
-  const key = `${currency}:${digits}`;
+  const key = `${uiLocale()}:${currency}:${digits}`;
   let f = formats.get(key);
   if (!f) {
     try {
-      f = new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: digits });
+      f = new Intl.NumberFormat(uiLocale(), { style: 'currency', currency, maximumFractionDigits: digits });
     } catch {
-      f = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: digits }); // код, которого браузер не знает
+      f = new Intl.NumberFormat(uiLocale(), { maximumFractionDigits: digits }); // код, которого браузер не знает
     }
     formats.set(key, f);
   }
@@ -39,18 +50,18 @@ export function fmtMoney(v: number, currency: string = companyCurrency): string 
   const text = f.format(v);
   return f.resolvedOptions().style === 'currency' ? text : `${text} ${currency}`;
 }
-export const fmtNum = (v: number) => num.format(v);
+export const fmtNum = (v: number) => new Intl.NumberFormat(uiLocale()).format(v);
 export const fmtPct = (v: number) => `${Math.round(v)}%`;
 
 export const fmtDate = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  iso ? new Date(iso).toLocaleDateString(uiLocale(), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleString(uiLocale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export const fmtMonth = (ym: string) => {
   const [y, m] = ym.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' });
+  return new Date(y, m - 1, 1).toLocaleDateString(uiLocale(), { month: 'short', year: '2-digit' });
 };
 
 export function fmtRelative(iso: string): string {

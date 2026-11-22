@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api, uploadForm } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, ConfirmButton, Empty, Field } from '../../components/ui';
-import { fmtDate } from '../../lib';
+import { uiLocale, fmtDate } from '../../lib';
 import { errorText, useApi } from './useApi';
 
 interface Spend { id: string; service: string; category: string; amount: number; currency: string; paidOn: string; purpose: string | null }
@@ -14,7 +14,7 @@ interface Summary {
   services: { service: string; category: string; people: number; reports: number; total: number; currency: string; lastPaid: string | null; departments: { department: string; people: number; total: number }[] }[];
 }
 
-const money = (n: number, currency: string) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+const money = (n: number, currency: string) => new Intl.NumberFormat(uiLocale(), { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
 
 export function MyShadowSpend() {
   const { toast } = useStore();

@@ -3,7 +3,7 @@ import { useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import { Badge, Card, CodeBadge, FindingBadge, PageHeader, Progress, RiskBadge, Stat } from '../components/ui';
 import { BarList } from '../components/charts';
-import { fmtRelative, fmtMoney } from '../lib';
+import { uiLocale, fmtRelative, fmtMoney } from '../lib';
 
 export function Dashboard() {
   const { state } = useStore();
@@ -27,7 +27,7 @@ export function Dashboard() {
 
   return (
     <>
-      <PageHeader title={`Добрый день, ${user?.name.split(' ')[0]}`} subtitle={`Сводка цифровых расходов компании за ${new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`} />
+      <PageHeader title={`Добрый день, ${user?.name.split(' ')[0]}`} subtitle={`Сводка цифровых расходов компании за ${new Date().toLocaleDateString(uiLocale(), { month: 'long', year: 'numeric' })}`} />
 
       <div className="stats">
         <Stat label="ИИ-агенты: потрачено в ноябре" value={fmtMoney(company?.spent ?? 0)} hint={company && <>из {fmtMoney(company.limit)} · <Progress value={company.spent} max={company.limit} /></>} to={canView('budgets') ? '/budgets' : undefined} />

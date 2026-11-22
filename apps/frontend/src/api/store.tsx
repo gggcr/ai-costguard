@@ -8,7 +8,7 @@ import type {
 } from './types';
 import { ApiStoreProvider } from './api-store';
 import { SYSTEM_TYPES, createSeed } from './mock-data';
-import { fakeHash, fmtMoney, localDay, newId } from '../lib';
+import { uiLocale, fakeHash, fmtMoney, localDay, newId } from '../lib';
 
 const STORAGE_KEY = 'costguard-demo-state-v1';
 
@@ -386,7 +386,7 @@ function useActions(
               break;
             }
             case 'accept': f.status = 'accepted'; log('Принята'); break;
-            case 'postpone': f.status = 'postponed'; f.postponedUntil = payload?.date; log(`Отложена до ${payload?.date ? new Date(payload.date).toLocaleDateString('ru-RU') : '—'}`); break;
+            case 'postpone': f.status = 'postponed'; f.postponedUntil = payload?.date; log(`Отложена до ${payload?.date ? new Date(payload.date).toLocaleDateString(uiLocale()) : '—'}`); break;
             case 'reject': f.status = 'rejected'; f.rejectReason = payload?.reason; log(`Отклонена: ${payload?.reason ?? ''}`); break;
             case 'createTask': f.status = 'in_progress'; log(`Создана задача${payload?.reason ? `: ${payload.reason}` : ''}`); break;
             case 'confirm': f.status = 'confirmed'; log('Экономия видна в следующем счёте. Подтверждена'); notify(s, `Подтверждена экономия ${fmtMoney(f.expectedSavings)}/мес: ${f.title}`, 'good', `/findings/${f.id}`); break;
