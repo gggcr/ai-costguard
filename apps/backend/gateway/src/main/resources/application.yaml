@@ -55,6 +55,7 @@ costguard:
     #     header: Authorization
     #     value: Bearer ${SPARK_API_KEY:}
     #     price: 15                # when the tenant's catalog has no REQUEST price for the vendor
+    #     currency: RUB            # of the prices here, RUB when absent; charged in the company's (ADR 0072)
     #     operations:
     #       - { path: "/v1/companies/{inn}/report", method: GET, product: report, price: 450 }
 

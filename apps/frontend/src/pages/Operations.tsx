@@ -4,7 +4,7 @@ import { useLookup, useStore } from '../api/store';
 import type { GatewayCode } from '../api/types';
 import { Badge, Button, Card, CODE_META, CodeBadge, Empty, PageHeader, RiskBadge } from '../components/ui';
 import { LADDER } from './Policies';
-import { downloadText, fmtDateTime, fmtRub, short, toCsv } from '../lib';
+import { currencySign, downloadText, fmtDateTime, fmtMoney, short, toCsv } from '../lib';
 
 const PAGE = 25;
 
@@ -27,7 +27,7 @@ export function Operations() {
   const total = list.filter((o) => o.code === 'allowed').reduce((s, o) => s + o.cost, 0);
 
   const exportCsv = () => {
-    const rows: (string | number)[][] = [['ID', 'Время', 'Агент', 'Поставщик', 'Ресурс', 'Решение', 'Сумма, ₽', 'Хэш квитанции', 'Статус в NEAR']];
+    const rows: (string | number)[][] = [['ID', 'Время', 'Агент', 'Поставщик', 'Ресурс', 'Решение', `Сумма, ${currencySign()}`, 'Хэш квитанции', 'Статус в NEAR']];
     list.forEach((o) => rows.push([o.id, o.at, L.agent(o.agentId)?.name ?? o.agentId, o.vendor, o.resource, CODE_META[o.code].label, o.cost, o.receipt?.hash ?? '', o.receipt?.status === 'anchored' ? 'закреплена' : o.receipt ? 'ожидает пакета' : '']));
     downloadText('journal-operations.csv', toCsv(rows), 'text/csv');
   };
@@ -49,7 +49,7 @@ export function Operations() {
           {(Object.keys(CODE_META) as GatewayCode[]).map((c) => <option key={c} value={c}>{CODE_META[c].http} · {CODE_META[c].label}</option>)}
         </select>
         {(agent !== 'all' || decision !== 'all' || code !== 'all') && <Button variant="ghost" onClick={() => { setParams({}); setPage(1); }}>Сбросить</Button>}
-        <span className="muted small filters-sum">{list.length} операций · разрешено на {fmtRub(total)}</span>
+        <span className="muted small filters-sum">{list.length} операций · разрешено на {fmtMoney(total)}</span>
       </div>
       <Card>
         {list.length === 0 ? <Empty>Операций по фильтру нет</Empty> : (
@@ -66,7 +66,7 @@ export function Operations() {
                       <td>{o.resource}<span className="muted small block">{o.vendor}</span></td>
                       <td><CodeBadge code={o.code} /></td>
                       <td className="num">{o.risk}</td>
-                      <td className="num">{o.cost ? fmtRub(o.cost) : '—'}</td>
+                      <td className="num">{o.cost ? fmtMoney(o.cost) : '—'}</td>
                       <td>{o.receipt ? (o.receipt.status === 'anchored' ? <Badge tone="good">Закреплена</Badge> : <Badge tone="warning">В пакете</Badge>) : '—'}</td>
                     </tr>
                   ))}
@@ -116,7 +116,7 @@ export function OperationDetail() {
             <dt>Агент</dt><dd>{agent ? <Link to={`/agents/${agent.id}`}>{agent.name}</Link> : '—'}</dd>
             <dt>Поставщик</dt><dd>{op.vendor}</dd>
             <dt>Ресурс</dt><dd>{op.resource}</dd>
-            <dt>Сумма</dt><dd>{op.cost ? fmtRub(op.cost) : 'не списано'}</dd>
+            <dt>Сумма</dt><dd>{op.cost ? fmtMoney(op.cost) : 'не списано'}</dd>
             <dt>Риск в момент операции</dt><dd><RiskBadge score={op.risk} /></dd>
             <dt>Ответ шлюза</dt><dd>HTTP {CODE_META[op.code].http} · {CODE_META[op.code].label}</dd>
           </dl>

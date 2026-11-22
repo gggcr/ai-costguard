@@ -4,7 +4,7 @@ import { useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import type { Contract, Subscription } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, FindingBadge, Modal, PageHeader, Progress, ReadOnlyNote, Stat, Tabs } from '../components/ui';
-import { daysUntil, fmtDate, fmtRelative, fmtRub } from '../lib';
+import { currencySign, daysUntil, fmtDate, fmtRelative, fmtMoney } from '../lib';
 import { InvoicesTab } from './Invoices';
 
 type Tab = 'subscriptions' | 'contracts' | 'vendors' | 'invoices';
@@ -39,7 +39,7 @@ export function Software() {
         )} />
       {!edit && <ReadOnlyNote />}
       <div className="stats">
-        <Stat label="Подписки в месяц" value={fmtRub(monthly)} hint={`${state.subscriptions.length} подписок у ${new Set(state.subscriptions.map((s) => s.vendorId)).size} поставщиков`} />
+        <Stat label="Подписки в месяц" value={fmtMoney(monthly)} hint={`${state.subscriptions.length} подписок у ${new Set(state.subscriptions.map((s) => s.vendorId)).size} поставщиков`} />
         <Stat label="Неиспользуемые места" value={idleSeats} hint={`нет входа больше ${ACTIVE_DAYS} дней`} to="/findings" />
         <Stat label="Скоро продление" value={soon.length} hint="договоры, где пора уведомить поставщика" />
       </div>
@@ -58,8 +58,8 @@ export function Software() {
                       <td><Link to={`/software/subscriptions/${s.id}`} onClick={(e) => e.stopPropagation()}>{s.product}</Link><span className="muted small block">{L.vendor(s.vendorId)?.name}</span></td>
                       <td>{L.dept(s.departmentId)?.name}</td>
                       <td style={{ minWidth: 150 }}>{u} из {s.seats}<Progress value={u} max={s.seats} /></td>
-                      <td className="num">{fmtRub(s.pricePerSeat)}</td>
-                      <td className="num">{fmtRub(s.seats * s.pricePerSeat)}</td>
+                      <td className="num">{fmtMoney(s.pricePerSeat)}</td>
+                      <td className="num">{fmtMoney(s.seats * s.pricePerSeat)}</td>
                       <td>{fmtDate(s.renewalDate)}<span className="muted small block">{s.billingPeriod === 'year' ? 'годовая' : 'помесячно'}</span></td>
                     </tr>
                   );
@@ -91,7 +91,7 @@ export function Software() {
                           <span>{c.autoRenew ? 'включено' : 'выключено'}</span>
                         </label>
                       </td>
-                      <td className="num">{fmtRub(c.amount)}</td>
+                      <td className="num">{fmtMoney(c.amount)}</td>
                       <td>{edit && <Button variant="ghost" onClick={() => { setEditContract(c); setModal('contract'); }}>Изменить</Button>}</td>
                     </tr>
                   );
@@ -152,7 +152,7 @@ function SubscriptionForm({ sub, onClose }: { sub?: Subscription; onClose: () =>
         </div>
         <div className="form-row">
           <Field label="Мест"><input className="input" type="number" min={1} value={f.seats} onChange={(e) => set('seats', Number(e.target.value))} /></Field>
-          <Field label="Цена места в месяц, ₽"><input className="input" type="number" min={0} value={f.pricePerSeat} onChange={(e) => set('pricePerSeat', Number(e.target.value))} /></Field>
+          <Field label={`Цена места в месяц, ${currencySign()}`}><input className="input" type="number" min={0} value={f.pricePerSeat} onChange={(e) => set('pricePerSeat', Number(e.target.value))} /></Field>
           <Field label="Оплата"><select className="input" value={f.billingPeriod} onChange={(e) => set('billingPeriod', e.target.value as 'month' | 'year')}><option value="month">помесячно</option><option value="year">за год</option></select></Field>
           <Field label="Продление"><input className="input" type="date" value={f.renewalDate.slice(0, 10)} onChange={(e) => set('renewalDate', e.target.value)} /></Field>
         </div>
@@ -180,7 +180,7 @@ function ContractForm({ contract, onClose }: { contract?: Contract; onClose: () 
           <Field label="Уведомить за, дней"><input className="input" type="number" min={0} value={f.noticeDays} onChange={(e) => set('noticeDays', Number(e.target.value))} /></Field>
         </div>
         <div className="form-row">
-          <Field label="Сумма договора, ₽"><input className="input" type="number" min={0} value={f.amount} onChange={(e) => set('amount', Number(e.target.value))} /></Field>
+          <Field label={`Сумма договора, ${currencySign()}`}><input className="input" type="number" min={0} value={f.amount} onChange={(e) => set('amount', Number(e.target.value))} /></Field>
           <label className="switch inline"><input type="checkbox" checked={f.autoRenew} onChange={(e) => set('autoRenew', e.target.checked)} /> <span>Автопродление</span></label>
         </div>
       </div>
@@ -231,7 +231,7 @@ export function SubscriptionDetail() {
       <div className="stats">
         <Stat label="Мест" value={`${assignments.length} / ${sub.seats}`} hint={`свободно ${Math.max(0, free)}`} />
         <Stat label="Активны за 30 дней" value={assignments.filter((a) => isActive(a.lastActive)).length} hint="входили в сервис" />
-        <Stat label="Стоимость в месяц" value={fmtRub(sub.seats * sub.pricePerSeat)} hint={`${fmtRub(sub.pricePerSeat)} за место`} />
+        <Stat label="Стоимость в месяц" value={fmtMoney(sub.seats * sub.pricePerSeat)} hint={`${fmtMoney(sub.pricePerSeat)} за место`} />
         <Stat label="Продление" value={fmtDate(sub.renewalDate)} hint={fmtRelative(sub.renewalDate)} />
       </div>
       <div className="grid-2">
@@ -278,7 +278,7 @@ export function SubscriptionDetail() {
           </Card>
           <Card title="Находки по подписке">
             {findings.length === 0 ? <p className="muted">Находок нет</p> : (
-              <ul className="list">{findings.map((f) => <li key={f.id}><Link to={`/findings/${f.id}`} className="list-row"><span>{f.title}<span className="block"><FindingBadge status={f.status} /></span></span><strong>{fmtRub(f.expectedSavings)}</strong></Link></li>)}</ul>
+              <ul className="list">{findings.map((f) => <li key={f.id}><Link to={`/findings/${f.id}`} className="list-row"><span>{f.title}<span className="block"><FindingBadge status={f.status} /></span></span><strong>{fmtMoney(f.expectedSavings)}</strong></Link></li>)}</ul>
             )}
           </Card>
         </div>

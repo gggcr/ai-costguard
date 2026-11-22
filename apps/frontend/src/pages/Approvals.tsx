@@ -4,7 +4,7 @@ import { useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import type { Approval } from '../api/types';
 import { APPROVAL_META, Badge, Button, Card, Empty, Field, Modal, PageHeader, RiskBadge, Tabs } from '../components/ui';
-import { fmtDateTime, fmtRelative, fmtRub } from '../lib';
+import { fmtDateTime, fmtRelative, fmtMoney } from '../lib';
 
 export function Approvals() {
   const { state, actions } = useStore();
@@ -35,7 +35,7 @@ export function Approvals() {
             <Card key={ap.id}>
               <div className="approval">
                 <div>
-                  <div className="approval-amount">{fmtRub(ap.amount)}</div>
+                  <div className="approval-amount">{fmtMoney(ap.amount)}</div>
                   <Badge tone={APPROVAL_META[ap.status].tone}>{APPROVAL_META[ap.status].label}</Badge>
                 </div>
                 <div className="approval-body">
@@ -73,7 +73,7 @@ export function Approvals() {
       }>
         {deciding && (
           <div className="form">
-            <p><strong>{fmtRub(deciding.ap.amount)}</strong> · {deciding.ap.description}</p>
+            <p><strong>{fmtMoney(deciding.ap.amount)}</strong> · {deciding.ap.description}</p>
             <Field label={deciding.approve ? 'Комментарий (необязательно)' : 'Причина отказа'}>
               <textarea className="input" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
             </Field>

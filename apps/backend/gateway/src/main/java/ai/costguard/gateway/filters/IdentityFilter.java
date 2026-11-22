@@ -1,5 +1,6 @@
 package ai.costguard.gateway.filters;
 
+import ai.costguard.gateway.budget.BudgetTree;
 import ai.costguard.gateway.ladder.CheckStep;
 import ai.costguard.gateway.ladder.Operation;
 import ai.costguard.gateway.ladder.StepResult;
@@ -17,10 +18,12 @@ public class IdentityFilter implements CheckStep {
 
     private final AgentDirectory agents;
     private final PlanGate plans;
+    private final BudgetTree budgets;
 
-    public IdentityFilter(AgentDirectory agents, PlanGate plans) {
+    public IdentityFilter(AgentDirectory agents, PlanGate plans, BudgetTree budgets) {
         this.agents = agents;
         this.plans = plans;
+        this.budgets = budgets;
     }
 
     @Override
@@ -33,6 +36,7 @@ public class IdentityFilter implements CheckStep {
             return Mono.just(new StepResult.Refuse(401, "invalid_api_key"));
         }
         op.agent(agent.get());
+        op.currency(budgets.currency(agent.get().getTenantId()).orElse(null));
         if (agent.get().getSuspended()) {
             return Mono.just(new StepResult.Refuse(423, "agent_suspended"));
         }

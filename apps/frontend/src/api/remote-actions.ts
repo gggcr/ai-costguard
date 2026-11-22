@@ -6,7 +6,7 @@ import { ApiError, api, download } from './http';
 import { AFTER, remote, type Slice } from './remote';
 import type { Agent, AppState, AssetAssignment, Contract, Employee, Mandate, Notification, Role, Subscription, User, Vendor } from './types';
 import type { FindingAction } from './store';
-import { fmtRub } from '../lib';
+import { fmtMoney } from '../lib';
 
 type Toast = (text: string, level?: Notification['level']) => void;
 
@@ -105,7 +105,7 @@ export function remoteActions({ getState, currency, reload, patch, toast }: Remo
 
     // ——— Бюджеты и согласования ———
     async setBudgetLimit(id: string, limit: number) {
-      await run(AFTER.budgets, () => api('PUT', `/api/v1/budgets/${id}/limit`, { limit }), `Лимит обновлён: ${fmtRub(limit)}`);
+      await run(AFTER.budgets, () => api('PUT', `/api/v1/budgets/${id}/limit`, { limit }), `Лимит обновлён: ${fmtMoney(limit)}`);
     },
     async decideApproval(id: string, approve: boolean, _by: string, comment: string) {
       await run(AFTER.approvals, () => api('PUT', `/api/v1/approvals/${id}/decision`, { verdict: approve ? 'approve' : 'reject', comment: comment || undefined }),

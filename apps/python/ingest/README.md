@@ -23,7 +23,7 @@ A long-running Kafka consumer (`service.py`).
 - Amounts and dates are read as the company's country writes them, unless the column shows its own way (`values.py`,
   [ADR 0072](../../../docs/adr/0072-company-currency-and-country.md)): `1,500` is fifteen hundred in the United States,
   `03/04/2026` is March 4 there. A value only the country could settle, of a company that did not say its country,
-  goes to people.
+  goes to people. An amount without a currency is in the company's currency, as the core says in the message.
 
 The offset is committed only after every output is acknowledged, so a crash replays the input.
 

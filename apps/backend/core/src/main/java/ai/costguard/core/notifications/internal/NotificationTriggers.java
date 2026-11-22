@@ -6,14 +6,18 @@ import ai.costguard.core.approvals.ApprovalDecided;
 import ai.costguard.core.approvals.ApprovalEscalated;
 import ai.costguard.core.findings.FindingOpened;
 import ai.costguard.core.findings.SavingsConfirmed;
+import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.org.EmployeeDismissed;
 import ai.costguard.core.plans.PlanAccessEnded;
 import ai.costguard.core.plans.PlanAccessEnding;
+import ai.costguard.core.shared.names.Currencies;
+import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -30,25 +34,34 @@ class NotificationTriggers {
     private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
 
     private final NotificationService service;
+    private final TenantSession session;
+    private final EmployeeDirectory company;
 
-    NotificationTriggers(NotificationService service) {
+    NotificationTriggers(NotificationService service, TenantSession session, EmployeeDirectory company) {
         this.service = service;
+        this.session = session;
+        this.company = company;
     }
 
-    private static String rub(BigDecimal amount) {
-        return amount.setScale(0, RoundingMode.HALF_UP).toPlainString() + " ₽";
+    /** An amount of the company, in its currency (ADR 0072): approvals and savings are kept in it. */
+    private String money(UUID tenantId, BigDecimal amount) {
+        session.bind(tenantId);
+        String currency = company.company().map(EmployeeDirectory.CompanyCard::currency).orElse(Currencies.DEFAULT);
+        return amount.setScale(0, RoundingMode.HALF_UP).toPlainString() + Currencies.suffix(currency);
     }
 
     @ApplicationModuleListener
     void on(ApprovalEscalated e) {
-        service.notify(e.tenantId(), "Согласование на " + rub(e.amount()) + " ждёт решения, срок истекает",
+        service.notify(e.tenantId(), "Согласование на " + money(e.tenantId(), e.amount())
+                        + " ждёт решения, срок истекает",
                 "/approvals", Level.warning, Audience.roles("owner", "finance").andOwnerOf(e.agentId()));
     }
 
     @ApplicationModuleListener
     void on(ApprovalDecided e) {
         if ("expired".equals(e.status())) {
-            service.notify(e.tenantId(), "Срок согласования на " + rub(e.amount()) + " истёк, резерв возвращён",
+            service.notify(e.tenantId(), "Срок согласования на " + money(e.tenantId(), e.amount())
+                            + " истёк, резерв возвращён",
                     "/approvals", Level.warning, Audience.roles("owner", "finance").andOwnerOf(e.agentId()));
         }
     }
@@ -114,13 +127,15 @@ class NotificationTriggers {
 
     @ApplicationModuleListener
     void on(FindingOpened e) {
-        service.notify(e.tenantId(), "Новая находка: " + e.title() + ", " + rub(e.expectedSavings()) + "/мес",
+        service.notify(e.tenantId(), "Новая находка: " + e.title() + ", " + money(e.tenantId(), e.expectedSavings())
+                        + "/мес",
                 "/findings/" + e.findingId(), Level.info, Audience.roles("owner", "finance", "it_admin"));
     }
 
     @ApplicationModuleListener
     void on(SavingsConfirmed e) {
-        service.notify(e.tenantId(), "Подтверждена экономия " + rub(e.monthlySavings()) + "/мес: " + e.title(),
+        service.notify(e.tenantId(), "Подтверждена экономия " + money(e.tenantId(), e.monthlySavings()) + "/мес: "
+                        + e.title(),
                 "/findings/" + e.findingId(), Level.good, Audience.roles("owner", "finance"));
     }
 

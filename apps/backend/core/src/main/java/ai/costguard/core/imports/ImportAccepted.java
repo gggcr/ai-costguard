@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * People confirmed the mapping and resolved every review task: the pipeline may write the rows. {@code country} is
- * the company's, as in {@link ImportFileUploaded}.
+ * People confirmed the mapping and resolved every review task: the pipeline may write the rows. {@code country} and
+ * {@code currency} are the company's, as in {@link ImportFileUploaded}.
  */
 public record ImportAccepted(UUID tenantId, UUID fileId, String storageKey, String fileName, UUID vendorId,
         Map<String, String> mapping, Map<Integer, Map<String, String>> corrections, Instant acceptedAt,
-        String country) {
+        String country, String currency) {
 }

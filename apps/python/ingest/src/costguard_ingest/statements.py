@@ -3,7 +3,8 @@ ISO 20022 CAMT.053 and OFX.
 
 Every format becomes the same table. Only payments from the company's own accounts are costs; incoming money is
 left out. The columns are named so mapping.suggest maps them without help: recipient to vendor, purpose to product,
-currency to currency. A 1C statement has no currency, and an empty one means roubles.
+currency to currency. A 1C statement names no currency: it is the exchange format of rouble accounts, so its lines
+say RUB. A payment of another format without a currency is in the company's currency (ADR 0072).
 """
 
 from __future__ import annotations
@@ -97,5 +98,5 @@ def _onec(content: bytes) -> list[Payment]:
             continue
         out.append(Payment(d.get("Получатель1") or d.get("Получатель", ""), d.get("НазначениеПлатежа", ""),
                            d.get("Сумма", ""), d.get("ДатаСписано") or d.get("Дата", ""), d.get("Номер", ""),
-                           d.get("ПолучательИНН", "")))
+                           d.get("ПолучательИНН", ""), "RUB"))
     return out

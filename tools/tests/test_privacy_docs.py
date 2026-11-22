@@ -34,7 +34,7 @@ def test_every_clickhouse_table_is_in_the_inventory():
 
 def test_every_kafka_topic_is_in_the_inventory():
     topics = {p.stem for p in (ROOT / "schemas/avro").glob("*.avsc")}
-    assert len(topics) == 21
+    assert len(topics) == 22
     assert sorted(t for t in topics if not named(t)) == []
 
 

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import { Badge, Button, Card, CodeBadge, ConfirmButton, Empty, Field, Modal, PageHeader, Progress, RiskBadge, Stat } from '../components/ui';
-import { fmtDate, fmtDateTime, fmtRub, short } from '../lib';
+import { currencySign, fmtDate, fmtDateTime, fmtMoney, short } from '../lib';
 import type { Agent } from '../api/types';
 
 export function Agents() {
@@ -47,7 +47,7 @@ export function Agents() {
                       <td>{L.dept(a.departmentId)?.name}</td>
                       <td>{L.employee(a.ownerId)?.name}</td>
                       <td>{L.mandate(a.mandateId)?.name}</td>
-                      <td style={{ minWidth: 160 }}>{b ? <>{fmtRub(b.spent)} <span className="muted small">из {fmtRub(b.limit)}</span><Progress value={b.spent} max={b.limit} /></> : '—'}</td>
+                      <td style={{ minWidth: 160 }}>{b ? <>{fmtMoney(b.spent)} <span className="muted small">из {fmtMoney(b.limit)}</span><Progress value={b.spent} max={b.limit} /></> : '—'}</td>
                       <td>{a.status === 'active' ? <Badge tone="good">Работает</Badge> : <Badge tone="critical">Остановлен</Badge>}</td>
                       <td className="num"><RiskBadge score={a.riskScore} /></td>
                     </tr>
@@ -118,7 +118,7 @@ function AgentForm({ open, onClose, agent }: { open: boolean; onClose: () => voi
             </select>
           </Field>
         </div>
-        {!agent && <Field label="Бюджет на месяц, ₽"><input className="input" type="number" min={0} step={1000} value={limit} onChange={(e) => setLimit(Number(e.target.value))} /></Field>}
+        {!agent && <Field label={`Бюджет на месяц, ${currencySign()}`}><input className="input" type="number" min={0} step={1000} value={limit} onChange={(e) => setLimit(Number(e.target.value))} /></Field>}
       </div>
     </Modal>
   );
@@ -162,7 +162,7 @@ export function AgentDetail() {
       <div className="stats">
         <Stat label="Статус" value={agent.status === 'active' ? <Badge tone="good">Работает</Badge> : <Badge tone="critical">Остановлен</Badge>} hint={`${agent.framework} · с ${fmtDate(agent.createdAt)}`} />
         <Stat label="Риск-оценка детектора" value={<RiskBadge score={agent.riskScore} />} hint={agent.riskReason} />
-        <Stat label="Потрачено за период бюджета" value={budget ? fmtRub(budget.spent) : '—'} hint={budget && <>из {fmtRub(budget.limit)} <Progress value={budget.spent} max={budget.limit} /></>} to="/budgets" />
+        <Stat label="Потрачено за период бюджета" value={budget ? fmtMoney(budget.spent) : '—'} hint={budget && <>из {fmtMoney(budget.limit)} <Progress value={budget.spent} max={budget.limit} /></>} to="/budgets" />
         <Stat label="Операций за 14 дней" value={ops.length} hint={`${denied} отказов шлюза`} />
       </div>
 
@@ -172,8 +172,8 @@ export function AgentDetail() {
             <dt>Отдел</dt><dd>{L.dept(agent.departmentId)?.name}</dd>
             <dt>Владелец</dt><dd>{L.employee(agent.ownerId)?.name}</dd>
             <dt>Мандат</dt><dd>{mandate ? <Link to={`/policies?open=${mandate.id}`}>{mandate.name}</Link> : '—'} {mandate?.status === 'draft' && <Badge tone="warning">черновик</Badge>}</dd>
-            <dt>Лимит на операцию</dt><dd>{mandate ? fmtRub(mandate.maxPerOperation) : '—'}</dd>
-            <dt>Порог согласования</dt><dd>{mandate ? `выше ${fmtRub(mandate.approvalThreshold)} решает человек` : '—'}</dd>
+            <dt>Лимит на операцию</dt><dd>{mandate ? fmtMoney(mandate.maxPerOperation) : '—'}</dd>
+            <dt>Порог согласования</dt><dd>{mandate ? `выше ${fmtMoney(mandate.approvalThreshold)} решает человек` : '—'}</dd>
             <dt>Разрешённые модели</dt><dd>{mandate?.models.join(', ')}</dd>
           </dl>
         </Card>
@@ -204,7 +204,7 @@ export function AgentDetail() {
                   <tr key={o.id} className="clickable" onClick={() => navigate(`/operations/${o.id}`)}>
                     <td>{fmtDateTime(o.at)}</td><td>{o.resource}</td><td>{o.vendor}</td>
                     <td><CodeBadge code={o.code} /></td>
-                    <td className="num">{o.cost ? fmtRub(o.cost) : '—'}</td>
+                    <td className="num">{o.cost ? fmtMoney(o.cost) : '—'}</td>
                     <td>{o.receipt ? <code className="small">{short(o.receipt.hash, 6)}</code> : '—'}</td>
                   </tr>
                 ))}

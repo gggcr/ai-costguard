@@ -3,6 +3,7 @@ package ai.costguard.core.ledger.internal;
 import ai.costguard.core.ledger.BudgetLimitChanged;
 import ai.costguard.core.ledger.OperationCharged;
 import ai.costguard.core.ledger.OperationPosting;
+import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.platform.tenant.TenantSession;
 import ai.costguard.core.shared.activity.ActionTaken;
 import java.math.BigDecimal;
@@ -21,11 +22,14 @@ class LedgerService implements OperationPosting {
     private final LedgerRepository ledger;
     private final TenantSession session;
     private final ApplicationEventPublisher events;
+    private final EmployeeDirectory company;
 
-    LedgerService(LedgerRepository ledger, TenantSession session, ApplicationEventPublisher events) {
+    LedgerService(LedgerRepository ledger, TenantSession session, ApplicationEventPublisher events,
+            EmployeeDirectory company) {
         this.ledger = ledger;
         this.session = session;
         this.events = events;
+        this.company = company;
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +66,16 @@ class LedgerService implements OperationPosting {
         return created;
     }
 
+    /**
+     * The levels nest, and share one currency, the company's (ADR 0072): the gateway reserves the same amount on
+     * every budget from the agent's up to the company's, priced in that currency.
+     */
     private void requireHierarchy(NewBudget request) {
+        company.company().map(EmployeeDirectory.CompanyCard::currency)
+                .filter(currency -> !currency.equals(request.currency()))
+                .ifPresent(currency -> {
+                    throw LedgerProblem.CURRENCY_MISMATCH.failure();
+                });
         if (request.level() == BudgetLevel.company) {
             if (request.parentId() != null || request.refId() != null) {
                 throw LedgerProblem.INVALID_HIERARCHY.failure();
@@ -76,6 +89,9 @@ class LedgerService implements OperationPosting {
         BudgetLevel expected = request.level() == BudgetLevel.agent ? BudgetLevel.department : BudgetLevel.company;
         if (parent.level() != expected) {
             throw LedgerProblem.INVALID_HIERARCHY.failure();
+        }
+        if (!parent.currency().strip().equals(request.currency())) {
+            throw LedgerProblem.CURRENCY_MISMATCH.failure();
         }
     }
 

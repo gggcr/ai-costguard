@@ -99,7 +99,7 @@ def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
     if "onec" in config:
         c = config["onec"]
         found.append(onec.OneC(httpx.Client(base_url=c["url"], auth=(c["user"], env.get("ONEC_PASSWORD", "")),
-                                            timeout=60)))
+                                            timeout=60), default_currency=c.get("currency") or "RUB"))
     if "moysklad" in config:
         found.append(moysklad.MoySklad(httpx.Client(
             base_url=config["moysklad"].get("url", moysklad.BASE_URL), timeout=60,
@@ -134,9 +134,11 @@ def build(config: dict, env: dict[str, str]) -> list[contract.Connector]:
         found.append(entra.Entra(httpx.Client(timeout=60), c["directory_id"], c["client_id"],
                                  env["ENTRA_CLIENT_SECRET"], signins.Apps.of(c)))
     if "merge" in config:
+        # an invoice or payment Merge gives without a currency is in the company's (ADR 0072)
         found.append(merge.Merge(httpx.Client(base_url=config["merge"].get("url", merge.BASE_URL), timeout=60,
                                               headers={"Authorization": f"Bearer {env['MERGE_API_KEY']}"}),
-                                 env.get("MERGE_ACCOUNTING_TOKEN"), env.get("MERGE_HRIS_TOKEN")))
+                                 env.get("MERGE_ACCOUNTING_TOKEN"), env.get("MERGE_HRIS_TOKEN"),
+                                 default_currency=config["merge"].get("currency") or "RUB"))
     for c in config.get("scim", []):  # [[scim]]: one entry per service, its token in token_env
         found.append(scim.Scim(httpx.Client(base_url=c["url"], timeout=60,
                                             headers={"Authorization": f"Bearer {env[c['token_env']]}"}),

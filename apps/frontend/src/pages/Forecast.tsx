@@ -6,7 +6,7 @@ import type { ForecastSeries, PublishedForecast, ScenarioChange, ScenarioResult 
 import { useStore } from '../api/store';
 import { Card, Empty, Field, Stat } from '../components/ui';
 import { LineChart, type LinePoint } from '../components/charts';
-import { fmtDateTime, fmtMonth, fmtRub } from '../lib';
+import { fmtDateTime, fmtMonth, fmtMoney } from '../lib';
 
 const MODEL: Record<string, string> = {
   holt: 'Хольт', ets_damped: 'ETS с затухающим трендом', theta: 'Theta', naive: 'повтор месяца',
@@ -61,9 +61,9 @@ export function ForecastPanel() {
   return (
     <>
       <div className="stats">
-        <Stat label="Прогноз на следующий месяц" value={next ? fmtRub(next.value) : '—'} hint={f ? `${MODEL[f.company?.model ?? ''] ?? f.company?.model}, ошибка на истории ${pct(f.company?.wape)}` : 'прогноз ещё не опубликован'} />
-        <Stat label="Ожидаемая экономия по находкам" value={f?.savings?.[0] ? `${fmtRub(f.savings[0].expected)}/мес` : '—'} hint={f?.savings?.[0] ? `из них подтверждено ${fmtRub(f.savings[0].confirmed)}` : 'появится с прогнозом'} />
-        <Stat label="Экономия по сценарию" value={result ? `${fmtRub(result.monthlySavings ?? 0)}/мес` : '—'} hint={result ? `${fmtRub(result.totalSavings ?? 0)} за ${result.months?.length ?? 0} мес.` : ''} />
+        <Stat label="Прогноз на следующий месяц" value={next ? fmtMoney(next.value) : '—'} hint={f ? `${MODEL[f.company?.model ?? ''] ?? f.company?.model}, ошибка на истории ${pct(f.company?.wape)}` : 'прогноз ещё не опубликован'} />
+        <Stat label="Ожидаемая экономия по находкам" value={f?.savings?.[0] ? `${fmtMoney(f.savings[0].expected)}/мес` : '—'} hint={f?.savings?.[0] ? `из них подтверждено ${fmtMoney(f.savings[0].confirmed)}` : 'появится с прогнозом'} />
+        <Stat label="Экономия по сценарию" value={result ? `${fmtMoney(result.monthlySavings ?? 0)}/мес` : '—'} hint={result ? `${fmtMoney(result.totalSavings ?? 0)} за ${result.months?.length ?? 0} мес.` : ''} />
       </div>
 
       <Card title="Расходы по месяцам и прогноз">
@@ -86,7 +86,7 @@ export function ForecastPanel() {
                           {f!.departments!.map((d) => (
                             <tr key={d.departmentId ?? 'none'}>
                               <td>{d.name}</td><td>{MODEL[d.model ?? ''] ?? d.model}</td><td className="num">{pct(d.wape)}</td>
-                              <td className="num">{fmtRub(d.points?.[0]?.value ?? 0)}</td><td className="num">{fmtRub(d.points?.[0]?.baseline ?? 0)}</td>
+                              <td className="num">{fmtMoney(d.points?.[0]?.value ?? 0)}</td><td className="num">{fmtMoney(d.points?.[0]?.baseline ?? 0)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -111,7 +111,7 @@ export function ForecastPanel() {
                   <tr key={a.agentId}>
                     <td>{state.agents.find((x) => x.id === a.agentId)?.name ?? a.agentId.slice(0, 8)}</td>
                     <td>{AGENT_MODEL[a.model] ?? a.model}</td><td className="num">{pct(a.wape)}</td>
-                    <td className="num">{fmtRub(a.total)}</td><td className="num">{fmtRub(a.low)} – {fmtRub(a.high)}</td>
+                    <td className="num">{fmtMoney(a.total)}</td><td className="num">{fmtMoney(a.low)} – {fmtMoney(a.high)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -136,17 +136,17 @@ export function ForecastPanel() {
           </Field>
           {result && (
             <>
-              <div className="scenario-total">Итого: <strong>{fmtRub(result.monthlySavings ?? 0)}</strong> в месяц · <strong>{fmtRub(result.totalSavings ?? 0)}</strong> за {result.months?.length} мес.</div>
+              <div className="scenario-total">Итого: <strong>{fmtMoney(result.monthlySavings ?? 0)}</strong> в месяц · <strong>{fmtMoney(result.totalSavings ?? 0)}</strong> за {result.months?.length} мес.</div>
               {(result.effects?.length ?? 0) > 0 && (
                 <ul className="list small">
-                  {result.effects!.map((e, i) => <li key={i} className="list-row"><span>{e.subscription}: {e.description}</span><span>{fmtRub(e.monthlySavings ?? 0)}/мес</span></li>)}
+                  {result.effects!.map((e, i) => <li key={i} className="list-row"><span>{e.subscription}: {e.description}</span><span>{fmtMoney(e.monthlySavings ?? 0)}/мес</span></li>)}
                 </ul>
               )}
               {result.onForecast && (
                 <details className="small">
                   <summary>Прогноз с учётом сценария</summary>
                   <div className="table-wrap"><table><thead><tr><th>Месяц</th><th className="num">Прогноз</th><th className="num">По сценарию</th></tr></thead>
-                    <tbody>{result.months!.map((m) => <tr key={m.month}><td>{fmtMonth(m.month ?? '')}</td><td className="num">{fmtRub(m.forecast ?? 0)}</td><td className="num">{fmtRub(m.forecastAfter ?? 0)}</td></tr>)}</tbody></table></div>
+                    <tbody>{result.months!.map((m) => <tr key={m.month}><td>{fmtMonth(m.month ?? '')}</td><td className="num">{fmtMoney(m.forecast ?? 0)}</td><td className="num">{fmtMoney(m.forecastAfter ?? 0)}</td></tr>)}</tbody></table></div>
                 </details>
               )}
             </>

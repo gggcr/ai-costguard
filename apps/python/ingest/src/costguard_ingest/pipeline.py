@@ -24,6 +24,7 @@ from costguard_common import payments as paying
 from costguard_common.focus import CostRecord, CostSource
 from costguard_ingest import mapping, tables, values
 
+# The currency of an amount the file names none for, when the core did not say the company's (ADR 0072).
 DEFAULT_CURRENCY = "RUB"
 DATE_FIELDS = ("period_start", "period_end", "last_active")
 
@@ -70,10 +71,10 @@ def styles(table: tables.Table, columns_to_fields: dict[str, str],
     return found
 
 
-def parse(file_name: str, content: bytes, read: Read = tables.read, style: values.Style = values.UNKNOWN
-          ) -> Parsed:
+def parse(file_name: str, content: bytes, read: Read = tables.read, style: values.Style = values.UNKNOWN,
+          currency: str = DEFAULT_CURRENCY) -> Parsed:
     """read is tables.read, or documents.Reader where scans and text invoices are read too. style is how the
-    company's country writes numbers and dates."""
+    company's country writes numbers and dates, currency its currency."""
     table = read(file_name, content)
     suggested = mapping.suggest(table.columns)
     result = Parsed(table.columns, suggested, len(table.rows), Decimal(0))
@@ -101,7 +102,7 @@ def parse(file_name: str, content: bytes, read: Read = tables.read, style: value
             elif confidence < values.CONFIDENT:
                 result.uncertain.append((number, f, values.text(cells[f]), confidence))
         if "currency" in cells and values.text(cells["currency"]):
-            code, confidence = values.currency(cells["currency"])
+            code, confidence = values.currency(cells["currency"], currency)
             if code is None or confidence < values.CONFIDENT:
                 result.uncertain.append((number, "currency", values.text(cells["currency"]), confidence))
     flagged = {(r, f) for r, f, _, _ in result.uncertain}
@@ -127,11 +128,12 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
            columns_to_fields: dict[str, str], corrections: dict[str, dict[str, str]], content: bytes,
            now: datetime | None = None, read: Read = tables.read,
            intermediaries: Iterable[paying.Intermediary] = (), services: dict[str, str] | None = None,
-           style: values.Style = values.UNKNOWN) -> tuple[list[Message], list[tuple[int, str]]]:
+           style: values.Style = values.UNKNOWN, currency: str = DEFAULT_CURRENCY
+           ) -> tuple[list[Message], list[tuple[int, str]]]:
     """Messages to publish, and rows that still could not be written (they are logged, not retried).
 
-    A payment through an intermediary is split into the service and the agent's commission (ADR 0015). style is
-    the company's, as in parse."""
+    A payment through an intermediary is split into the service and the agent's commission (ADR 0015). style and
+    currency are the company's, as in parse."""
     now = now or datetime.now(UTC)
     table = read(file_name, content)
     messages: list[Message] = []
@@ -172,6 +174,8 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
         email = values.text(cells.get("email")).lower()
         employee = values.text(cells.get("employee"))
         department = values.text(cells.get("department"))
+        stated_currency, _ = values.currency(cells.get("currency"), currency)
+        row_currency = stated_currency or values.currency_in(cells.get("amount"), currency) or currency
 
         # an INN a person corrected comes back as a correction of its column (an extracted invoice)
         inn = normalized.clean_inn(cells.get("ИНН поставщика") or row.get("ИНН получателя")
@@ -196,7 +200,8 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
             once(_normalized(tenant, file_id, "PAYMENT",
                              _entity_key(tenant, "payment", storage_key, str(number), *_suffix(part)),
                              {"vendor": part.vendor, "purpose": product or None, "amount": str(part.amount),
-                              "date": paid_on.isoformat() if paid_on else None, "inn": part.inn,
+                              "currency": row_currency, "date": paid_on.isoformat() if paid_on else None,
+                              "inn": part.inn,
                               "intermediary": part.intermediary, "role": part.role, "note": part.note}, now))
         if vendor and product and not payments:
             once(_normalized(tenant, file_id, "SUBSCRIPTION", _entity_key(tenant, "subscription", vendor, product),
@@ -226,9 +231,7 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
         if end < start:
             skipped.append((number, "period ends before it starts"))
             continue
-        code, _ = values.currency(cells.get("currency"))
-        code = code or values.currency_in(cells["amount"]) or DEFAULT_CURRENCY
-        invoice_currency = invoice_currency or code
+        invoice_currency = invoice_currency or row_currency
         if not stated:
             invoice_day = min(invoice_day, start) if invoice_day else start
         shares = [(p.vendor, p.amount, _suffix(p)) for p in parts] or [(vendor or product or "unknown", amount, ())]
@@ -237,7 +240,7 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
             record = CostRecord(
                 id=CostRecord.stable_id(source, source_id), tenant_id=tenant, source=source, source_id=source_id,
                 billed_cost=share, effective_cost=share,
-                billing_currency=code, charge_period_start=start, charge_period_end=end,
+                billing_currency=row_currency, charge_period_start=start, charge_period_end=end,
                 service_provider_name=provider, department_id=_uuid_or_none(department))
             messages.append(Message("cost.records.v1", str(tenant), record.avro()))
         invoice_total += amount
@@ -248,7 +251,7 @@ def accept(tenant: uuid.UUID, file_id: uuid.UUID, storage_key: str, file_name: s
                          {"file_name": file_name, "vendor": invoice_vendor, "vendor_id": vendor_id,
                           "total": str(invoice_total), "number": invoice_number or None,
                           "date": invoice_day.isoformat() if invoice_day else None,
-                          "currency": invoice_currency or DEFAULT_CURRENCY, "lines": invoice_lines}, now))
+                          "currency": invoice_currency or currency, "lines": invoice_lines}, now))
     return messages, skipped
 
 

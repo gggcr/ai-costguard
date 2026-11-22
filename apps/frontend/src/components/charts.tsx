@@ -2,9 +2,9 @@
 // Одна серия = один цвет (--series-1), подписи значений текстовыми токенами, подсказка при наведении.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fmtRub } from '../lib';
+import { currencySign, fmtMoney } from '../lib';
 
-export function BarList({ items, unit = fmtRub }: { items: { label: string; value: number; to?: string; sub?: string }[]; unit?: (v: number) => string }) {
+export function BarList({ items, unit = fmtMoney }: { items: { label: string; value: number; to?: string; sub?: string }[]; unit?: (v: number) => string }) {
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
     <ul className="barlist">
@@ -54,7 +54,7 @@ export function LineChart({ points, height = 220, title }: { points: LinePoint[]
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} className="grid" />
-            <text x={pad.l - 8} y={y(t) + 4} className="axis" textAnchor="end">{compact(t)} ₽</text>
+            <text x={pad.l - 8} y={y(t) + 4} className="axis" textAnchor="end">{compact(t)} {currencySign()}</text>
           </g>
         ))}
         {points.map((p, i) => (i % Math.ceil(points.length / 8) === 0 || i === points.length - 1) && (
@@ -74,8 +74,8 @@ export function LineChart({ points, height = 220, title }: { points: LinePoint[]
       {hover !== null && (
         <div className="chart-tip" style={{ left: `${(x(hover) / W) * 100}%` }}>
           <strong>{points[hover].label}</strong>
-          <span>{points[hover].forecast ? 'Прогноз' : 'Факт'}: {fmtRub(points[hover].value)}</span>
-          {points[hover].forecast && points[hover].low !== undefined && <span className="muted small">от {fmtRub(points[hover].low!)} до {fmtRub(points[hover].high!)}</span>}
+          <span>{points[hover].forecast ? 'Прогноз' : 'Факт'}: {fmtMoney(points[hover].value)}</span>
+          {points[hover].forecast && points[hover].low !== undefined && <span className="muted small">от {fmtMoney(points[hover].low!)} до {fmtMoney(points[hover].high!)}</span>}
         </div>
       )}
       <div className="legend">

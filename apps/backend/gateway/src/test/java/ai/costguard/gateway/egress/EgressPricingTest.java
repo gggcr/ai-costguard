@@ -25,8 +25,9 @@ class EgressPricingTest {
             "spark", new EgressProperties.Route(URI.create("http://spark"), "SPARK", "request", new BigDecimal("15"),
                     "Authorization", "Bearer api-key", List.of(
                     new EgressProperties.Priced("/v1/companies/{inn}/report", "GET", "report", new BigDecimal("450")),
-                    new EgressProperties.Priced("/v1/search/**", null, "search", null))),
-            "cloud", new EgressProperties.Route(URI.create("http://cloud"), "Cloud", null, null, null, null, null)));
+                    new EgressProperties.Priced("/v1/search/**", null, "search", null)), null),
+            "cloud", new EgressProperties.Route(URI.create("http://cloud"), "Cloud", null, null, null, null, null,
+                    "usd")));
     private final EgressPricing pricing = new EgressPricing(properties, prices);
 
     private void catalog(String vendor, String product, String price) {
@@ -44,20 +45,20 @@ class EgressPricingTest {
     @Test
     void anEndpointHasItsOwnProductAndPrice() {
         assertThat(pricing.endpoint("spark", "GET", "/v1/companies/7707083893/report"))
-                .contains(new EgressPricing.Endpoint("SPARK", "report", new BigDecimal("450")));
+                .contains(new EgressPricing.Endpoint("SPARK", "report", new BigDecimal("450"), "RUB"));
         assertThat(price("spark", "GET", "/v1/companies/7707083893/report")).isEqualByComparingTo("450");
     }
 
     @Test
     void theMethodMustMatchWhenItIsGiven() {
         assertThat(pricing.endpoint("spark", "POST", "/v1/companies/7707083893/report"))
-                .contains(new EgressPricing.Endpoint("SPARK", "request", new BigDecimal("15")));
+                .contains(new EgressPricing.Endpoint("SPARK", "request", new BigDecimal("15"), "RUB"));
     }
 
     @Test
     void anEndpointWithoutAPriceTakesTheRoutePrice() {
         assertThat(pricing.endpoint("spark", "POST", "/v1/search/companies"))
-                .contains(new EgressPricing.Endpoint("SPARK", "search", new BigDecimal("15")));
+                .contains(new EgressPricing.Endpoint("SPARK", "search", new BigDecimal("15"), "RUB"));
     }
 
     @Test
@@ -72,6 +73,12 @@ class EgressPricingTest {
         assertThat(price("cloud", "GET", "/v1/vm")).isNull();
         catalog("Cloud", null, "2.5");
         assertThat(price("cloud", "GET", "/v1/vm")).isEqualByComparingTo("2.5");
+    }
+
+    @Test
+    void aRouteSaysTheCurrencyOfItsPrices() {
+        assertThat(pricing.endpoint("cloud", "GET", "/v1/vm")).map(EgressPricing.Endpoint::configuredCurrency)
+                .contains("USD");
     }
 
     @Test

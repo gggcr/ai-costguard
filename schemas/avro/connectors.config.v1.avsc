@@ -59,6 +59,15 @@
         "type": "long",
         "logicalType": "timestamp-millis"
       }
+    },
+    {
+      "name": "currency",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "The company's currency, ISO 4217: what an amount the system names no currency for is in (ADR 0072)."
     }
   ]
 }

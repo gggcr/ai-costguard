@@ -4,7 +4,7 @@ import { useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import type { Mandate } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Field, Modal, PageHeader, ReadOnlyNote } from '../components/ui';
-import { fmtDate, fmtRub } from '../lib';
+import { currencySign, fmtDate, fmtMoney } from '../lib';
 
 const ALL_MODELS = ['gpt-5-mini', 'gpt-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'GigaChat-Pro', 'YandexGPT-5'];
 const ALL_VENDORS = ['OpenAI', 'Anthropic', 'Сбер GigaChat', 'Yandex Cloud', 'СПАРК-Интерфакс'];
@@ -46,7 +46,7 @@ export function Policies() {
       const modelOk = !ALL_MODELS.includes(o.resource) || m.models.includes(o.resource);
       if (!vendorOk || !modelOk || o.cost > m.maxPerOperation) {
         denied += 1;
-        if (examples.length < 4) examples.push(`${o.resource} за ${fmtRub(o.cost)}: ${!vendorOk ? 'поставщик не разрешён' : !modelOk ? 'модель не разрешена' : 'выше лимита на операцию'}`);
+        if (examples.length < 4) examples.push(`${o.resource} за ${fmtMoney(o.cost)}: ${!vendorOk ? 'поставщик не разрешён' : !modelOk ? 'модель не разрешена' : 'выше лимита на операцию'}`);
       } else if (o.cost > m.approvalThreshold) approval += 1;
     });
     setSim({ m, r: { total: ops.length, denied, approval, examples } });
@@ -68,8 +68,8 @@ export function Policies() {
               <dl className="dl">
                 <dt>Модели</dt><dd>{m.models.join(', ')}</dd>
                 <dt>Поставщики</dt><dd>{m.vendors.join(', ')}</dd>
-                <dt>Лимит на операцию</dt><dd>{fmtRub(m.maxPerOperation)}</dd>
-                <dt>Согласование</dt><dd>выше {fmtRub(m.approvalThreshold)}</dd>
+                <dt>Лимит на операцию</dt><dd>{fmtMoney(m.maxPerOperation)}</dd>
+                <dt>Согласование</dt><dd>выше {fmtMoney(m.approvalThreshold)}</dd>
                 <dt>Время работы</dt><dd>{m.hours}</dd>
                 <dt>Агенты</dt><dd>{used.length ? used.map((a, i) => <span key={a.id}>{i > 0 && ', '}<Link to={`/agents/${a.id}`}>{a.name}</Link></span>) : <span className="muted">не назначен</span>}</dd>
               </dl>
@@ -151,8 +151,8 @@ function MandateForm({ mandate, onClose }: { mandate?: Mandate; onClose: () => v
           </fieldset>
         </div>
         <div className="form-row">
-          <Field label="Лимит на одну операцию, ₽"><input className="input" type="number" min={0} value={maxPerOperation} onChange={(e) => setMax(Number(e.target.value))} /></Field>
-          <Field label="Согласование человеком выше, ₽" hint={approvalThreshold > maxPerOperation ? 'Порог не может быть выше лимита' : undefined}>
+          <Field label={`Лимит на одну операцию, ${currencySign()}`}><input className="input" type="number" min={0} value={maxPerOperation} onChange={(e) => setMax(Number(e.target.value))} /></Field>
+          <Field label={`Согласование человеком выше, ${currencySign()}`} hint={approvalThreshold > maxPerOperation ? 'Порог не может быть выше лимита' : undefined}>
             <input className="input" type="number" min={0} value={approvalThreshold} onChange={(e) => setThreshold(Number(e.target.value))} />
           </Field>
           <Field label="Время работы">

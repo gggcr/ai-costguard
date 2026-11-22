@@ -3,6 +3,8 @@ package ai.costguard.core.software.internal;
 import ai.costguard.core.catalog.ExchangeRates;
 import ai.costguard.core.findings.FindingsIntake;
 import ai.costguard.core.findings.InvoiceEvidence;
+import ai.costguard.core.org.EmployeeDirectory;
+import ai.costguard.core.shared.names.Currencies;
 import ai.costguard.core.shared.names.Names;
 import ai.costguard.core.software.SoftwareLinks.ReportedInvoice;
 import ai.costguard.core.software.SoftwareLinks.ReportedPayment;
@@ -29,8 +31,8 @@ import org.springframework.stereotype.Component;
  *       from {@value #PAID_BEFORE_DAYS} days before the payment to {@value #PAID_AFTER_DAYS} days after it (an
  *       advance), the nearest in time. One invoice takes one payment; an agent's commission settles nothing.
  *   <li>A new invoice for a subscription goes to the findings in progress on it, with the subscription's earlier
- *       invoices in roubles. A second copy of an invoice already seen (the same number) goes nowhere: it would
- *       show no saving and count as a miss.
+ *       invoices in the company's currency (ADR 0072). A second copy of an invoice already seen (the same number)
+ *       goes nowhere: it would show no saving and count as a miss.
  * </ul>
  */
 @Component
@@ -44,13 +46,15 @@ class InvoiceBook {
     private final InvoiceRepository invoices;
     private final ExchangeRates rates;
     private final FindingsIntake findings;
+    private final EmployeeDirectory company;
 
     InvoiceBook(SoftwareRepository software, InvoiceRepository invoices, ExchangeRates rates,
-            FindingsIntake findings) {
+            FindingsIntake findings, EmployeeDirectory company) {
         this.software = software;
         this.invoices = invoices;
         this.rates = rates;
         this.findings = findings;
+        this.company = company;
     }
 
     UUID invoiceSeen(UUID tenantId, ReportedInvoice r) {
@@ -100,7 +104,8 @@ class InvoiceBook {
     }
 
     private Optional<InvoiceEvidence> evidence(Invoice invoice) {
-        Optional<BigDecimal> total = rub(invoice.total(), invoice.currency(), invoice.issuedOn());
+        String currency = company.company().map(EmployeeDirectory.CompanyCard::currency).orElse(Currencies.DEFAULT);
+        Optional<BigDecimal> total = rates.convert(invoice.total(), invoice.currency(), currency, invoice.issuedOn());
         Subscription subscription = software.subscription(invoice.subscriptionId()).orElse(null);
         if (total.isEmpty() || subscription == null) {
             return Optional.empty();
@@ -117,17 +122,12 @@ class InvoiceBook {
                     if (!o.number().isBlank() && !numbers.add(number(o.number()))) {
                         return;
                     }
-                    rub(o.total(), o.currency(), o.issuedOn())
+                    rates.convert(o.total(), o.currency(), currency, o.issuedOn())
                             .ifPresent(t -> earlier.add(new InvoiceEvidence.Earlier(o.issuedOn(), t)));
                 });
         String label = (invoice.number().isBlank() ? "" : "№ " + invoice.number() + " ") + "от " + invoice.issuedOn();
         return Optional.of(new InvoiceEvidence(invoice.subscriptionId(), invoice.id(), label, invoice.issuedOn(),
-                total.get(), subscription.billingPeriod() == BillingPeriod.year, earlier));
-    }
-
-    private Optional<BigDecimal> rub(BigDecimal amount, String currency, LocalDate day) {
-        return currency.equals("RUB") || currency.equals("RUR") ? Optional.of(amount)
-                : rates.toRub(amount, currency, day);
+                total.get(), currency, subscription.billingPeriod() == BillingPeriod.year, earlier));
     }
 
     /** Ties the vendor's payments that settle nothing yet to its invoices nobody has paid. */

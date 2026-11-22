@@ -46,19 +46,21 @@ class EventMappingTest {
         encodes(EventMapping.of(new ai.costguard.core.approvals.ApprovalDecided(tenant, id, id, id, "approved",
                 new BigDecimal("1500"), now)));
         encodes(EventMapping.of(new ReceiptIssued(id, tenant, id, "a".repeat(64), "0".repeat(64), "sig", "k", now)));
-        encodes(EventMapping.of(new ImportFileUploaded(id, tenant, "t/sha", "sha", "a.csv", null, null, now, "US")));
+        encodes(EventMapping.of(new ImportFileUploaded(id, tenant, "t/sha", "sha", "a.csv", null, null, now, "US",
+                "USD")));
         encodes(EventMapping.of(new OperationCharged(tenant, id, id, new BigDecimal("12.345678"), "RUB", now)));
         encodes(EventMapping.of(new ImportAccepted(tenant, id, tenant + "/sha", "a.csv", null,
-                java.util.Map.of("Сумма", "amount"), java.util.Map.of(2, java.util.Map.of("amount", "1500")), now, null)));
+                java.util.Map.of("Сумма", "amount"), java.util.Map.of(2, java.util.Map.of("amount", "1500")), now, null,
+                null)));
         encodes(EventMapping.of(new AssetChanged(tenant, id, "INV-1", "ThinkPad", "LAPTOP", new BigDecimal("80000"),
                 "ASSIGNED", id, LocalDate.of(2026, 11, 1), null, now)));
         encodes(EventMapping.of(new ai.costguard.core.agents.MandatePublished(tenant, id, 2, "a".repeat(64), now)));
         encodes(EventMapping.of(new ai.costguard.core.approvals.LargeOperationApproved(tenant, id, id,
                 "b".repeat(64), "c".repeat(64), now)));
         encodes(EventMapping.of(new ai.costguard.core.connections.ConnectionChanged(tenant, id, "okta", "Okta", true,
-                java.util.Map.of("url", "https://romashka.okta.example"), now, now)));
+                java.util.Map.of("url", "https://romashka.okta.example"), now, now, "USD")));
         encodes(EventMapping.of(new ai.costguard.core.connections.ConnectionChanged(tenant, id, "onec", "1С", false,
-                java.util.Map.of(), null, now)));
+                java.util.Map.of(), null, now, null)));
     }
 
     /** The outbox may send an event twice; the notary must see the same request id both times. */
@@ -88,6 +90,24 @@ class EventMappingTest {
                 "INPUT_TOKEN", new BigDecimal("0.000002"), "USD", LocalDate.of(2026, 1, 1)));
 
         assertThat(m.key()).isEqualTo(tenant + ":gpt-5:in");
+        encodes(m);
+    }
+
+    /** ADR 0072: $0.15 per million tokens rounds to zero at six decimals; the exact price keeps it. */
+    @Test
+    void aDollarPriceOfATokenKeepsItsDigits() {
+        var price = (ai.costguard.events.CatalogPrice) EventMapping.of(new CatalogPriceChanged(tenant, "mini:in",
+                "OpenAI", "gpt-5-mini", "INPUT_TOKEN", new BigDecimal("0.00000015"), "USD", LocalDate.of(2026, 1, 1)))
+                .record();
+        assertThat(price.getUnitPrice()).isEqualByComparingTo("0");
+        assertThat(price.getUnitPriceExact()).isEqualByComparingTo("0.00000015");
+    }
+
+    @Test
+    void ratesAreKeyedByCurrency() {
+        EventMapping.Message m = EventMapping.of(new ai.costguard.core.catalog.ExchangeRateChanged("USD",
+                new BigDecimal("81.2500"), LocalDate.of(2026, 11, 7)));
+        assertThat(m.key()).isEqualTo("USD");
         encodes(m);
     }
 

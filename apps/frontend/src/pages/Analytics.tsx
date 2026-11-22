@@ -5,7 +5,7 @@ import { useAuth } from '../auth/auth';
 import type { Report } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, Modal, PageHeader, Stat, Tabs } from '../components/ui';
 import { LineChart, type LinePoint } from '../components/charts';
-import { downloadText, fmtDate, fmtMonth, fmtRub, toCsv } from '../lib';
+import { currencySign, downloadText, fmtDate, fmtMonth, fmtMoney, toCsv } from '../lib';
 
 type Series = 'total' | 'software' | 'agents';
 
@@ -59,11 +59,11 @@ export function Analytics() {
   const download = (r: Report) => {
     const rows: (string | number)[][] = [
       ['Отчёт', r.name], ['Период', r.period], ['Сформирован', fmtDate(r.createdAt)], [],
-      ['Подписка', 'Поставщик', 'Отдел', 'Мест', 'В месяц, ₽'],
+      ['Подписка', 'Поставщик', 'Отдел', 'Мест', `В месяц, ${currencySign()}`],
       ...state.subscriptions.map((s) => [s.product, L.vendor(s.vendorId)?.name ?? '', L.dept(s.departmentId)?.name ?? '', s.seats, s.seats * s.pricePerSeat]),
-      [], ['Агент', 'Отдел', 'Потрачено, ₽', 'Лимит, ₽'],
+      [], ['Агент', 'Отдел', `Потрачено, ${currencySign()}`, `Лимит, ${currencySign()}`],
       ...state.agents.map((a) => { const b = L.budgetOfAgent(a.id); return [a.name, L.dept(a.departmentId)?.name ?? '', Math.round(b?.spent ?? 0), b?.limit ?? 0]; }),
-      [], ['Находка', 'Статус', 'Экономия в месяц, ₽'],
+      [], ['Находка', 'Статус', `Экономия в месяц, ${currencySign()}`],
       ...state.findings.map((f) => [f.title, f.status, f.expectedSavings]),
     ];
     if (r.format === 'xlsx') {
@@ -84,9 +84,9 @@ export function Analytics() {
       <PageHeader title="Прогнозы и отчёты" subtitle="Прогноз расходов, сценарии экономии «что если» и отчёты для руководства" />
       {DATA_MODE === 'api' ? <ForecastPanel /> : <>
       <div className="stats">
-        <Stat label="Прогноз на следующий месяц" value={fmtRub(nextForecast)} hint={series === 'total' ? 'ПО и ИИ-агенты' : series === 'software' ? 'только ПО' : 'только ИИ-агенты'} />
-        <Stat label="Рост ИИ-расходов за год" value={agentFirst > 0 ? `×${(agentMonthly / agentFirst).toFixed(1)}` : '—'} hint={`${fmtRub(agentFirst)} → ${fmtRub(agentMonthly)} в месяц`} />
-        <Stat label="Экономия по сценарию" value={`${fmtRub(scenarioTotal)}/мес`} hint={`${fmtRub(scenarioTotal * 12)} в год`} />
+        <Stat label="Прогноз на следующий месяц" value={fmtMoney(nextForecast)} hint={series === 'total' ? 'ПО и ИИ-агенты' : series === 'software' ? 'только ПО' : 'только ИИ-агенты'} />
+        <Stat label="Рост ИИ-расходов за год" value={agentFirst > 0 ? `×${(agentMonthly / agentFirst).toFixed(1)}` : '—'} hint={`${fmtMoney(agentFirst)} → ${fmtMoney(agentMonthly)} в месяц`} />
+        <Stat label="Экономия по сценарию" value={`${fmtMoney(scenarioTotal)}/мес`} hint={`${fmtMoney(scenarioTotal * 12)} в год`} />
       </div>
 
       <Card title="Расходы по месяцам и прогноз" actions={<Tabs value={series} onChange={setSeries} items={[{ id: 'total', label: 'Всё' }, { id: 'software', label: 'ПО' }, { id: 'agents', label: 'ИИ-агенты' }]} />}>
@@ -94,7 +94,7 @@ export function Analytics() {
         <details className="small">
           <summary>Таблица значений</summary>
           <div className="table-wrap"><table><thead><tr><th>Месяц</th><th>Тип</th><th className="num">Сумма</th></tr></thead>
-            <tbody>{points.map((p) => <tr key={p.label}><td>{p.label}</td><td>{p.forecast ? 'прогноз' : 'факт'}</td><td className="num">{fmtRub(p.value)}</td></tr>)}</tbody></table></div>
+            <tbody>{points.map((p) => <tr key={p.label}><td>{p.label}</td><td>{p.forecast ? 'прогноз' : 'факт'}</td><td className="num">{fmtMoney(p.value)}</td></tr>)}</tbody></table></div>
         </details>
       </Card>
 
@@ -103,14 +103,14 @@ export function Analytics() {
       <div className="grid-2">
         {DATA_MODE !== 'api' && <Card title="Сценарий «что если»">
           <div className="form">
-            <Field label={`Снять неиспользуемые места: ${seatCut}%`} hint={`экономия ${fmtRub(savingSeats)} в месяц`}>
+            <Field label={`Снять неиспользуемые места: ${seatCut}%`} hint={`экономия ${fmtMoney(savingSeats)} в месяц`}>
               <input type="range" min={0} max={40} value={seatCut} onChange={(e) => setSeatCut(Number(e.target.value))} />
             </Field>
-            <label className="switch"><input type="checkbox" checked={annual} onChange={(e) => setAnnual(e.target.checked)} /> <span>Перевести помесячные подписки на годовой тариф (−17%): {fmtRub(savingAnnual)}</span></label>
-            <Field label={`Урезать бюджеты ИИ-агентов: ${agentCut}%`} hint={`экономия ${fmtRub(savingAgents)} в месяц`}>
+            <label className="switch"><input type="checkbox" checked={annual} onChange={(e) => setAnnual(e.target.checked)} /> <span>Перевести помесячные подписки на годовой тариф (−17%): {fmtMoney(savingAnnual)}</span></label>
+            <Field label={`Урезать бюджеты ИИ-агентов: ${agentCut}%`} hint={`экономия ${fmtMoney(savingAgents)} в месяц`}>
               <input type="range" min={0} max={50} value={agentCut} onChange={(e) => setAgentCut(Number(e.target.value))} />
             </Field>
-            <div className="scenario-total">Итого: <strong>{fmtRub(scenarioTotal)}</strong> в месяц · <strong>{fmtRub(scenarioTotal * 12)}</strong> в год</div>
+            <div className="scenario-total">Итого: <strong>{fmtMoney(scenarioTotal)}</strong> в месяц · <strong>{fmtMoney(scenarioTotal * 12)}</strong> в год</div>
           </div>
         </Card>}
 

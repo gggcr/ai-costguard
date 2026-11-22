@@ -55,9 +55,14 @@ public class LlmTaskFitAssessor implements TaskFitAssessor {
                 + "вид: " + (op.kind() == null ? "" : op.kind().name())
                 + "; поставщик: " + data(op.vendor())
                 + "; модель или продукт: " + data(op.model())
-                + "; сумма: " + cost.stripTrailingZeros().toPlainString() + " ₽"
+                + "; сумма: " + cost.stripTrailingZeros().toPlainString() + " " + currency(op.currency())
                 + (op.taskId() == null ? "" : "; задача: " + data(op.taskId()))
                 + "</operation>";
+    }
+
+    /** ₽ for the rouble, as before; the code of any other currency the company's budgets are in (ADR 0072). */
+    private static String currency(String code) {
+        return code == null || code.isBlank() || code.equals("RUB") ? "₽" : code;
     }
 
     private static String data(String text) {

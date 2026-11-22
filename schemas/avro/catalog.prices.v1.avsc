@@ -58,6 +58,20 @@
         "type": "int",
         "logicalType": "date"
       }
+    },
+    {
+      "name": "unit_price_exact",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 9
+        }
+      ],
+      "default": null,
+      "doc": "The price to the nine decimals the catalog keeps. unit_price is rounded to six, which makes a dollar price of a token ($0.15 per million) zero; the gateway takes this one when it is set (ADR 0072)."
     }
   ]
 }

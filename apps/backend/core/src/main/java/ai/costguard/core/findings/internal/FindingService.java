@@ -5,6 +5,7 @@ import ai.costguard.core.findings.FindingsIntake;
 import ai.costguard.core.findings.InvoiceEvidence;
 import ai.costguard.core.findings.SavingsConfirmed;
 import ai.costguard.core.org.UserDirectory;
+import ai.costguard.core.shared.names.Currencies;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -121,8 +122,9 @@ class FindingService implements FindingsIntake {
             }
             BigDecimal expected = f.expectedSavings().multiply(BigDecimal.valueOf(invoice.yearly() ? 12 : 1));
             BigDecimal less = before.get().total().subtract(invoice.total());
-            String compared = "было " + rub(before.get().total()) + ", стало " + rub(invoice.total())
-                    + ", ожидалось меньше на " + rub(expected);
+            String compared = "было " + money(before.get().total(), invoice.currency()) + ", стало "
+                    + money(invoice.total(), invoice.currency()) + ", ожидалось меньше на "
+                    + money(expected, invoice.currency());
             if (less.compareTo(expected.multiply(confirmShare)) >= 0) {
                 move(tenantId, f, FindingStatus.confirmed, f.ownerId(), null, null, 0, SYSTEM,
                         "Экономия видна в счёте " + invoice.label() + " (" + compared + "). Подтверждена");
@@ -142,8 +144,8 @@ class FindingService implements FindingsIntake {
         }
     }
 
-    private static String rub(BigDecimal amount) {
-        return amount.setScale(2, RoundingMode.HALF_EVEN).toPlainString() + " ₽";
+    private static String money(BigDecimal amount, String currency) {
+        return amount.setScale(2, RoundingMode.HALF_EVEN).toPlainString() + Currencies.suffix(currency);
     }
 
     private void move(UUID tenantId, Finding f, FindingStatus to, UUID owner, LocalDate until, String reason,

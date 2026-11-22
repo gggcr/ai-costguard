@@ -6,6 +6,7 @@ import ai.costguard.core.approvals.ApprovalDecided;
 import ai.costguard.core.approvals.LargeOperationApproved;
 import ai.costguard.core.assets.AssetChanged;
 import ai.costguard.core.catalog.CatalogPriceChanged;
+import ai.costguard.core.catalog.ExchangeRateChanged;
 import ai.costguard.core.connections.ConnectionChanged;
 import ai.costguard.core.imports.ImportAccepted;
 import ai.costguard.core.imports.ImportFileUploaded;
@@ -26,6 +27,7 @@ import ai.costguard.events.CatalogPrice;
 import ai.costguard.events.ConnectorConfig;
 import ai.costguard.events.CostRecord;
 import ai.costguard.events.CostSource;
+import ai.costguard.events.ExchangeRate;
 import ai.costguard.events.IngestAccepted;
 import ai.costguard.events.IngestFile;
 import ai.costguard.events.JournalReceipt;
@@ -76,7 +78,14 @@ final class EventMapping {
         return new Message("catalog.prices.v1", e.tenantId() + ":" + e.skuId(), CatalogPrice.newBuilder()
                 .setTenantId(e.tenantId()).setSkuId(e.skuId()).setProvider(e.vendor()).setModel(e.model())
                 .setUnit(PriceUnit.valueOf(e.unit())).setUnitPrice(money(e.unitPrice())).setCurrency(e.currency())
-                .setValidFrom(e.validFrom()).build());
+                .setValidFrom(e.validFrom())
+                .setUnitPriceExact(e.unitPrice().setScale(9, RoundingMode.HALF_EVEN)).build());
+    }
+
+    /** The rates are the bank's, not a company's: one record per currency (ADR 0072). */
+    static Message of(ExchangeRateChanged e) {
+        return new Message("catalog.rates.v1", e.currency(), ExchangeRate.newBuilder().setCurrency(e.currency())
+                .setRoubles(e.roubles().setScale(8, RoundingMode.HALF_EVEN)).setRateDate(e.date()).build());
     }
 
     static Message of(BudgetLimitChanged e) {
@@ -133,7 +142,8 @@ final class EventMapping {
         return new Message("connectors.config.v1", e.tenantId() + ":" + e.type(), ConnectorConfig.newBuilder()
                 .setTenantId(e.tenantId()).setConnectionId(e.connectionId()).setType(e.type()).setName(e.name())
                 .setEnabled(e.enabled()).setSettings(new java.util.HashMap<>(e.settings()))
-                .setSyncRequestedAt(e.syncRequestedAt()).setUpdatedAt(e.updatedAt()).build());
+                .setSyncRequestedAt(e.syncRequestedAt()).setUpdatedAt(e.updatedAt()).setCurrency(e.currency())
+                .build());
     }
 
     static Message of(ImportFileUploaded e) {
@@ -141,7 +151,8 @@ final class EventMapping {
                 .setFileId(e.fileId()).setTenantId(e.tenantId()).setS3Key(e.storageKey()).setSha256(e.sha256())
                 .setFileName(e.fileName()).setContentType(e.contentType() == null ? "application/octet-stream"
                         : e.contentType())
-                .setSourceTemplateId(null).setUploadedAt(e.uploadedAt()).setCountry(e.country()).build());
+                .setSourceTemplateId(null).setUploadedAt(e.uploadedAt()).setCountry(e.country())
+                .setCurrency(e.currency()).build());
     }
 
     static Message of(ImportAccepted e) {
@@ -150,7 +161,7 @@ final class EventMapping {
         return new Message("ingest.accepted.v1", e.fileId().toString(), IngestAccepted.newBuilder()
                 .setFileId(e.fileId()).setTenantId(e.tenantId()).setS3Key(e.storageKey()).setFileName(e.fileName())
                 .setVendorId(e.vendorId()).setMapping(e.mapping()).setCorrections(corrections)
-                .setAcceptedAt(e.acceptedAt()).setCountry(e.country()).build());
+                .setAcceptedAt(e.acceptedAt()).setCountry(e.country()).setCurrency(e.currency()).build());
     }
 
     static Message of(OperationCharged e) {

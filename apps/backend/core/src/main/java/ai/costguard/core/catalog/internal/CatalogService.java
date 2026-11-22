@@ -64,11 +64,32 @@ class CatalogService implements ExchangeRates {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<BigDecimal> toRub(BigDecimal amount, String currency, LocalDate date) {
-        if ("RUB".equals(currency)) {
+    public Optional<BigDecimal> convert(BigDecimal amount, String from, String to, LocalDate date) {
+        String source = rouble(from);
+        String target = rouble(to);
+        if (source.equals(target)) {
             return Optional.of(amount);
         }
-        return catalog.rateOn(currency, date).map(r -> amount.multiply(r.rate()).setScale(2, RoundingMode.HALF_EVEN));
+        Optional<BigDecimal> perSource = roubles(source, date);
+        Optional<BigDecimal> perTarget = roubles(target, date);
+        if (perSource.isEmpty() || perTarget.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(amount.multiply(perSource.get()).divide(perTarget.get(), 2, RoundingMode.HALF_EVEN));
+    }
+
+    private static String rouble(String currency) {
+        String code = currency == null ? "" : currency.strip();
+        return code.equals("RUR") ? "RUB" : code;
+    }
+
+    /** Roubles for one unit of the currency. */
+    private Optional<BigDecimal> roubles(String currency, LocalDate date) {
+        return currency.equals("RUB") ? Optional.of(BigDecimal.ONE) : catalog.rateOn(currency, date).map(FxRate::rate);
+    }
+
+    private Optional<BigDecimal> toRub(BigDecimal amount, String currency, LocalDate date) {
+        return convert(amount, currency, "RUB", date);
     }
 
     @Transactional(readOnly = true)

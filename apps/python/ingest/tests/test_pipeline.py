@@ -75,6 +75,14 @@ def test_currencies():
     assert values.currency_in(1500) is None
 
 
+def test_a_bare_dollar_sign_is_the_companys_own_dollar():
+    assert values.currency_in("$15") == "USD"
+    assert values.currency_in("$15", "CAD") == "CAD"
+    assert values.currency_in("$15", "RUB") == "USD"
+    assert values.currency("¥", "JPY")[0] == "JPY"
+    assert values.currency("¥")[0] == "CNY"
+
+
 # how a country writes (ADR 0072)
 
 US, RU, DE, GB = (values.style_of(c) for c in ("US", "RU", "DE", "GB"))
@@ -315,20 +323,22 @@ AMERICAN = (
 
 
 def test_an_american_file_of_an_american_company_reads_as_written():
-    parsed = pipeline.parse("acme.csv", AMERICAN, style=US)
+    parsed = pipeline.parse("acme.csv", AMERICAN, style=US, currency="USD")
     assert parsed.total == Decimal("13750.50")
     assert parsed.uncertain == []
     messages, skipped = pipeline.accept(TENANT, FILE, "k", "acme.csv", None, parsed.suggested_mapping, {}, AMERICAN,
-                                        now=NOW, style=US)
+                                        now=NOW, style=US, currency="USD")
     assert skipped == []
     costs = [m.value for m in messages if m.topic == "cost.records.v1"]
     assert [c["billed_cost"] for c in costs] == [Decimal("1500"), Decimal("12000.50"), Decimal("250")]
+    assert {c["billing_currency"] for c in costs} == {"USD"}
     assert costs[2]["charge_period_start"] == date(2026, 3, 4)
+    assert invoice_of(messages)["currency"] == "USD"
 
 
 def test_the_same_file_in_a_russian_company_is_read_by_its_own_columns():
     """Its own values show the American writing (12,000.50; 11/30/2026), so a Russian company reads it right too."""
-    parsed = pipeline.parse("acme.csv", AMERICAN, style=RU)
+    parsed = pipeline.parse("acme.csv", AMERICAN, style=RU, currency="RUB")
     assert parsed.total == Decimal("13750.50")
     assert parsed.uncertain == []
 
@@ -339,18 +349,19 @@ def test_an_american_file_without_a_country_goes_to_people():
     assert {(f, v) for _, f, v, _ in parsed.uncertain} == {("amount", "$1,500"), ("period_start", "03/04/2026")}
 
 
-def test_a_payment_carries_its_day_for_the_core():
+def test_a_payment_carries_its_currency_and_its_day_for_the_core():
     """The core reads an ISO date only: before ADR 0072 a statement's 05.10.2026 reached it as text and was lost."""
     columns = pipeline.parse("выписка.txt", STATEMENT).suggested_mapping
-    messages, _ = pipeline.accept(TENANT, FILE, "k", "выписка.txt", None, columns, {}, STATEMENT, now=NOW, style=US)
+    messages, _ = pipeline.accept(TENANT, FILE, "k", "выписка.txt", None, columns, {}, STATEMENT, now=NOW,
+                                  style=US, currency="USD")
     payment = json.loads(next(m for m in messages if m.value.get("entity_type") == "PAYMENT").value["payload"])
-    assert payment["date"] == "2026-10-05"
+    assert (payment["date"], payment["currency"]) == ("2026-10-05", "RUB")  # a 1C statement is in roubles
 
 
 def test_a_corrected_statement_amount_is_read_as_people_write():
     columns = pipeline.parse("выписка.txt", STATEMENT).suggested_mapping
     messages, _ = pipeline.accept(TENANT, FILE, "k", "выписка.txt", None, columns, {"2": {"amount": "11 500,50"}},
-                                  STATEMENT, now=NOW, style=RU)
+                                  STATEMENT, now=NOW, style=RU, currency="RUB")
     [cost] = [m.value for m in messages if m.topic == "cost.records.v1"]
     assert cost["billed_cost"] == Decimal("11500.50")
 
@@ -406,14 +417,22 @@ def test_handler_accepts():
 
 def test_handler_reads_a_file_as_its_company_writes():
     handler = service.Handler(MemoryFiles({"k": b"Vendor,Amount\nAcme,\"1,500\"\n"}))
-    event = file_event("k", "acme.csv") | {"country": "US"}
+    event = file_event("k", "acme.csv") | {"country": "US", "currency": "USD"}
     decoded = roundtrip("ingest.results.v1", handler.on_file(event)[0].value)
     assert decoded["total"] == Decimal("1500.000000") and decoded["uncertain"] == []
     out = handler.on_accepted({
         "file_id": str(FILE), "tenant_id": str(TENANT), "s3_key": "k", "file_name": "acme.csv", "vendor_id": None,
-        "mapping": {"Vendor": "vendor", "Amount": "amount"}, "corrections": {}, "accepted_at": NOW, "country": "US"})
+        "mapping": {"Vendor": "vendor", "Amount": "amount"}, "corrections": {}, "accepted_at": NOW,
+        "country": "US", "currency": "USD"})
     [cost] = [m.value for m in out if m.topic == "cost.records.v1"]
-    assert cost["billed_cost"] == Decimal("1500")
+    assert (cost["billed_cost"], cost["billing_currency"]) == (Decimal("1500"), "USD")
+
+
+@pytest.mark.parametrize("country, currency, expected", [
+    ("US", "usd", "USD"), (None, None, "RUB"), ("", "", "RUB"), ("x" * 200, "ДОЛ", "RUB"), ("RU", "12", "RUB")])
+def test_a_message_without_a_good_currency_falls_back_to_roubles(country, currency, expected):
+    style, code = service.company_of({"country": country, "currency": currency})
+    assert code == expected and isinstance(style, values.Style)
 
 
 # storage

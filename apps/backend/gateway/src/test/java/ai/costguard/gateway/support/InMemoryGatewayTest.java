@@ -258,6 +258,11 @@ public abstract class InMemoryGatewayTest {
 
     /** An agent with a mandate up to 1000, an approval threshold and a budget of 1000 under a company budget. */
     protected void agentWithBudget(String approvalThreshold) {
+        agentWithBudget(approvalThreshold, "RUB");
+    }
+
+    /** The same, for a company that keeps its budgets in {@code currency} (ADR 0072). */
+    protected void agentWithBudget(String approvalThreshold, String currency) {
         web = WebTestClient.bindToApplicationContext(context).configureClient()
                 .responseTimeout(Duration.ofSeconds(30)).build();
         reserve.left = new BigDecimal("1000");
@@ -268,12 +273,12 @@ public abstract class InMemoryGatewayTest {
                 .setUpdatedAt(Instant.now()).build());
         UUID company = UUID.randomUUID();
         tree.apply(BudgetLimit.newBuilder().setTenantId(tenant).setBudgetId(company).setParentBudgetId(null)
-                .setLevel(BudgetLevel.COMPANY).setRefId(null).setLimitAmount(money("100000")).setCurrency("RUB")
+                .setLevel(BudgetLevel.COMPANY).setRefId(null).setLimitAmount(money("100000")).setCurrency(currency)
                 .setCorrection(money("0")).setPeriodStart(LocalDate.of(2026, 1, 1))
                 .setPeriodEnd(LocalDate.of(2026, 12, 31)).setVersion(1).build());
         tree.apply(BudgetLimit.newBuilder().setTenantId(tenant).setBudgetId(UUID.randomUUID())
                 .setParentBudgetId(company).setLevel(BudgetLevel.AGENT).setRefId(agent).setLimitAmount(money("1000"))
-                .setCurrency("RUB").setCorrection(money("0")).setPeriodStart(LocalDate.of(2026, 1, 1))
+                .setCurrency(currency).setCorrection(money("0")).setPeriodStart(LocalDate.of(2026, 1, 1))
                 .setPeriodEnd(LocalDate.of(2026, 12, 31)).setVersion(1).build());
     }
 

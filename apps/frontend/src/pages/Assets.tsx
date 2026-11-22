@@ -8,7 +8,7 @@ import { useAuth } from '../auth/auth';
 import { COMPANY_NAME } from '../api/mock-data';
 import type { Asset, AssetAssignment, AssetSource, AssetStatus, AssetType, Employee } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, Field, FindingBadge, Modal, PageHeader, ReadOnlyNote, Stat, Tabs, type Tone } from '../components/ui';
-import { downloadText, fmtDate, fmtRub, localDay, toCsv } from '../lib';
+import { currencySign, downloadText, fmtDate, fmtMoney, localDay, toCsv } from '../lib';
 
 export const ASSET_TYPE_LABEL: Record<AssetType, string> = { LAPTOP: 'Ноутбук', PHONE: 'Телефон', MONITOR: 'Монитор', OTHER: 'Прочее' };
 const STATUS_META: Record<AssetStatus, { label: string; tone: Tone }> = {
@@ -77,7 +77,7 @@ export function Assets() {
     && (!t || [a.model, a.inventoryNumber, a.serialNumber ?? '', e?.name ?? ''].some((x) => x.toLowerCase().includes(t))));
 
   const exportCsv = () => downloadText('equipment.csv', toCsv([
-    ['Инв. №', 'Модель', 'Тип', 'Серийный №', 'Статус', 'Сотрудник', 'Выдана', 'Срок возврата', 'Акт', 'Стоимость, ₽', 'Источник'],
+    ['Инв. №', 'Модель', 'Тип', 'Серийный №', 'Статус', 'Сотрудник', 'Выдана', 'Срок возврата', 'Акт', `Стоимость, ${currencySign()}`, 'Источник'],
     ...list.map(({ a, g, e }) => [a.inventoryNumber, a.model, ASSET_TYPE_LABEL[a.type], a.serialNumber ?? '', STATUS_META[a.status].label, e?.name ?? '', g?.issuedAt ?? '', g?.returnDue ?? '', g?.actNumber ?? '', a.cost, SOURCE_LABEL[a.source]]),
   ]), 'text/csv');
 
@@ -92,7 +92,7 @@ export function Assets() {
         </>} />
       {!edit && <ReadOnlyNote />}
       <div className="stats">
-        <Stat label="На руках у сотрудников" value={held.length} hint={`на ${fmtRub(heldCost)}`} />
+        <Stat label="На руках у сотрудников" value={held.length} hint={`на ${fmtMoney(heldCost)}`} />
         <Stat label="Пора вернуть" value={toReturn.length} hint="у уволенных и с прошедшим сроком" />
         <Stat label="На складе" value={rows.filter((r) => r.a.status === 'IN_STOCK').length} hint={idle.length ? `${idle.length} без дела больше ${IDLE_DAYS} дней` : 'выдайте вместо покупки новой'} />
         <Stat label="Находки по технике" value={state.findings.filter((f) => f.rule.startsWith('asset.') && ['new', 'review', 'accepted', 'in_progress'].includes(f.status)).length} hint="открытые" to="/findings" />
@@ -134,7 +134,7 @@ export function Assets() {
                         <td><HolderCell employee={e} /></td>
                         <td><ReturnDue g={g} /></td>
                         <td>{g?.actNumber ? <button className="link-btn" onClick={(ev) => { ev.stopPropagation(); showAct(a, g); }}>{g.actNumber}</button> : <span className="muted">—</span>}</td>
-                        <td className="num">{fmtRub(a.cost)}</td>
+                        <td className="num">{fmtMoney(a.cost)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -167,7 +167,7 @@ function ReturnList({ rows, edit }: { rows: { a: Asset; g?: AssetAssignment; e?:
       <div className="note">Сумму удержания за невозвращённое решают кадры и бухгалтерия по трудовому законодательству. Система показывает только стоимость из учётной системы.</div>
       {[...byPerson.entries()].map(([id, { e, items }]) => (
         <Card key={id} title={<>{e?.name ?? 'Сотрудник не найден'} {e && !e.active ? <Badge tone="critical">уволен</Badge> : <Badge tone="warning">срок возврата прошёл</Badge>}</>}
-          actions={<strong>{fmtRub(items.reduce((s, x) => s + x.a.cost, 0))}</strong>}>
+          actions={<strong>{fmtMoney(items.reduce((s, x) => s + x.a.cost, 0))}</strong>}>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Техника</th><th>Выдана</th><th>Срок возврата</th><th>Акт</th><th className="num">Стоимость</th><th /></tr></thead>
@@ -178,7 +178,7 @@ function ReturnList({ rows, edit }: { rows: { a: Asset; g?: AssetAssignment; e?:
                     <td>{fmtDate(g?.issuedAt)}</td>
                     <td><ReturnDue g={g} /></td>
                     <td>{g?.actNumber ?? <span className="muted">—</span>}</td>
-                    <td className="num">{fmtRub(a.cost)}</td>
+                    <td className="num">{fmtMoney(a.cost)}</td>
                     <td>{edit && <ConfirmButton variant="ghost" title="Принять возврат?" text={`${a.model} (инв. № ${a.inventoryNumber}) вернётся на склад, выдача ${g?.actNumber ?? ''} закроется сегодняшним днём.`} confirmLabel="Принять" onConfirm={() => actions.returnAsset(a.id)}>Принять возврат</ConfirmButton>}</td>
                   </tr>
                 ))}
@@ -216,7 +216,7 @@ function AssetForm({ onClose }: { onClose: () => void }) {
         <Field label="Модель"><input className="input" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Lenovo ThinkPad T14 Gen 5" /></Field>
         <div className="form-row">
           <Field label="Тип"><select className="input" value={type} onChange={(e) => setType(e.target.value as AssetType)}>{(Object.keys(ASSET_TYPE_LABEL) as AssetType[]).map((k) => <option key={k} value={k}>{ASSET_TYPE_LABEL[k]}</option>)}</select></Field>
-          <Field label="Стоимость, ₽" hint={costBad ? 'Не меньше нуля, не больше двух знаков после запятой' : 'Из учётной системы; CostGuard её не пересчитывает'}><input className="input" type="number" min={0} step="0.01" value={cost} onChange={(e) => setCost(Number(e.target.value))} /></Field>
+          <Field label={`Стоимость, ${currencySign()}`} hint={costBad ? 'Не меньше нуля, не больше двух знаков после запятой' : 'Из учётной системы; CostGuard её не пересчитывает'}><input className="input" type="number" min={0} step="0.01" value={cost} onChange={(e) => setCost(Number(e.target.value))} /></Field>
         </div>
       </div>
     </Modal>
@@ -314,7 +314,7 @@ export function AssetDetail() {
           {edit && asset.status === 'IN_STOCK' && <ConfirmButton variant="danger" title="Списать технику?" text="Списанную технику нельзя выдать. История выдач и акты сохранятся." confirmLabel="Списать" onConfirm={() => actions.retireAsset(asset.id)}>Списать</ConfirmButton>}
         </>} />
       <div className="stats">
-        <Stat label="Стоимость" value={fmtRub(asset.cost)} hint="из учётной системы" />
+        <Stat label="Стоимость" value={fmtMoney(asset.cost)} hint="из учётной системы" />
         <Stat label="Источник" value={SOURCE_LABEL[asset.source]} hint={asset.source === 'manual' ? 'внесена в CostGuard' : 'синхронизируется, система источника главная'} />
         <Stat label="Выдач" value={history.length} hint={`актов: ${history.filter((x) => x.actNumber).length}`} />
       </div>
@@ -336,7 +336,7 @@ export function AssetDetail() {
         </Card>
         <Card title="Находки">
           {findings.length === 0 ? <p className="muted">Находок нет</p> : (
-            <ul className="list">{findings.map((f) => <li key={f.id}><Link to={`/findings/${f.id}`} className="list-row"><span>{f.title}<span className="block"><FindingBadge status={f.status} /></span></span><strong>{fmtRub(f.expectedSavings)}</strong></Link></li>)}</ul>
+            <ul className="list">{findings.map((f) => <li key={f.id}><Link to={`/findings/${f.id}`} className="list-row"><span>{f.title}<span className="block"><FindingBadge status={f.status} /></span></span><strong>{fmtMoney(f.expectedSavings)}</strong></Link></li>)}</ul>
           )}
         </Card>
       </div>

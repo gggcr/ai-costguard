@@ -77,7 +77,7 @@ class ImportService implements ImportResults {
         }
         var card = card();
         events.publishEvent(new ImportFileUploaded(id, tenantId, key, sha, fileName, contentType, vendorId,
-                now.toInstant(), card.country()));
+                now.toInstant(), card.country(), card.currency()));
         return new Upload(imports.find(id).orElseThrow(), true);
     }
 
@@ -169,6 +169,6 @@ class ImportService implements ImportResults {
                 .put(t.field(), t.resolvedValue()));
         var card = card();
         events.publishEvent(new ImportAccepted(tenantId, job.id(), tenantId + "/" + job.sha256(), job.fileName(),
-                job.vendorId(), job.mapping(), corrections, clock.instant(), card.country()));
+                job.vendorId(), job.mapping(), corrections, clock.instant(), card.country(), card.currency()));
     }
 }

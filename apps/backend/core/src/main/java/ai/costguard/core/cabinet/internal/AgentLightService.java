@@ -8,6 +8,7 @@ import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.org.DepartmentHeads;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.Currencies;
 import ai.costguard.platform.tenant.TenantSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -236,8 +237,11 @@ class AgentLightService {
                     .map(AgentOwners.OwnedAgent::name).findFirst().orElse("агент");
             String why = "risk".equals(e.reason()) ? "детектор аномалий счёл операцию необычной"
                     : "сумма выше порога мандата";
+            // the gateway prices an operation in the currency of the agent's budget, the company's (ADR 0072)
+            String currency = budgets.ofAgent(e.agentId()).map(AgentBudgets.AgentBudget::currency)
+                    .or(() -> employees.company().map(EmployeeDirectory.CompanyCard::currency)).orElse(null);
             notices.send(e.tenantId(), owner, "Агент «" + agent + "» хочет потратить "
-                    + money(e.amount(), "RUB") + " (" + e.description() + "): " + why
+                    + money(e.amount(), currency) + " (" + e.description() + "): " + why
                     + ". Подтвердите или заблокируйте", "/cabinet/agents", "warning");
         });
     }
@@ -246,7 +250,6 @@ class AgentLightService {
         DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.forLanguageTag("ru"));
         symbols.setGroupingSeparator(' ');
         symbols.setDecimalSeparator(',');
-        return new DecimalFormat("#,##0.##", symbols).format(amount)
-                + (currency == null || "RUB".equals(currency) ? " ₽" : " " + currency);
+        return new DecimalFormat("#,##0.##", symbols).format(amount) + Currencies.suffix(currency);
     }
 }

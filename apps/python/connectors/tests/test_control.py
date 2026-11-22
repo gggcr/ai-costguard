@@ -46,6 +46,18 @@ def test_the_core_adds_replaces_and_removes_sections_of_the_file():
     assert file["okta"]["url"] == "https://file.okta.example"
 
 
+def test_the_company_currency_comes_to_every_section_unless_it_names_its_own():
+    """ADR 0072: an invoice Merge or 1C gives without a currency is in the company's, not in roubles."""
+    merged, _ = control.merge({"merge": {"currency": "EUR"}}, {
+        "merge": connection("merge") | {"currency": "USD"},
+        "onec": connection("onec", settings={"url": "http://1c"}) | {"currency": "usd"},
+        "okta": connection("okta") | {"currency": "доллар"},
+        "jamf": connection("jamf")})
+    assert merged["merge"]["currency"] == "EUR"  # the agent's own file says so
+    assert merged["onec"] == {"currency": "USD", "url": "http://1c"}
+    assert "currency" not in merged["okta"] and "currency" not in merged["jamf"]
+
+
 def test_a_sync_is_due_until_the_agent_starts_the_system_after_it_was_asked():
     known = {"okta": connection("okta", asked=T0), "onec": connection("onec"),
              "jamf": connection("jamf", enabled=False, asked=T0)}

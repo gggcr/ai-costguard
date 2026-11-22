@@ -4,7 +4,7 @@ import { FOCUS_FIELDS, useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import type { ImportJob, ImportType } from '../api/types';
 import { Badge, Button, Card, ConfirmButton, Empty, IMPORT_META, PageHeader, ReadOnlyNote } from '../components/ui';
-import { downloadText, fmtDateTime, fmtRub, toCsv } from '../lib';
+import { downloadText, fmtDateTime, fmtMoney, toCsv } from '../lib';
 
 const TYPE_LABEL: Record<ImportType, string> = { excel: 'Excel', csv: 'CSV', parquet: 'Parquet', pdf: 'PDF с текстом', scan: 'Скан или фото', bank: 'Банковская выписка' };
 const ROUTE: Record<ImportType, string> = {
@@ -69,7 +69,7 @@ export function Imports() {
                     <td>{j.uploadedBy}</td>
                     <td><Badge tone={IMPORT_META[j.status].tone}>{IMPORT_META[j.status].label}</Badge>{j.errors.length > 0 && j.status === 'done' && <span className="muted small block">ошибок: {j.errors.length}</span>}</td>
                     <td className="num">{j.rows || '—'}</td>
-                    <td className="num">{j.total ? fmtRub(j.total) : '—'}</td>
+                    <td className="num">{j.total ? fmtMoney(j.total) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -187,7 +187,7 @@ export function ImportDetail() {
           <Card title="Результат">
             <dl className="dl">
               <dt>Строк импортировано</dt><dd>{job.rows - job.errors.filter((e) => e.row > 0).length} из {job.rows}</dd>
-              <dt>Сумма</dt><dd>{fmtRub(job.total)}</dd>
+              <dt>Сумма</dt><dd>{fmtMoney(job.total)}</dd>
               <dt>Шаблон поставщика</dt><dd>{job.templateSaved ? <Badge tone="good">сохранён</Badge> : <Badge>не сохранён</Badge>}</dd>
             </dl>
             <p className="muted small">Записи затрат переданы в ClickHouse (Silver) и в движок аудита. Новые находки появятся в разделе «Находки».</p>

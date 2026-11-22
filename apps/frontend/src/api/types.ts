@@ -151,7 +151,7 @@ export interface Subscription {
   contractId?: string;
   departmentId: string;
   seats: number;
-  pricePerSeat: number; // ₽ в месяц
+  pricePerSeat: number; // в валюте компании, в месяц (ADR 0072)
   billingPeriod: 'month' | 'year';
   renewalDate: string;
   plan?: string; // тариф по каталогу тарифов ядра: по нему аудит ищет избыточный тариф и годовую оплату
@@ -167,7 +167,7 @@ export interface Asset {
   inventoryNumber: string;
   model: string;
   type: AssetType;
-  cost: number; // ₽, из учётной системы
+  cost: number; // в валюте компании, из учётной системы
   serialNumber?: string;
   status: AssetStatus;
   source: AssetSource; // откуда пришла запись: вручную или от коннектора
@@ -218,7 +218,7 @@ export interface Finding {
   agentId?: string;
   assetId?: string;
   employeeId?: string; // у находок по технике: чья это техника
-  expectedSavings: number; // ₽ в месяц; у находок по технике — разово (стоимость техники)
+  expectedSavings: number; // в валюте компании, в месяц; у находок по технике — разово (стоимость техники)
   status: FindingStatus;
   ownerId?: string; // user
   postponedUntil?: string;

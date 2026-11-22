@@ -4,7 +4,7 @@ import { useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import type { Budget } from '../api/types';
 import { Badge, Button, Card, Field, Modal, PageHeader, Progress, ReadOnlyNote } from '../components/ui';
-import { fmtPct, fmtRub } from '../lib';
+import { currencySign, fmtPct, fmtMoney } from '../lib';
 
 function BudgetRow({ b, depth, onEdit, edit }: { b: Budget; depth: number; onEdit: (b: Budget) => void; edit: boolean }) {
   const pct = b.limit ? ((b.spent + b.reserved) / b.limit) * 100 : 0;
@@ -15,9 +15,9 @@ function BudgetRow({ b, depth, onEdit, edit }: { b: Budget; depth: number; onEdi
         {name}
         <span className="muted small block">{b.level === 'company' ? 'Компания' : b.level === 'department' ? 'Отдел' : 'Агент'}</span>
       </td>
-      <td className="num">{fmtRub(b.spent)}</td>
-      <td className="num muted">{fmtRub(b.reserved)}</td>
-      <td className="num">{fmtRub(b.limit)}</td>
+      <td className="num">{fmtMoney(b.spent)}</td>
+      <td className="num muted">{fmtMoney(b.reserved)}</td>
+      <td className="num">{fmtMoney(b.limit)}</td>
       <td style={{ minWidth: 180 }}>
         <div className="row-gap"><Progress value={b.spent + b.reserved} max={b.limit} label={`${b.name}: ${fmtPct(pct)}`} /><span className="small">{fmtPct(pct)}</span></div>
       </td>
@@ -61,11 +61,11 @@ export function Budgets() {
       }>
         {editing && (
           <div className="form">
-            <Field label="Лимит на месяц, ₽" hint={`Уже списано ${fmtRub(editing.spent)}, в резерве ${fmtRub(editing.reserved)}`}>
+            <Field label={`Лимит на месяц, ${currencySign()}`} hint={`Уже списано ${fmtMoney(editing.spent)}, в резерве ${fmtMoney(editing.reserved)}`}>
               <input className="input" type="number" min={0} step={1000} value={limit} onChange={(e) => setLimit(Number(e.target.value))} />
             </Field>
             {limit < editing.spent + editing.reserved && <div className="alert alert-warning">Лимит меньше уже потраченного: новые операции получат 402 budget_exceeded.</div>}
-            {childSum > limit && <div className="alert alert-warning">Сумма лимитов вложенных уровней ({fmtRub(childSum)}) больше нового лимита.</div>}
+            {childSum > limit && <div className="alert alert-warning">Сумма лимитов вложенных уровней ({fmtMoney(childSum)}) больше нового лимита.</div>}
           </div>
         )}
       </Modal>

@@ -104,6 +104,26 @@ class OrgApiIntegrationTest extends PostgresTestSupport {
         mvc.perform(get("/api/v1/company").with(admin())).andExpect(jsonPath("$.currency").value("USD"));
     }
 
+    /** ADR 0072: amounts without a currency are the company's, so its currency stays once it keeps any. */
+    @Test
+    void theCurrencyStaysOnceMoneyIsKeptInIt() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme\",\"currency\":\"USD\"}").with(admin()))
+                .andExpect(status().isOk());
+        mvc.perform(json(post("/api/v1/budgets"), """
+                        {"name":"Company","level":"company","limit":1000,"currency":"EUR"}""")
+                        .with(as(tenant, "finance")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("currency_mismatch"));
+        mvc.perform(json(post("/api/v1/budgets"), """
+                        {"name":"Company","level":"company","limit":1000,"currency":"USD"}""")
+                        .with(as(tenant, "finance")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"RUB\"}").with(admin()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("currency_in_use"));
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\"}").with(admin()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Acme Inc"));
+    }
+
     @Test
     void tenantsDoNotSeeEachOther() throws Exception {
         String id = employee();

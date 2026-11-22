@@ -2,6 +2,7 @@ package ai.costguard.core.connections.internal;
 
 import ai.costguard.core.connections.ConnectionChanged;
 import ai.costguard.core.connections.ConnectorRuns;
+import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.plans.Limit;
 import ai.costguard.core.plans.PlanLimits;
 import ai.costguard.core.shared.activity.ActionTaken;
@@ -35,9 +36,12 @@ class ConnectionService implements ConnectorRuns {
     private final SecretBox box;
     private final PlanLimits plans;
 
+    private final EmployeeDirectory company;
+
     ConnectionService(ConnectionRepository connections, TenantSession session, Clock clock,
             ApplicationEventPublisher events, MeterRegistry registry, AirflowLauncher airflow, SecretBox box,
-            PlanLimits plans) {
+            PlanLimits plans, EmployeeDirectory company) {
+        this.company = company;
         this.plans = plans;
         this.box = box;
         this.connections = connections;
@@ -200,8 +204,9 @@ class ConnectionService implements ConnectorRuns {
 
     private void publish(UUID tenantId, UUID id, Instant now) {
         Connection c = found(id);
+        String currency = company.company().map(EmployeeDirectory.CompanyCard::currency).orElse(null);
         events.publishEvent(new ConnectionChanged(tenantId, c.id(), c.type(), c.name(), c.enabled(), c.settings(),
-                c.syncRequestedAt(), now));
+                c.syncRequestedAt(), now, currency));
     }
 
     @Override

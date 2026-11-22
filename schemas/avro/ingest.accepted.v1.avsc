@@ -14,6 +14,8 @@
      "doc": "Row number (as text) to field to the value people entered."},
     {"name": "accepted_at", "type": {"type": "long", "logicalType": "timestamp-millis"}},
     {"name": "country", "type": ["null", "string"], "default": null,
-     "doc": "The company's country, ISO 3166-1 alpha-2: how its people write numbers and dates (ADR 0072)."}
+     "doc": "The company's country, ISO 3166-1 alpha-2: how its people write numbers and dates (ADR 0072)."},
+    {"name": "currency", "type": ["null", "string"], "default": null,
+     "doc": "The company's currency, ISO 4217: the currency of an amount the file names none for."}
   ]
 }

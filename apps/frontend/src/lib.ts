@@ -1,10 +1,44 @@
 // Общие утилиты: форматирование, идентификаторы, фейковые хэши для квитанций.
 
-const rub = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 });
-const rubPrecise = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 });
 const num = new Intl.NumberFormat('ru-RU');
 
-export const fmtRub = (v: number) => (Math.abs(v) < 100 && v % 1 !== 0 ? rubPrecise.format(v) : rub.format(v));
+// Деньги компании — в её валюте (ADR 0072): бюджеты, цены подписок, находки и траты агентов ядро держит в валюте
+// компании, а не в рублях. Хранилище данных сообщает её, как только прочитает /api/v1/company.
+let companyCurrency = 'RUB';
+const formats = new Map<string, Intl.NumberFormat>();
+
+export function setCompanyCurrency(code: string | null | undefined) {
+  if (code && /^[A-Z]{3}$/.test(code)) companyCurrency = code;
+}
+
+export const currentCurrency = () => companyCurrency;
+
+function moneyFormat(currency: string, digits: number): Intl.NumberFormat {
+  const key = `${currency}:${digits}`;
+  let f = formats.get(key);
+  if (!f) {
+    try {
+      f = new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: digits });
+    } catch {
+      f = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: digits }); // код, которого браузер не знает
+    }
+    formats.set(key, f);
+  }
+  return f;
+}
+
+/** Знак валюты компании для подписей полей и столбцов: ₽, $, € (код — если браузер знака не знает). */
+export function currencySign(currency: string = companyCurrency): string {
+  const f = moneyFormat(currency, 0);
+  return f.formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency;
+}
+
+/** Сумма в валюте компании или в названной: «1 500 ₽», «1 500 $». Мелочь до сотни — с копейками/центами. */
+export function fmtMoney(v: number, currency: string = companyCurrency): string {
+  const f = moneyFormat(currency, Math.abs(v) < 100 && v % 1 !== 0 ? 2 : 0);
+  const text = f.format(v);
+  return f.resolvedOptions().style === 'currency' ? text : `${text} ${currency}`;
+}
 export const fmtNum = (v: number) => num.format(v);
 export const fmtPct = (v: number) => `${Math.round(v)}%`;
 

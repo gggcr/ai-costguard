@@ -138,7 +138,7 @@ def table(invoice: Invoice, threshold: float) -> tables.Table:
             if scope == "header" and index > 0:
                 continue
             if key == "currency" and f.value is None:
-                continue  # no currency is roubles, as in any upload
+                continue  # no currency is the company's, as in any upload (ADR 0072)
             if confidence < threshold and (f.value is not None or key in ("vendor", "amount")):
                 review[(number, column)] = round(confidence, 3)
         rows.append((number, row))

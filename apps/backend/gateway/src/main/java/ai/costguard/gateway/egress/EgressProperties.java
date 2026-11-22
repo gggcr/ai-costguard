@@ -20,6 +20,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     value: Bearer ${SPARK_API_KEY:}
  *     product: request          # catalog model of the REQUEST price; optional
  *     price: 15                 # used when the tenant's catalog has no price; optional
+ *     currency: RUB             # of the prices here; RUB when absent (ADR 0072)
  *     operations:               # a price per endpoint; the first match wins
  *       - { path: /v1/companies/{inn}/report, method: GET, product: report, price: 450 }
  * </pre>
@@ -27,12 +28,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("costguard.gateway")
 public record EgressProperties(Map<String, Route> egress) {
 
-    /** One paid API. Without {@code operations}, or when none matches, the route's own product and price apply. */
+    /**
+     * One paid API. Without {@code operations}, or when none matches, the route's own product and price apply. The
+     * prices here are in {@code currency}; a company that keeps another one is charged them converted.
+     */
     public record Route(URI url, String vendor, String product, BigDecimal price, String header, String value,
-            List<Priced> operations) {
+            List<Priced> operations, String currency) {
 
         public List<Priced> operations() {
             return operations == null ? List.of() : operations;
+        }
+
+        public String currency() {
+            return currency == null || currency.isBlank() ? "RUB" : currency.strip().toUpperCase(java.util.Locale.ROOT);
         }
     }
 

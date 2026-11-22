@@ -4,7 +4,7 @@ import type { PayrollUnmatched } from '../../api/generated/core';
 import { api, uploadForm } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, Empty, Field, Stat } from '../../components/ui';
-import { fmtDate } from '../../lib';
+import { currentCurrency, fmtDate } from '../../lib';
 import { errorText, useApi } from './useApi';
 
 interface Payment { id: string; employeeName: string; kind: string; period: string; payDate: string; amount: number; currency: string; source: string }
@@ -14,7 +14,7 @@ interface ImportResult { stored: number; skipped: { row: number; reason: string 
 const KIND: Record<string, string> = { advance: 'Аванс', salary: 'Зарплата', vacation_pay: 'Отпускные', bonus: 'Премия', other: 'Другое' };
 const REASON: Record<string, string> = { 'employee not found': 'сотрудник не найден', 'ambiguous employee': 'адрес у нескольких сотрудников, выплата не назначена', 'bad email': 'неверный адрес почты', 'bad date': 'неверная дата', 'bad amount': 'неверная сумма' };
 
-const money = (n: number, currency = 'RUB') =>
+const money = (n: number, currency = currentCurrency()) =>
   new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
 const month = (iso: string) => new Date(iso).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
@@ -125,7 +125,7 @@ export function EmployerPayroll() {
                     <td>{[u.reportedEmail, u.reportedName].filter(Boolean).join(' · ')}</td>
                     <td>{KIND[u.kind ?? ''] ?? u.kind}</td>
                     <td>{u.payDate ? fmtDate(u.payDate) : ''}</td>
-                    <td className="num">{money(u.amount ?? 0, u.currency ?? 'RUB')}</td>
+                    <td className="num">{money(u.amount ?? 0, u.currency ?? currentCurrency())}</td>
                     <td><Badge>{REASON[u.reason ?? ''] ?? u.reason}</Badge>{u.reason === 'ambiguous employee' && (u.candidates ?? 0) > 1 ? <span className="muted small"> · сотрудников с этим адресом: {u.candidates}</span> : null}</td>
                     <td className="muted small">{u.source}</td>
                   </tr>

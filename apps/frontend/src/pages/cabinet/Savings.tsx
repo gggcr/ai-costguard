@@ -1,5 +1,6 @@
 // Сколько сэкономил кабинет (ADR 0061): места, выданные из пула вместо покупки, и покупки, которые не понадобились.
 import { Card, Empty } from '../../components/ui';
+import { fmtMoney } from '../../lib';
 import { useApi } from './useApi';
 
 interface Savings {
@@ -7,7 +8,8 @@ interface Savings {
   purchasesRefused: number; purchasesMonthly: number; totalMonthly: number; byMonth: { month: string; saved: number }[];
 }
 
-const rub = (n: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(n);
+// цены мест и покупок — в валюте компании (ADR 0072)
+const rub = (n: number) => fmtMoney(Math.round(n));
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
 export function SavingsCard() {

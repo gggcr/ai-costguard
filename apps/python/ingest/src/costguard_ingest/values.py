@@ -77,6 +77,8 @@ _CURRENCY_SIGNS = {
     "₽": "RUB", "руб": "RUB", "р.": "RUB", "rub": "RUB", "rur": "RUB",
     "$": "USD", "usd": "USD", "€": "EUR", "eur": "EUR", "¥": "CNY", "cny": "CNY", "юань": "CNY",
 }
+# A bare $ is the company's own dollar (or peso) where it has one; ¥ is the yen in Japan.
+_DOLLARS = frozenset("USD CAD AUD NZD SGD HKD TWD MXN ARS CLP COP".split())
 _NOT_A_NUMBER = re.compile(r"[^\d.,\-+]")
 
 
@@ -187,7 +189,16 @@ def amounts_style(cells: Iterable[object], company: Style = UNKNOWN) -> Style:
     return replace(company, decimal=decimal, group="," if decimal == "." else ".", settled=True)
 
 
-def currency(value: object) -> tuple[str | None, float]:
+def _home_sign(sign: str, code: str, home: str | None) -> str:
+    if home and sign == "$" and home in _DOLLARS:
+        return home
+    if home == "JPY" and sign == "¥":
+        return home
+    return code
+
+
+def currency(value: object, home: str | None = None) -> tuple[str | None, float]:
+    """A currency column: an ISO code, or a sign. home is the company's currency, what a bare $ means there."""
     if value is None:
         return None, 0.0
     raw = str(value).strip().lower()
@@ -197,16 +208,16 @@ def currency(value: object) -> tuple[str | None, float]:
         return raw.upper(), 1.0
     for sign, code in _CURRENCY_SIGNS.items():
         if sign in raw:
-            return code, 0.95
+            return _home_sign(sign, code, home), 0.95
     return None, 0.0
 
 
-def currency_in(value: object) -> str | None:
+def currency_in(value: object, home: str | None = None) -> str | None:
     """A currency sign inside an amount cell, such as '1 500 ₽'."""
     if value is None or isinstance(value, int | float | Decimal):
         return None
     raw = str(value).lower()
-    return next((code for sign, code in _CURRENCY_SIGNS.items() if sign in raw), None)
+    return next((_home_sign(sign, code, home) for sign, code in _CURRENCY_SIGNS.items() if sign in raw), None)
 
 
 _ISO = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ].*)?")

@@ -15,7 +15,9 @@ enum OrgProblem implements ProblemCode {
     LAST_OWNER(HttpStatus.CONFLICT, "A company must keep at least one owner"),
     EMPLOYEE_LINK_OWNER_ONLY(HttpStatus.FORBIDDEN,
             "Only the owner links a user to an employee: the user then sees that employee's pay and documents"),
-    EMPLOYEE_ERASED(HttpStatus.CONFLICT, "The employee's data was erased; add the person again if they return");
+    EMPLOYEE_ERASED(HttpStatus.CONFLICT, "The employee's data was erased; add the person again if they return"),
+    CURRENCY_IN_USE(HttpStatus.CONFLICT, "Budgets, limits, prices or invoices are already kept in the company's "
+            + "currency, and changing it would not convert them; the operator moves a company to another currency");
 
     private final HttpStatus status;
     private final String detail;

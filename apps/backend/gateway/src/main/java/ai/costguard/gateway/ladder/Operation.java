@@ -29,6 +29,7 @@ public final class Operation {
     private String approvalReason;
     private String taskGoal;
     private String countedIn;
+    private String currency;
     private java.util.function.Supplier<java.util.Optional<BigDecimal>> estimate;
 
     public Operation(UUID operationId, String secret, String taskId, OperationKind kind, String vendor, String model,
@@ -81,6 +82,13 @@ public final class Operation {
     public void reserved(boolean reserved) { this.reserved = reserved; }
     public void tokens(long input, Long maxOutput) { this.inputTokens = input; this.maxOutputTokens = maxOutput; }
     public void estimatedCost(BigDecimal cost) { this.estimatedCost = cost; }
+
+    /**
+     * The currency of the company's budgets, which the estimate and the charge are in (ADR 0072); null until the
+     * identity step knows the company, or when it has no budget.
+     */
+    public String currency() { return currency; }
+    public void currency(String currency) { this.currency = currency; }
 
     /** The month (yyyy-MM, UTC) whose plan quota this operation took a place in; null when it took none. */
     public String countedIn() { return countedIn; }

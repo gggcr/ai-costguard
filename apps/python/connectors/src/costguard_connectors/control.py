@@ -52,17 +52,25 @@ def latest(records: Iterable[dict], tenant: uuid.UUID) -> dict[str, dict]:
 
 
 def merge(config: dict, connections: dict[str, dict]) -> tuple[dict, dict[str, uuid.UUID]]:
-    """The agent's config with the core's connections over it, and the connection id of each type."""
+    """The agent's config with the core's connections over it, and the connection id of each type. The company's
+    currency comes as the section's currency, unless the section names its own (ADR 0072)."""
     merged = {k: (dict(v) if isinstance(v, dict) else v) for k, v in config.items()}
     ids: dict[str, uuid.UUID] = {}
     for kind, r in connections.items():
         ids[kind] = uuid.UUID(str(r["connection_id"]))
         if r["enabled"]:
-            merged[kind] = {**(merged.get(kind) or {}),
+            currency = company_currency(r.get("currency"))
+            merged[kind] = {**({"currency": currency} if currency else {}), **(merged.get(kind) or {}),
                             **{k: _setting(k, v) for k, v in (r.get("settings") or {}).items()}}
         else:
             merged.pop(kind, None)
     return merged, ids
+
+
+def company_currency(value: object) -> str | None:
+    """An ISO 4217 code, or None for what an older core or a broken message sends."""
+    code = str(value or "").strip().upper()
+    return code if len(code) == 3 and code.isascii() and code.isalpha() else None
 
 
 def due(connections: dict[str, dict], last_started: dict[str, datetime]) -> set[str]:

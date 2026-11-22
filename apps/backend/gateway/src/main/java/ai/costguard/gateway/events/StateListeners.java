@@ -5,6 +5,7 @@ import ai.costguard.events.AgentState;
 import ai.costguard.events.ApprovalDecision;
 import ai.costguard.events.BudgetLimit;
 import ai.costguard.events.CatalogPrice;
+import ai.costguard.events.ExchangeRate;
 import ai.costguard.events.PolicySnapshot;
 import ai.costguard.events.TenantPlan;
 import ai.costguard.events.wire.AvroWire;
@@ -16,6 +17,7 @@ import ai.costguard.gateway.keys.AgentDirectory;
 import ai.costguard.gateway.plans.PlanBoard;
 import ai.costguard.gateway.risk.RiskBoard;
 import ai.costguard.gateway.rules.PriceBook;
+import ai.costguard.gateway.rules.RateBook;
 import ai.costguard.gateway.rules.RuleBook;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -36,6 +38,7 @@ public class StateListeners {
     private final AgentDirectory agents;
     private final RuleBook rules;
     private final PriceBook prices;
+    private final RateBook rates;
     private final BudgetTree budgets;
     private final BudgetReserve reserve;
     private final RiskBoard risk;
@@ -43,12 +46,14 @@ public class StateListeners {
     private final PlanBoard plans;
 
     public StateListeners(SchemaRegistryClient registry, AgentDirectory agents, RuleBook rules, PriceBook prices,
-            BudgetTree budgets, BudgetReserve reserve, RiskBoard risk, ApprovalBoard approvals, PlanBoard plans) {
+            RateBook rates, BudgetTree budgets, BudgetReserve reserve, RiskBoard risk, ApprovalBoard approvals,
+            PlanBoard plans) {
         this.plans = plans;
         this.registry = registry;
         this.agents = agents;
         this.rules = rules;
         this.prices = prices;
+        this.rates = rates;
         this.budgets = budgets;
         this.reserve = reserve;
         this.risk = risk;
@@ -83,6 +88,14 @@ public class StateListeners {
     void prices(ConsumerRecord<String, byte[]> r) {
         if (r.value() != null) {
             prices.apply(read(r, CatalogPrice.class));
+        }
+    }
+
+    /** Rates of the Bank of Russia: a price in another currency than the company's budgets is converted (ADR 0072). */
+    @KafkaListener(topics = "catalog.rates.v1", groupId = GROUP, containerFactory = "stateListenerFactory")
+    void rates(ConsumerRecord<String, byte[]> r) {
+        if (r.value() != null) {
+            rates.apply(read(r, ExchangeRate.class));
         }
     }
 

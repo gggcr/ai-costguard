@@ -3,6 +3,7 @@
 import { focusLabels } from './focus';
 import type * as Api from './generated/core';
 import { api, upload } from './http';
+import { currentCurrency } from '../lib';
 import type {
   Agent, AppState, Approval, Asset, AssetAssignment, Budget, Connection, ConnectionRun, Contract, Employee, Finding,
   FindingStatus, GatewayCode, ImportJob, LicenseAssignment, Mandate, Notification, Operation, Role, Subscription, SystemType,
@@ -142,7 +143,7 @@ type Loaded = Partial<AppState> & Partial<RemoteExtras>;
 export const LOADERS: Partial<Record<Slice, (st: AppState) => Promise<Loaded>>> = {
   company: async () => {
     const c = await api<Api.Company>('GET', '/api/v1/company');
-    return { company: { name: s(c.name), currency: c.currency ?? 'RUB' } };
+    return { company: { name: s(c.name), currency: c.currency ?? currentCurrency() } };
   },
   users: async () => ({ users: (await api<Api.UserAccount[]>('GET', '/api/v1/users')).map(toUser) }),
   departments: async () => ({ departments: (await api<Api.Department[]>('GET', '/api/v1/departments')).map((d) => ({ id: s(d.id), name: s(d.name), headEmployeeId: d.headEmployeeId ?? null })) }),

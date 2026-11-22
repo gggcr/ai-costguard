@@ -115,10 +115,25 @@ class CatalogApiIntegrationTest extends PostgresTestSupport {
     void conversionUsesTheLatestRateOnOrBeforeTheDate() throws Exception {
         jdbc.sql("insert into fx_rate values ('2026-11-06', 'EUR', 90.5), ('2026-11-08', 'EUR', 95)").update();
 
-        assertThat(rates.toRub(new BigDecimal("10"), "EUR", LocalDate.of(2026, 11, 7))).contains(new BigDecimal("905.00"));
-        assertThat(rates.toRub(new BigDecimal("10"), "RUB", LocalDate.of(2026, 11, 7))).contains(BigDecimal.TEN);
-        assertThat(rates.toRub(BigDecimal.ONE, "EUR", LocalDate.of(2026, 11, 1))).isEmpty();
+        LocalDate day = LocalDate.of(2026, 11, 7);
+        assertThat(rates.convert(new BigDecimal("10"), "EUR", "RUB", day)).contains(new BigDecimal("905.00"));
+        assertThat(rates.convert(new BigDecimal("10"), "RUB", "RUB", day)).contains(BigDecimal.TEN);
+        assertThat(rates.convert(BigDecimal.ONE, "EUR", "RUB", LocalDate.of(2026, 11, 1))).isEmpty();
         mvc.perform(get("/api/v1/catalog/fx-conversion?amount=1&currency=XYZ").with(as(tenant, "auditor")))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("rate_not_found"));
+    }
+
+    @Test
+    void aCompanyInDollarsConvertsThroughTheRouble() {
+        jdbc.sql("""
+                insert into fx_rate values ('2025-03-03', 'USD', 80), ('2025-03-03', 'EUR', 88)
+                on conflict (rate_date, currency) do update set rate = excluded.rate""").update();
+        LocalDate day = LocalDate.of(2025, 3, 4);
+
+        assertThat(rates.convert(new BigDecimal("100"), "EUR", "USD", day)).contains(new BigDecimal("110.00"));
+        assertThat(rates.convert(new BigDecimal("8000"), "RUB", "USD", day)).contains(new BigDecimal("100.00"));
+        assertThat(rates.convert(new BigDecimal("100"), "USD", "USD", day)).contains(new BigDecimal("100"));
+        assertThat(rates.convert(new BigDecimal("100"), "RUR", "RUB", day)).contains(new BigDecimal("100"));
+        assertThat(rates.convert(BigDecimal.ONE, "XYZ", "USD", day)).isEmpty();
     }
 }

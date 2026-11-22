@@ -5,10 +5,10 @@ import { ApiError, api } from '../api/http';
 import type { Invoice, Payment } from '../api/generated/core';
 import { DATA_MODE, useStore } from '../api/store';
 import { Badge, Card, Empty } from '../components/ui';
-import { fmtDate } from '../lib';
+import { currentCurrency, fmtDate } from '../lib';
 
 const money = (v: number | undefined, currency: string | undefined) =>
-  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: currency || 'RUB', maximumFractionDigits: 2 }).format(v ?? 0);
+  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: currency || currentCurrency(), maximumFractionDigits: 2 }).format(v ?? 0);
 
 const KIND: Record<string, string> = { CARD: 'картой', TRANSFER: 'переводом', SBP: 'по СБП', FEE: 'комиссия банка' };
 

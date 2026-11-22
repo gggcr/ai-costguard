@@ -7,7 +7,7 @@ import { remoteActions } from './remote-actions';
 import { ApiError, subscribe } from './http';
 import { StoreContext, type Actions, type StoreValue, type Toast } from './store';
 import { currentClaims, onTokensChange } from '../auth/oidc';
-import { newId } from '../lib';
+import { newId, setCompanyCurrency } from '../lib';
 
 const ALL: Slice[] = ['company', 'users', 'departments', 'employees', 'agents', 'mandates', 'budgets', 'operations', 'approvals', 'vendors',
   'contracts', 'subscriptions', 'assets', 'findings', 'imports', 'notifications', 'costHistory', 'connections', 'systemTypes'];
@@ -86,7 +86,10 @@ export function ApiStoreProvider({ children }: { children: ReactNode }) {
     const merged = Object.assign({}, ...results) as Partial<AppState> & { systemTypes?: SystemType[]; company?: { name: string; currency: string } };
     const { systemTypes: types, company: c, ...data } = merged;
     if (types) setSystemTypes(types);
-    if (c) setCompany(c);
+    if (c) {
+      setCompanyCurrency(c.currency); // суммы на всех страницах — в валюте компании (ADR 0072)
+      setCompany(c);
+    }
     setRaw((prev) => ({ ...prev, ...data }));
     const unauthenticated = failed.find((f) => f.error instanceof ApiError && f.error.status === 401);
     if (unauthenticated) throw unauthenticated.error;

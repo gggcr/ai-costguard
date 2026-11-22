@@ -9,6 +9,7 @@ The schema comes first: add `.avsc` files here, and `:events` generates the Java
 | `policy.snapshots.v1` (compacted) | Core policies | Agent gateway | tenant_id |
 | `agents.state.v1` (compacted) | Core agents | Agent gateway | agent_id |
 | `catalog.prices.v1` (compacted) | Core catalog | Agent gateway | tenant_id:sku_id |
+| `catalog.rates.v1` (compacted) | Core catalog | Agent gateway | currency |
 | `budgets.limits.v1` (compacted) | Core ledger | Agent gateway | budget_id |
 | `journal.receipts.v1` | Core journal | NEAR notary | receipt_id |
 | `journal.anchors.v1` | NEAR notary | Core journal | batch_id |
@@ -38,6 +39,11 @@ budget, so the gateway can find the budget of an agent and walk up to the compan
 
 Prices are per tenant, so `catalog.prices.v1` is keyed by tenant and SKU: keyed by SKU alone, compaction
 would keep one tenant's price and drop the others.
+
+`catalog.rates.v1` is not on the board: the gateway charges a call in the currency of the company's budgets, and a
+catalog price in another currency needs the Bank of Russia rate to get there
+([ADR 0072](../../docs/adr/0072-company-currency-and-country.md)). The rates are the same for every company, so the
+topic is keyed by currency and erasing a company sends it no tombstone.
 
 The core publishes its topics from the Spring Modulith outbox (`ai.costguard.core.shared.outbox`): an event
 is stored in the same transaction as the change and sent after commit, again until Kafka takes it. Messages

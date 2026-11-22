@@ -3,6 +3,7 @@ package ai.costguard.gateway.ladder;
 import ai.costguard.events.AgentOperation;
 import ai.costguard.events.OperationDecision;
 import ai.costguard.gateway.budget.BudgetReserve;
+import ai.costguard.gateway.budget.BudgetTree;
 import ai.costguard.gateway.events.OperationLog;
 import ai.costguard.gateway.plans.PlanGate;
 import java.math.BigDecimal;
@@ -18,16 +19,21 @@ import reactor.core.publisher.Mono;
 @Component
 public class Decisions {
 
+    /** ISO 4217 for "no currency": an operation of a company without budgets, which is refused and costs nothing. */
+    static final String NO_CURRENCY = "XXX";
+
     private final CheckLadder ladder;
     private final BudgetReserve reserve;
     private final OperationLog log;
     private final PlanGate plans;
+    private final BudgetTree budgets;
 
-    public Decisions(CheckLadder ladder, BudgetReserve reserve, OperationLog log, PlanGate plans) {
+    public Decisions(CheckLadder ladder, BudgetReserve reserve, OperationLog log, PlanGate plans, BudgetTree budgets) {
         this.ladder = ladder;
         this.reserve = reserve;
         this.log = log;
         this.plans = plans;
+        this.budgets = budgets;
     }
 
     public Mono<StepResult> decide(Operation op) {
@@ -80,13 +86,24 @@ public class Decisions {
         return v == null ? null : v.setScale(6, RoundingMode.HALF_EVEN);
     }
 
-    private static AgentOperation event(Operation op, OperationDecision decision, String code, BigDecimal actual) {
+    /**
+     * The currency of the company's budgets (ADR 0072): what the gateway priced and charged the operation in, and
+     * what the ledger posts it in. Before, every operation said RUB, whatever the budgets were in.
+     */
+    private String currency(Operation op) {
+        if (op.currency() != null) {
+            return op.currency();
+        }
+        return budgets.currency(op.tenantId()).orElse(NO_CURRENCY);
+    }
+
+    private AgentOperation event(Operation op, OperationDecision decision, String code, BigDecimal actual) {
         return AgentOperation.newBuilder()
                 .setOperationId(op.operationId()).setTenantId(op.tenantId()).setAgentId(op.agentId())
                 .setTaskId(op.taskId()).setKind(op.kind()).setProvider(op.vendor()).setModel(op.model())
                 .setDecision(decision).setDenialCode(code)
                 .setEstimatedCost(money(op.estimatedCost() == null ? BigDecimal.ZERO : op.estimatedCost()))
-                .setActualCost(money(actual)).setCurrency("RUB").setInputTokens(op.inputTokens())
+                .setActualCost(money(actual)).setCurrency(currency(op)).setInputTokens(op.inputTokens())
                 .setOutputTokens(op.maxOutputTokens()).setMandateVersion(op.agent().getMandateVersion())
                 .setPromptSimhash(null).setOccurredAt(op.at()).build();
     }

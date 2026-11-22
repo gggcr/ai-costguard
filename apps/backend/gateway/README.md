@@ -65,6 +65,12 @@ A provider or a paid API that answers with an error, or does not answer, gets it
 `agent.operations.v1` as `DENIED` with `upstream_error` and an actual cost of zero: the core charges nothing and
 issues no receipt for it.
 
+Money is in the currency of the company's budgets (ADR 0072), which the core keeps in the company's currency. A
+catalog price in another currency is converted at the latest Bank of Russia rate from `catalog.rates.v1`; a price
+whose currency has no rate is no price (`price_unknown`), never a dollar charged as a rouble. The prices of an
+egress route are in its `currency` (RUB when absent). Every operation carries the currency it was charged in, and
+the amounts of `/v1/spend/authorize` and `/settle` are in that currency too.
+
 Every decision goes to `agent.operations.v1`. If Kafka or the Schema Registry is away, it goes to a file
 (`costguard.gateway.buffer-file`) and is sent later.
 

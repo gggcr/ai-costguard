@@ -4,6 +4,7 @@ import ai.costguard.core.assets.AssetLinks;
 import ai.costguard.core.imports.NormalizedEntities;
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.org.Staff;
+import ai.costguard.core.shared.names.Currencies;
 import ai.costguard.core.software.SoftwareLinks;
 import ai.costguard.platform.tenant.TenantSession;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -135,9 +136,11 @@ class EntityStaging implements NormalizedEntities {
                 text(p, "source").orElse(""), at));
     }
 
-    private static String currency(JsonNode p) {
-        String code = text(p, "currency").map(c -> c.toUpperCase(Locale.ROOT)).orElse("RUB");
-        return code.length() == 3 ? code : "RUB";
+    /** The currency the record names, else the company's: an amount without one is in it (ADR 0072). */
+    private String currency(JsonNode p) {
+        String company = people.company().map(EmployeeDirectory.CompanyCard::currency).orElse(Currencies.DEFAULT);
+        String code = text(p, "currency").map(c -> c.strip().toUpperCase(Locale.ROOT)).orElse(company);
+        return code.matches("[A-Z]{3}") ? code : company;
     }
 
     private static LocalDate day(Instant at) {

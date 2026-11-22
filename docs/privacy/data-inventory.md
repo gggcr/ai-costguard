@@ -185,6 +185,7 @@ Managed Kafka в регионе `region`. Обычные топики храня
 | `agents.state.v1` | Нет (хэши ключей) | compacted | Бессрочно | Tombstone; шлюз сразу забывает агента |
 | `policy.snapshots.v1` | Нет | compacted | Бессрочно | Tombstone |
 | `catalog.prices.v1` | Нет | compacted | Бессрочно | Tombstone |
+| `catalog.rates.v1` | Нет (курсы Банка России, общие для всех) | compacted | Бессрочно | Не относится к компании (ADR 0072) |
 | `budgets.limits.v1` | Нет | compacted | Бессрочно | Tombstone |
 | `approvals.decisions.v1` | Нет | compacted | Бессрочно | Tombstone |
 | `connectors.config.v1` | Настройки подключений (почта администратора) | compacted | Бессрочно | Tombstone |

@@ -85,10 +85,13 @@ def reader(settings: IngestSettings, files: storage.Files | None = None,
     return documents.Reader(engine, from_text)
 
 
-def company_style(message: dict) -> values.Style:
-    """How the company of a file writes numbers and dates, as the core says (ADR 0072). A message of an older core
-    does not say, and nothing is assumed."""
-    return values.style_of(message.get("country"))
+def company_of(message: dict) -> tuple[values.Style, str]:
+    """How the company of a file writes numbers and dates, and its currency, as the core says (ADR 0072). A message
+    of an older core says neither: nothing is assumed about the writing, and an amount without a currency is in
+    roubles, as before."""
+    code = str(message.get("currency") or "").strip().upper()
+    known = len(code) == 3 and code.isascii() and code.isalpha()
+    return values.style_of(message.get("country")), code if known else pipeline.DEFAULT_CURRENCY
 
 
 def result_of(file: dict, parsed: pipeline.Parsed | None, failure: str | None) -> dict:
@@ -123,10 +126,10 @@ class Handler:
 
     def on_file(self, file: dict) -> list[pipeline.Message]:
         key = str(file["file_id"])
-        style = company_style(file)
+        style, currency = company_of(file)
         try:
             parsed = pipeline.parse(file["file_name"], self._files.get(file["s3_key"]),
-                                    self._read(file["tenant_id"], file["s3_key"]), style)
+                                    self._read(file["tenant_id"], file["s3_key"]), style, currency)
         except tables.Unsupported as e:
             return [pipeline.Message(RESULTS, key, result_of(file, None, str(e)))]
         except FileNotFoundError:
@@ -137,14 +140,14 @@ class Handler:
         """Rows of an accepted file. A file that cannot be read writes nothing and is logged: reading the message
         again would fail the same way and stop every file behind it."""
         vendor = accepted.get("vendor_id")
-        style = company_style(accepted)
+        style, currency = company_of(accepted)
         try:
             messages, skipped = pipeline.accept(
                 uuid.UUID(str(accepted["tenant_id"])), uuid.UUID(str(accepted["file_id"])), accepted["s3_key"],
                 accepted["file_name"], None if vendor is None else uuid.UUID(str(vendor)), accepted["mapping"],
                 accepted["corrections"], self._files.get(accepted["s3_key"]),
                 read=self._read(accepted["tenant_id"], accepted["s3_key"]), intermediaries=self._intermediaries,
-                services=self._services, style=style)
+                services=self._services, style=style, currency=currency)
         except (tables.Unsupported, FileNotFoundError) as e:
             log.error("Accepted file %s not written: %s", accepted["file_id"], e or "not in storage")
             return []

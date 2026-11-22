@@ -1,5 +1,36 @@
-import { describe, expect, it } from 'vitest';
-import { toCsv } from './lib';
+import { afterEach, describe, expect, it } from 'vitest';
+import { translateSync } from './i18n';
+import { currencySign, fmtMoney, setCompanyCurrency, toCsv } from './lib';
+
+describe('fmtMoney', () => {
+  afterEach(() => setCompanyCurrency('RUB'));
+
+  it('пишет сумму в валюте компании, а не всегда в рублях (ADR 0072)', () => {
+    expect(fmtMoney(1500)).toMatch(/^1\s500\s₽$/);
+    setCompanyCurrency('USD');
+    expect(fmtMoney(1500)).toMatch(/^1\s500\s\$$/);
+    expect(fmtMoney(12.5)).toMatch(/^12,50\s\$$/);
+  });
+
+  it('подписывает поля знаком валюты компании', () => {
+    expect(currencySign()).toBe('₽');
+    setCompanyCurrency('USD');
+    expect(currencySign()).toBe('$');
+    expect(currencySign('XYZ')).toBe('XYZ');
+  });
+
+  it('переводит подписи с любой валютой на английский', () => {
+    expect(translateSync('Бюджет на месяц, $')).toBe('Monthly budget, $');
+    expect(translateSync('Лимит на месяц, ₽')).toBe('Monthly limit, ₽');
+  });
+
+  it('берёт названную валюту и не принимает то, что не код', () => {
+    expect(fmtMoney(10, 'EUR')).toMatch(/^10\s€$/);
+    setCompanyCurrency('доллар');
+    expect(fmtMoney(1)).toContain('₽');
+    expect(fmtMoney(3, 'XYZ')).toMatch(/3\sXYZ/);
+  });
+});
 
 describe('toCsv', () => {
   it('не даёт тексту стать формулой в Excel', () => {

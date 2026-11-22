@@ -3,7 +3,7 @@ import { useLookup, useStore } from '../api/store';
 import { useAuth } from '../auth/auth';
 import { Badge, Card, CodeBadge, FindingBadge, PageHeader, Progress, RiskBadge, Stat } from '../components/ui';
 import { BarList } from '../components/charts';
-import { fmtRelative, fmtRub } from '../lib';
+import { fmtRelative, fmtMoney } from '../lib';
 
 export function Dashboard() {
   const { state } = useStore();
@@ -30,10 +30,10 @@ export function Dashboard() {
       <PageHeader title={`Добрый день, ${user?.name.split(' ')[0]}`} subtitle={`Сводка цифровых расходов компании за ${new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`} />
 
       <div className="stats">
-        <Stat label="ИИ-агенты: потрачено в ноябре" value={fmtRub(company?.spent ?? 0)} hint={company && <>из {fmtRub(company.limit)} · <Progress value={company.spent} max={company.limit} /></>} to={canView('budgets') ? '/budgets' : undefined} />
-        <Stat label="Подписки на ПО в месяц" value={fmtRub(softwareMonthly)} hint={`${state.subscriptions.length} подписок`} to={canView('software') ? '/software' : undefined} />
-        <Stat label="Потенциальная экономия" value={fmtRub(potential)} hint={`${openFindings.length} открытых находок, в месяц`} to={canView('findings') ? '/findings' : undefined} />
-        <Stat label="Подтверждённая экономия" value={fmtRub(confirmed)} hint="видна в следующих счетах" to={canView('findings') ? '/findings?status=confirmed' : undefined} />
+        <Stat label="ИИ-агенты: потрачено в ноябре" value={fmtMoney(company?.spent ?? 0)} hint={company && <>из {fmtMoney(company.limit)} · <Progress value={company.spent} max={company.limit} /></>} to={canView('budgets') ? '/budgets' : undefined} />
+        <Stat label="Подписки на ПО в месяц" value={fmtMoney(softwareMonthly)} hint={`${state.subscriptions.length} подписок`} to={canView('software') ? '/software' : undefined} />
+        <Stat label="Потенциальная экономия" value={fmtMoney(potential)} hint={`${openFindings.length} открытых находок, в месяц`} to={canView('findings') ? '/findings' : undefined} />
+        <Stat label="Подтверждённая экономия" value={fmtMoney(confirmed)} hint="видна в следующих счетах" to={canView('findings') ? '/findings?status=confirmed' : undefined} />
       </div>
 
       <div className="grid-2">
@@ -50,7 +50,7 @@ export function Dashboard() {
                 <li key={a.id}>
                   <Link to="/approvals" className="list-row">
                     <span>
-                      <strong>{fmtRub(a.amount)}</strong> · {L.agent(a.agentId)?.name}
+                      <strong>{fmtMoney(a.amount)}</strong> · {L.agent(a.agentId)?.name}
                       <span className="muted small block">{a.description}</span>
                     </span>
                     <span className="muted small">до решения {fmtRelative(a.deadline)}</span>
@@ -78,7 +78,7 @@ export function Dashboard() {
                 <li key={f.id}>
                   <Link to={`/findings/${f.id}`} className="list-row">
                     <span>{f.title}<span className="block"><FindingBadge status={f.status} /></span></span>
-                    <strong>{fmtRub(f.expectedSavings)}<span className="muted small">/мес</span></strong>
+                    <strong>{fmtMoney(f.expectedSavings)}<span className="muted small">/мес</span></strong>
                   </Link>
                 </li>
               ))}

@@ -3,12 +3,14 @@ package ai.costguard.gateway.egress;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.costguard.events.CatalogPrice;
+import ai.costguard.events.ExchangeRate;
 import ai.costguard.events.OperationDecision;
 import ai.costguard.events.OperationKind;
 import ai.costguard.events.PriceUnit;
 import ai.costguard.gateway.approvals.HumanOnlyAssessor;
 import ai.costguard.gateway.approvals.TaskFitAssessor;
 import ai.costguard.gateway.rules.PriceBook;
+import ai.costguard.gateway.rules.RateBook;
 import ai.costguard.gateway.support.FakeProvider;
 import ai.costguard.gateway.support.InMemoryGatewayTest;
 import java.math.BigDecimal;
@@ -47,6 +49,7 @@ class EgressProxyTest extends InMemoryGatewayTest {
     }
 
     @Autowired PriceBook prices;
+    @Autowired RateBook rates;
     @Autowired TaskFitAssessor assessor;
 
     @BeforeEach
@@ -156,6 +159,44 @@ class EgressProxyTest extends InMemoryGatewayTest {
     void aStrangerGets401AndNothingLeaves() {
         web.get().uri("/v1/egress/spark/v1/companies/1/report").header("Authorization", "Bearer cg_live_nobody")
                 .exchange().expectStatus().isUnauthorized();
+        assertThat(API.received).isEmpty();
+    }
+
+    /** ADR 0072: the configuration prices SPARK in roubles; a company in dollars is charged them converted. */
+    @Test
+    void aCompanyInDollarsPaysTheRoublePriceInDollars() {
+        agentWithBudget("900", "USD");
+        rates.apply(ExchangeRate.newBuilder().setCurrency("USD").setRoubles(new BigDecimal("80.00000000"))
+                .setRateDate(LocalDate.of(2026, 11, 7)).build());
+        UUID op = UUID.randomUUID();
+
+        call("spark", "/v1/companies/1/report", op).expectStatus().isOk();
+
+        assertThat(reserve.settled.get(op.toString())).isEqualByComparingTo("5.625");
+        assertThat(recorded(op)).singleElement().satisfies(e -> {
+            assertThat(e.getCurrency()).isEqualTo("USD");
+            assertThat(e.getActualCost()).isEqualByComparingTo("5.625");
+        });
+    }
+
+    /** Before ADR 0072 every operation said RUB, and a dollar price was charged as roubles. */
+    @Test
+    void anOperationSaysTheCurrencyOfTheBudgets() {
+        UUID op = UUID.randomUUID();
+        call("spark", "/v1/companies/1/report", op).expectStatus().isOk();
+        assertThat(recorded(op)).singleElement().satisfies(e -> assertThat(e.getCurrency()).isEqualTo("RUB"));
+    }
+
+    @Test
+    void aCatalogPriceInACurrencyWithoutARateIsNoPrice() {
+        prices.apply(CatalogPrice.newBuilder().setTenantId(tenant).setSkuId("spark-report").setProvider("SPARK")
+                .setModel("report").setUnit(PriceUnit.REQUEST).setUnitPrice(money("5")).setCurrency("CHF")
+                .setValidFrom(LocalDate.of(2026, 1, 1)).build());
+        UUID op = UUID.randomUUID();
+
+        call("spark", "/v1/companies/1/report", op).expectStatus().isForbidden()
+                .expectBody(String.class).value(b -> assertThat(b).contains("price_unknown"));
+
         assertThat(API.received).isEmpty();
     }
 

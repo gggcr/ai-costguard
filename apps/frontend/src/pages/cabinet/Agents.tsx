@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { api } from '../../api/http';
 import { useStore } from '../../api/store';
 import { Badge, Button, Card, Empty, Field, Modal, Progress } from '../../components/ui';
-import { fmtDate } from '../../lib';
+import { currentCurrency, fmtDate } from '../../lib';
 import { errorText, useApi } from './useApi';
 
 type Light = 'green' | 'yellow' | 'red';
@@ -30,7 +30,7 @@ const STATUS: Record<LimitRequest['status'], { label: string; tone: 'good' | 'wa
   cancelled: { label: 'Отменён', tone: 'neutral' },
 };
 
-const money = (n: number, currency: string | null) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: currency ?? 'RUB', maximumFractionDigits: 2 }).format(n);
+const money = (n: number, currency: string | null) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: currency ?? currentCurrency(), maximumFractionDigits: 2 }).format(n);
 
 function TrafficLight({ light }: { light: Light }) {
   return (
@@ -123,7 +123,7 @@ export function MyAgents() {
                 {a.waiting.map((w) => (
                   <div key={w.id} className="alert alert-warning list-row">
                     <span className="grow">
-                      <b>{money(w.amount, 'RUB')}</b> · {w.description}
+                      <b>{money(w.amount, a.currency)}</b> · {w.description}
                       <span className="small block">{w.reason === 'risk' ? 'Детектор аномалий счёл операцию необычной: незнакомый сервис или сумма больше обычного' : 'Сумма выше порога мандата'} · решить до {fmtDate(w.deadline)}</span>
                     </span>
                     <Button variant="primary" onClick={() => { void decide(w, true); }}>Подтвердить</Button>

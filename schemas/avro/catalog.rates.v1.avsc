@@ -1,0 +1,31 @@
+{
+  "type": "record",
+  "name": "ExchangeRate",
+  "namespace": "ai.costguard.events",
+  "doc": "A Bank of Russia rate, the latest the core has: roubles for one unit of a currency. The gateway prices a call in the currency of the company's budgets with it when the catalog price is in another one (ADR 0072). Compacted. Key: currency.",
+  "fields": [
+    {
+      "name": "currency",
+      "type": "string",
+      "doc": "ISO 4217."
+    },
+    {
+      "name": "roubles",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 8
+      },
+      "doc": "Roubles for one unit of the currency."
+    },
+    {
+      "name": "rate_date",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      },
+      "doc": "The day the bank set the rate for."
+    }
+  ]
+}

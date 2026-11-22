@@ -1,5 +1,6 @@
 package ai.costguard.core.org.internal;
 
+import ai.costguard.core.org.AmountsInCurrency;
 import ai.costguard.core.org.DismissalChecklistSection;
 import ai.costguard.core.org.EmployeeDismissed;
 import ai.costguard.core.plans.Limit;
@@ -29,10 +30,11 @@ class OrgService {
     private final PlanLimits plans;
     private final IdentityProvider accounts;
     private final RegistrationRepository registrations;
+    private final List<AmountsInCurrency> amounts;
 
     OrgService(OrgRepository org, TenantSession session, Clock clock, ApplicationEventPublisher events,
             List<DismissalChecklistSection> checklistSections, PlanLimits plans, IdentityProvider accounts,
-            RegistrationRepository registrations) {
+            RegistrationRepository registrations, List<AmountsInCurrency> amounts) {
         this.org = org;
         this.session = session;
         this.clock = clock;
@@ -41,6 +43,7 @@ class OrgService {
         this.plans = plans;
         this.accounts = accounts;
         this.registrations = registrations;
+        this.amounts = amounts;
     }
 
     @Transactional(readOnly = true)
@@ -49,9 +52,17 @@ class OrgService {
         return org.company().orElseThrow(OrgProblem.COMPANY_NOT_FOUND::failure);
     }
 
+    /**
+     * The currency changes only while nothing is kept in it yet (ADR 0072): amounts without a currency of their own
+     * are the company's, and a new currency would not convert them.
+     */
     @Transactional
     Company saveCompany(UUID tenantId, CompanySettings settings) {
         session.bind(tenantId);
+        boolean newCurrency = org.company().filter(c -> !c.currency().strip().equals(settings.currency())).isPresent();
+        if (newCurrency && amounts.stream().anyMatch(AmountsInCurrency::holdsAmounts)) {
+            throw OrgProblem.CURRENCY_IN_USE.failure();
+        }
         org.saveCompany(tenantId, settings);
         events.publishEvent(ActionTaken.of(tenantId, "company.saved", "company", tenantId,
                 Map.of("currency", settings.currency())));

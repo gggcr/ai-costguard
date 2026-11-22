@@ -4,7 +4,7 @@ import { FINDING_ACTIONS, FINDING_TRANSITIONS, useLookup, useStore, type Finding
 import { useAuth } from '../auth/auth';
 import type { FindingStatus } from '../api/types';
 import { Button, Card, Empty, Field, FINDING_META, FindingBadge, Modal, PageHeader, ReadOnlyNote, Stat } from '../components/ui';
-import { downloadText, fmtDate, fmtDateTime, fmtRub, toCsv } from '../lib';
+import { currencySign, downloadText, fmtDate, fmtDateTime, fmtMoney, toCsv } from '../lib';
 
 const RULE_LABEL: Record<string, string> = {
   unused_licenses: 'Неиспользуемые лицензии', offboarded: 'Лицензии уволенных', duplicates: 'Дубли подписок', overlap: 'Пересекающиеся инструменты',
@@ -20,7 +20,7 @@ const RULE_LABEL: Record<string, string> = {
 };
 // Экономия по технике разовая (стоимость устройства), а не ежемесячная, и в счетах её не видно; дубль счёта — тоже разово
 const oneOff = (rule: string) => rule.startsWith('asset.') || rule === 'invoice.duplicate';
-const savingsText = (rule: string, v: number) => `${fmtRub(v)}${oneOff(rule) ? ' разово' : '/мес'}`;
+const savingsText = (rule: string, v: number) => `${fmtMoney(v)}${oneOff(rule) ? ' разово' : '/мес'}`;
 const FILTERS: { id: 'open' | FindingStatus | 'all'; label: string }[] = [
   { id: 'open', label: 'Открытые' }, { id: 'new', label: 'Новые' }, { id: 'review', label: 'На проверке' }, { id: 'in_progress', label: 'Выполняются' },
   { id: 'confirmed', label: 'Подтверждены' }, { id: 'all', label: 'Все' },
@@ -42,7 +42,7 @@ export function Findings() {
   const confirmed = state.findings.filter((f) => f.status === 'confirmed').reduce((s, f) => s + f.expectedSavings, 0);
 
   const exportCsv = () => downloadText('findings.csv', toCsv([
-    ['ID', 'Правило', 'Находка', 'Статус', 'Владелец', 'Экономия, ₽', 'Период экономии', 'Создана'],
+    ['ID', 'Правило', 'Находка', 'Статус', 'Владелец', `Экономия, ${currencySign()}`, 'Период экономии', 'Создана'],
     ...list.map((f) => [f.id, RULE_LABEL[f.rule] ?? f.rule, f.title, FINDING_META[f.status].label, L.user(f.ownerId)?.name ?? '', f.expectedSavings, oneOff(f.rule) ? 'разово' : 'в месяц', f.createdAt.slice(0, 10)]),
   ]), 'text/csv');
 
@@ -52,8 +52,8 @@ export function Findings() {
         actions={<Button icon="download" onClick={exportCsv}>Выгрузить CSV</Button>} />
       {!canEdit('findings') && <ReadOnlyNote />}
       <div className="stats">
-        <Stat label="Потенциальная экономия" value={`${fmtRub(potential)}/мес`} hint={`${fmtRub(potential * 12)} в год${equipment ? ` · техника ${fmtRub(equipment)} разово` : ''}`} />
-        <Stat label="Подтверждено" value={`${fmtRub(confirmed)}/мес`} hint="видно в счетах" />
+        <Stat label="Потенциальная экономия" value={`${fmtMoney(potential)}/мес`} hint={`${fmtMoney(potential * 12)} в год${equipment ? ` · техника ${fmtMoney(equipment)} разово` : ''}`} />
+        <Stat label="Подтверждено" value={`${fmtMoney(confirmed)}/мес`} hint="видно в счетах" />
         <Stat label="Новых находок" value={state.findings.filter((f) => f.status === 'new').length} hint="ждут владельца" />
       </div>
       <div className="chips" role="tablist">
@@ -152,8 +152,8 @@ export function FindingDetail() {
           <p>{f.description}</p>
           <dl className="dl">
             <dt>Экономия</dt><dd>{oneOff(f.rule)
-              ? <><strong>{fmtRub(f.expectedSavings)}</strong> разово: стоимость техники, в счетах не видна</>
-              : <><strong>{fmtRub(f.expectedSavings)}</strong> в месяц · {fmtRub(f.expectedSavings * 12)} в год</>}</dd>
+              ? <><strong>{fmtMoney(f.expectedSavings)}</strong> разово: стоимость техники, в счетах не видна</>
+              : <><strong>{fmtMoney(f.expectedSavings)}</strong> в месяц · {fmtMoney(f.expectedSavings * 12)} в год</>}</dd>
             {f.assetId && <><dt>Техника</dt><dd><Link to={`/assets/${f.assetId}`}>{state.assets.find((a) => a.id === f.assetId)?.model ?? 'карточка'}</Link></dd></>}
             <dt>Владелец</dt><dd>{L.user(f.ownerId)?.name ?? 'не назначен'}</dd>
             {sub && <><dt>Подписка</dt><dd><Link to={`/software/subscriptions/${sub.id}`}>{sub.product}</Link></dd></>}

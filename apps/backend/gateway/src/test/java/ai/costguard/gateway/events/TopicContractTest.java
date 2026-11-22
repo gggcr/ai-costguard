@@ -8,6 +8,7 @@ import ai.costguard.events.AgentState;
 import ai.costguard.events.ApprovalDecision;
 import ai.costguard.events.BudgetLimit;
 import ai.costguard.events.CatalogPrice;
+import ai.costguard.events.ExchangeRate;
 import ai.costguard.events.PolicySnapshot;
 import ai.costguard.events.TenantPlan;
 import java.nio.file.Files;
@@ -31,6 +32,7 @@ class TopicContractTest {
             "agents.state.v1", AgentState.class,
             "policy.snapshots.v1", PolicySnapshot.class,
             "catalog.prices.v1", CatalogPrice.class,
+            "catalog.rates.v1", ExchangeRate.class,
             "budgets.limits.v1", BudgetLimit.class,
             "agent.risk-signals.v1", AgentRiskSignal.class,
             "approvals.decisions.v1", ApprovalDecision.class,

@@ -8,7 +8,7 @@ import type {
 } from './types';
 import { ApiStoreProvider } from './api-store';
 import { SYSTEM_TYPES, createSeed } from './mock-data';
-import { fakeHash, fmtRub, localDay, newId } from '../lib';
+import { fakeHash, fmtMoney, localDay, newId } from '../lib';
 
 const STORAGE_KEY = 'costguard-demo-state-v1';
 
@@ -216,7 +216,7 @@ function useActions(
       // ——— Бюджеты ———
       setBudgetLimit(id: string, limit: number) {
         setState((s) => { const b = s.budgets.find((x) => x.id === id); if (b) b.limit = limit; });
-        pushToast(`Лимит обновлён: ${fmtRub(limit)}`, 'good');
+        pushToast(`Лимит обновлён: ${fmtMoney(limit)}`, 'good');
       },
 
       // ——— Согласования ———
@@ -389,7 +389,7 @@ function useActions(
             case 'postpone': f.status = 'postponed'; f.postponedUntil = payload?.date; log(`Отложена до ${payload?.date ? new Date(payload.date).toLocaleDateString('ru-RU') : '—'}`); break;
             case 'reject': f.status = 'rejected'; f.rejectReason = payload?.reason; log(`Отклонена: ${payload?.reason ?? ''}`); break;
             case 'createTask': f.status = 'in_progress'; log(`Создана задача${payload?.reason ? `: ${payload.reason}` : ''}`); break;
-            case 'confirm': f.status = 'confirmed'; log('Экономия видна в следующем счёте. Подтверждена'); notify(s, `Подтверждена экономия ${fmtRub(f.expectedSavings)}/мес: ${f.title}`, 'good', `/findings/${f.id}`); break;
+            case 'confirm': f.status = 'confirmed'; log('Экономия видна в следующем счёте. Подтверждена'); notify(s, `Подтверждена экономия ${fmtMoney(f.expectedSavings)}/мес: ${f.title}`, 'good', `/findings/${f.id}`); break;
             case 'missInvoice':
               f.missedInvoices += 1;
               if (f.missedInvoices >= 2) { f.status = 'review'; f.missedInvoices = 0; log('Экономии нет два счёта подряд. Вернулась на проверку'); }
@@ -676,10 +676,10 @@ function useActions(
           const ap: Approval = { id: newId('ap'), agentId: a.id, description: `Платный запрос: ${resource}, пакетная обработка`, amount, reason: 'Сумма выше порога мандата', createdAt: new Date().toISOString(), deadline: new Date(Date.now() + 2 * 3600000).toISOString(), status: 'pending' };
           setState((s) => {
             s.approvals.unshift(ap);
-            notify(s, `Новое согласование: «${agentName(s, a.id)}», ${fmtRub(amount)}`, 'warning', '/approvals');
+            notify(s, `Новое согласование: «${agentName(s, a.id)}», ${fmtMoney(amount)}`, 'warning', '/approvals');
             anchorDue(s);
           });
-          pushToast(`Новое согласование: «${a.name}», ${fmtRub(amount)}`, 'warning');
+          pushToast(`Новое согласование: «${a.name}», ${fmtMoney(amount)}`, 'warning');
         } else {
           setState((s) => { addOperation(s, a.id, resource, vendor, cost, 'allowed', a.riskScore); anchorDue(s); });
         }
