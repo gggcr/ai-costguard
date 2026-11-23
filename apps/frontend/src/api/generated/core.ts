@@ -1534,6 +1534,7 @@ export const operations = {
   organisationDismiss: { method: "PUT", path: "/api/v1/employees/{id}/dismissal" },
   organisationChecklist: { method: "GET", path: "/api/v1/employees/{id}/dismissal-checklist" },
   privacyEraseEmployee: { method: "POST", path: "/api/v1/employees/{id}/erasure" },
+  privacyExportEmployee: { method: "GET", path: "/api/v1/employees/{id}/personal-data" },
   privacyListErasures: { method: "GET", path: "/api/v1/erasures" },
   privacyGetErasure: { method: "GET", path: "/api/v1/erasures/{id}" },
   findingsList_3: { method: "GET", path: "/api/v1/findings" },

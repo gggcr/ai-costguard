@@ -78,4 +78,16 @@ class AssetPersonalData implements DataHolder {
         TenantRows.delete(jdbc, tenantId, report, "assets", "asset_act", "asset_act_counter", "asset_assignment",
                 "asset");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("assets.asset_assignment", jdbc.sql("select * from asset_assignment where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("assets.asset_act", jdbc.sql("select a.id, a.assignment_id, a.number, a.issued_on, a.issued_by, a.sha256, a.created_at from asset_act a join asset_assignment s on s.id = a.assignment_id where s.employee_id = :id or lower(a.issued_by) in (:emails)").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }

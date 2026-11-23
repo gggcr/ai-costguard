@@ -48,4 +48,10 @@ class AgentPersonalData implements DataHolder {
         TenantRows.delete(jdbc, tenantId, report, "agents", "agent_risk", "virtual_key", "mandate_notarization", "agent",
                 "mandate");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("agents.agent", jdbc.sql("select id, name, description, framework, department_id, owner_id, status, created_at from agent where owner_id = ?").param(subject.employeeId()).query().listOfRows());
+    }
 }

@@ -3611,6 +3611,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Erasure"
+  /api/v1/employees/{id}/personal-data:
+    get:
+      tags:
+      - Privacy
+      summary: Export an employee's personal data
+      description: "Owner only. Everything every module holds about the person, table\
+        \ by table, as stored (machine-readable), for a request of access or portability\
+        \ (GDPR art. 15 and 20, CCPA). Secrets and file contents are left out. The\
+        \ export is recorded in the activity log."
+      operationId: exportEmployee
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
   /api/v1/employees/{id}/dismissal-checklist:
     get:
       tags:

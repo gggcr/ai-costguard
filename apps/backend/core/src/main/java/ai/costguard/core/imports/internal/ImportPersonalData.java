@@ -110,4 +110,15 @@ class ImportPersonalData implements DataHolder {
         report.deleted("imports.files", files.deleteTenant(tenantId));
         TenantRows.delete(jdbc, tenantId, report, "imports", "import_review_task", "import_job", "ingest_entity");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("imports.import_job", jdbc.sql("select id, file_name, type, status, uploaded_by, uploaded_at from import_job where lower(uploaded_by) in (:emails)").param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }

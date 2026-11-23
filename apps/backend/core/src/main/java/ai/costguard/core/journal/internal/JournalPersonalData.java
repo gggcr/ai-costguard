@@ -39,4 +39,11 @@ class JournalPersonalData implements DataHolder {
     public void eraseCompany(UUID tenantId, Report report) {
         TenantRows.delete(jdbc, tenantId, report, "journal", "receipt", "anchor_batch", "receipt_chain");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        // receipts hold no personal data (see eraseEmployee): the export says so with an empty table
+        export.rows("journal.receipt", java.util.List.of());
+    }
 }

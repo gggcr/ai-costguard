@@ -79,6 +79,69 @@ class EmployeeErasureIntegrationTest extends PrivacyTestSupport {
         body(put("/api/v1/employees/{id}/dismissal", employee), owner());
     }
 
+    /** ADR 0079: the person's data from every module, machine-readable, owner only; secrets stay out. */
+    @Test
+    void theOwnerExportsWhatEveryModuleHoldsAboutAPerson() throws Exception {
+        String email = "export@romashka.ru";
+        String employee = employee(email, "finance");
+        String asset = id(json(post("/api/v1/assets"), """
+                {"inventoryNumber":"INV-%s","model":"ThinkPad","type":"LAPTOP","cost":80000}
+                """.formatted(UUID.randomUUID())));
+        body(json(put("/api/v1/assets/{id}/assignment", asset), "{\"employeeId\":\"%s\"}".formatted(employee)),
+                owner());
+        body(json(post("/api/v1/connections"), """
+                {"type":"google_workspace","name":"GW","settings":{"admin":"%s"}}""".formatted(email)), owner());
+        admin.sql("""
+                insert into approval_request (id, tenant_id, operation_id, agent_id, description, amount, reason,
+                                              status, created_at, expires_at, decided_by)
+                values (?, ?, ?, ?, 'd', 10, 'r', 'approved', now(), now(), ?)
+                """).params(UUID.randomUUID(), tenant, UUID.randomUUID(), UUID.randomUUID(), email).update();
+        admin.sql("""
+                insert into signing_key (tenant_id, email, method, pin_hash, updated_at)
+                values (?, ?, 'pin', 'secret-pin-hash', now())""").params(tenant, email).update();
+
+        mvc.perform(get("/api/v1/employees/{id}/personal-data", employee).with(as("kc-f", "f@romashka.ru",
+                "finance"))).andExpect(status().isForbidden());
+        String export = body(get("/api/v1/employees/{id}/personal-data", employee), owner());
+
+        org.assertj.core.api.Assertions.assertThat(export).doesNotContain("secret-pin-hash");
+        mvc.perform(get("/api/v1/employees/{id}/personal-data", employee).with(owner()))
+                .andExpect(jsonPath("$.erased").value(false))
+                .andExpect(jsonPath("$.tables['org.employee'][0].email").value(email))
+                .andExpect(jsonPath("$.tables['org.user_account'][0].role").value("finance"))
+                .andExpect(jsonPath("$.tables['assets.asset_assignment'].length()").value(1))
+                .andExpect(jsonPath("$.tables['approvals.approval_request'][0].decided_by").value(email))
+                .andExpect(jsonPath("$.tables['connections.connection.settings'][0].setting").value("admin"))
+                .andExpect(jsonPath("$.tables['cabinet.signing_key'][0].method").value("pin"))
+                .andExpect(jsonPath("$.tables['cabinet.vacation_request'].length()").value(0));
+        mvc.perform(get("/api/v1/employees/{id}/personal-data", UUID.randomUUID()).with(owner()))
+                .andExpect(status().isNotFound());
+
+        // after erasure the export shows what is left: the anonymized record, nothing that names the person
+        dismiss(employee);
+        body(post("/api/v1/employees/{id}/erasure", employee), owner());
+        String after = body(get("/api/v1/employees/{id}/personal-data", employee), owner());
+        org.assertj.core.api.Assertions.assertThat(after).doesNotContain(email).contains("\"erased\":true");
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    java.util.List<ai.costguard.core.privacy.DataHolder> holders;
+
+    /** A module that erases something about a person must also export it (ADR 0079). */
+    @Test
+    void everyModuleThatErasesAPersonAlsoExportsThem() throws Exception {
+        for (ai.costguard.core.privacy.DataHolder holder : holders) {
+            Class<?> type = org.springframework.aop.support.AopUtils.getTargetClass(holder);
+            boolean erases = declares(type, "eraseEmployee");
+            org.assertj.core.api.Assertions.assertThat(!erases || declares(type, "exportEmployee"))
+                    .as(type.getName() + " erases a person but does not export them").isTrue();
+        }
+    }
+
+    private static boolean declares(Class<?> type, String name) {
+        return java.util.Arrays.stream(type.getDeclaredMethods()).anyMatch(m -> m.getName().equals(name));
+    }
+
     @Test
     void anActiveEmployeeIsNotErased() throws Exception {
         String employee = employee("active@romashka.ru", "finance");

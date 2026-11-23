@@ -48,4 +48,10 @@ class NotificationPersonalData implements DataHolder {
         TenantRows.delete(jdbc, tenantId, report, "notifications", "notification_delivery", "notification",
                 "notification_setting", "telegram_link", "notification_tenant");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("notifications.notification", jdbc.sql("select * from notification where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+    }
 }

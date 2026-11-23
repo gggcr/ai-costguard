@@ -52,4 +52,16 @@ class ConnectionPersonalData implements DataHolder {
         }
         TenantRows.delete(jdbc, tenantId, report, "connections", "connection_run", "connection");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        // settings of connections may name the person's address; the export says which (not other settings)
+        java.util.List<java.util.Map<String, Object>> named = new java.util.ArrayList<>();
+        jdbc.sql("select c.type, s.key, lower(s.value) as value from connection c, jsonb_each_text(c.settings) s")
+                .query().listOfRows().stream()
+                .filter(r -> subject.emails().stream().anyMatch(String.valueOf(r.get("value"))::contains))
+                .forEach(r -> named.add(java.util.Map.of("connection", r.get("type"), "setting", r.get("key"))));
+        export.rows("connections.connection.settings", named);
+    }
 }

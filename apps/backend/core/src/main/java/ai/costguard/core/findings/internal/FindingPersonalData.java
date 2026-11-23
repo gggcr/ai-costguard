@@ -40,4 +40,16 @@ class FindingPersonalData implements DataHolder {
         TenantRows.delete(jdbc, tenantId, report, "findings", "finding_event", "finding", "finding_wakeup",
                 "audit_tenant");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("findings.finding", jdbc.sql("select id, title, status, owner_id, created_at from finding where owner_id = :id").param("id", subject.employeeId()).query().listOfRows());
+        export.rows("findings.finding_event", jdbc.sql("select finding_id, at, by_whom, text from finding_event where lower(by_whom) in (:emails)").param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }

@@ -46,4 +46,11 @@ class SoftwarePersonalData implements DataHolder {
         TenantRows.delete(jdbc, tenantId, report, "software", "activity_event", "license_assignment", "payment",
                 "invoice_line", "invoice", "subscription", "product", "product_plan", "contract", "vendor");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("software.license_assignment", jdbc.sql("select * from license_assignment where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("software.activity_event", jdbc.sql("select * from activity_event where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+    }
 }

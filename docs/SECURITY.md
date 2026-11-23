@@ -62,7 +62,7 @@ Last manual check (2026-11-23): OSV for the 281 resolved Java runtime libraries 
 
 - No external penetration test so far; the scope for one is ready in [security/pentest-scope.md](security/pentest-scope.md).
 - No SOC 2 or ISO 27001 report.
-- GDPR/CCPA: the data inventory and retention are implemented; the DPA, list of subprocessors and privacy notice are
-  drafts for a lawyer ([privacy/for-lawyer.md](privacy/for-lawyer.md)).
+- GDPR/CCPA: the data inventory, retention, erasure and export of a person's data are implemented; the DPA,
+  subprocessors, privacy policy and procedures are drafts for a lawyer ([legal/](legal/README.md)).
 - Rate limits exist for registration and for agents; there is no general API rate limit in front of the core
   (expected from the ingress).

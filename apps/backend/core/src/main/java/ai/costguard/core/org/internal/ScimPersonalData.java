@@ -38,4 +38,10 @@ class ScimPersonalData implements DataHolder {
     public void eraseCompany(UUID tenantId, Report report) {
         TenantRows.delete(jdbc, tenantId, report, "org", "scim_user", "scim_token");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("org.scim_user", jdbc.sql("select * from scim_user where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+    }
 }

@@ -24,6 +24,13 @@ public interface DataHolder extends Ordered {
     default void eraseEmployee(Subject subject, Retention retention, Report report) {
     }
 
+    /**
+     * Adds what the module holds about the person to an export for a request of access (ADR 0079). A module that
+     * erases something in {@link #eraseEmployee} must export it here; a test checks that both are overridden.
+     */
+    default void exportEmployee(Subject subject, PersonalDataExport export) {
+    }
+
     /** Deletes or anonymizes what is past its term. */
     default void expire(Retention retention, Report report) {
     }

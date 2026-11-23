@@ -113,4 +113,23 @@ class CabinetPersonalData implements DataHolder {
         jdbc.sql("delete from payroll_tenant where tenant_id = ?").param(tenantId).update();
         jdbc.sql("delete from cabinet_tenant where tenant_id = ?").param(tenantId).update();
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("cabinet.vacation_request", jdbc.sql("select * from vacation_request where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("cabinet.payroll_payment", jdbc.sql("select * from payroll_payment where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("cabinet.employee_document", jdbc.sql("select id, kind, title, number, signed_on, file_name, content_type, size, uploaded_by, created_at from employee_document where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("cabinet.document_signature", jdbc.sql("select * from document_signature where lower(signer_email) in (:emails)").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+        export.rows("cabinet.purchase_request", jdbc.sql("select * from purchase_request where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("cabinet.license_request", jdbc.sql("select * from license_request where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("cabinet.license_lease", jdbc.sql("select * from license_lease where employee_id = :id or lender_id = :id").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+        export.rows("cabinet.limit_request", jdbc.sql("select * from limit_request where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("cabinet.signing_key", jdbc.sql("select email, method, updated_at from signing_key where lower(email) in (:emails)").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }

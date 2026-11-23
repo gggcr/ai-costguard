@@ -45,4 +45,15 @@ class ApprovalPersonalData implements DataHolder {
         }
         TenantRows.delete(jdbc, tenantId, report, "approvals", "approval_timer", "approval_request");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("approvals.approval_request", jdbc.sql("select id, operation_id, description, amount, status, decided_by, comment, created_at from approval_request where lower(decided_by) in (:emails)").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }

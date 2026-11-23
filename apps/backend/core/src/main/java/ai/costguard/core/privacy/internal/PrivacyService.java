@@ -121,6 +121,30 @@ class PrivacyService {
         return new Erased(repository.erasure(id).orElseThrow(), true);
     }
 
+    /**
+     * Everything the modules hold about one person, for a request of access or portability that the company (the
+     * controller) received (ADR 0079). The export itself is recorded in the activity log, without its content.
+     */
+    @Transactional
+    java.util.Map<String, Object> exportEmployee(UUID tenantId, UUID employeeId) {
+        session.bind(tenantId);
+        ErasureSubjects.Person person = subjects.person(employeeId)
+                .orElseThrow(PrivacyProblem.EMPLOYEE_NOT_FOUND::failure);
+        Subject subject = new Subject(tenantId, employeeId, person.emails(), Set.of(), person.nameKey(), "export");
+        ai.costguard.core.privacy.PersonalDataExport export = new ai.costguard.core.privacy.PersonalDataExport();
+        for (DataHolder holder : holders) {
+            holder.exportEmployee(subject, export);
+        }
+        events.publishEvent(ActionTaken.of(tenantId, "privacy.employee_exported", "employee", employeeId,
+                Map.of("tables", export.tables().size())));
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("employeeId", employeeId);
+        out.put("exportedAt", clock.instant().toString());
+        out.put("erased", person.erased());
+        out.put("tables", export.tables());
+        return out;
+    }
+
     @Transactional(readOnly = true)
     List<Erasure> erasures(UUID tenantId) {
         session.bind(tenantId);

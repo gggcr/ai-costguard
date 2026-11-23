@@ -83,4 +83,15 @@ class ActivityLog implements DataHolder {
     public void eraseCompany(UUID tenantId, Report report) {
         TenantRows.delete(jdbc, tenantId, report, "activity", "activity_entry", "activity_actor");
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("activity.activity_entry", jdbc.sql("select e.at, e.action, e.target_type, e.target_id, e.details, a.name, a.email from activity_entry e join activity_actor a on a.id = e.actor_id where lower(a.email) in (:emails)").param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }

@@ -44,6 +44,16 @@ class PrivacyController {
                 : ResponseEntity.ok(e);
     }
 
+    @GetMapping("/employees/{id}/personal-data")
+    @ErasesData
+    @Operation(operationId = "exportEmployee", summary = "Export an employee's personal data",
+            description = "Owner only. Everything every module holds about the person, table by table, as stored "
+                    + "(machine-readable), for a request of access or portability (GDPR art. 15 and 20, CCPA). "
+                    + "Secrets and file contents are left out. The export is recorded in the activity log.")
+    java.util.Map<String, Object> exportEmployee(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return service.exportEmployee(TenantClaim.of(jwt), id);
+    }
+
     @GetMapping("/erasures")
     @ReadsErasures
     @Operation(operationId = "listErasures", summary = "The latest 200 erasures of employees")

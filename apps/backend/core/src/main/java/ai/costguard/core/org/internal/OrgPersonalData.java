@@ -115,4 +115,18 @@ class OrgPersonalData implements DataHolder, ErasureSubjects {
                 + " if it is still there");
         report.deleted("org.tenant", jdbc.sql("delete from tenant where id = ?").param(tenantId).update());
     }
+
+    /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */
+    @Override
+    public void exportEmployee(Subject subject, ai.costguard.core.privacy.PersonalDataExport export) {
+        export.rows("org.employee", jdbc.sql("select * from employee where id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("org.user_account", jdbc.sql("select id, name, email, role, employee_id from user_account where employee_id = :id or lower(email) in (:emails)").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+        export.rows("org.access_change", jdbc.sql("select * from access_change where employee_id = ?").param(subject.employeeId()).query().listOfRows());
+        export.rows("org.invitation", jdbc.sql("select id, email, role, status, created_at, accepted_at from invitation where lower(email) in (:emails)").param("id", subject.employeeId()).param("emails", emails(subject)).query().listOfRows());
+    }
+
+    private static java.util.Collection<String> emails(Subject subject) {
+        // an empty IN list is not valid SQL; nobody has this address
+        return subject.emails().isEmpty() ? java.util.List.of("-") : subject.emails();
+    }
 }
