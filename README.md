@@ -75,7 +75,7 @@ python tools/seed/seed.py | docker compose -f infra/local/docker-compose.yml --e
 Java 25 и Spring Boot 4 (ядро и шлюз агентов), Python (разбор счетов и выгрузок, детектор аномалий, нотариус NEAR,
 коннекторы к 1С, Bitrix24, Яндекс 360, Microsoft 365 и др.), React + TypeScript (веб-интерфейс), Rust (смарт-контракт
 NEAR), PostgreSQL с изоляцией компаний на уровне строк, Kafka, ClickHouse, Redis, Keycloak, Kubernetes (Helm, Argo CD,
-Terraform для Yandex Cloud). Решения описаны в [docs/adr](docs/adr) (76 записей), инструкции по эксплуатации — в
+Terraform для Yandex Cloud). Решения описаны в [docs/adr](docs/adr) (77 записей), инструкции по эксплуатации — в
 [docs/runbooks](docs/runbooks). Архитектура: [доска Miro](https://miro.com/app/board/uXjVES7uH9I=/).
 
 Безопасность: аудит 2026-11-12/13 ([ADR 0069](docs/adr/0069-identity-by-keycloak-subject.md),

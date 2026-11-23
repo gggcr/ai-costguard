@@ -17,18 +17,55 @@ record PlanState(UUID tenantId, String plan, Instant trialEndsAt, Instant access
 record PlanLimitsView(Long agents, Long employees, Long connectedSystems, Long operationsPerMonth) {
 }
 
-/** One plan of the catalog. {@code monthlyPrice} is null for the trial. */
-record PlanOffer(String name, String title, BigDecimal monthlyPrice, String currency, PlanLimitsView limits) {
+/**
+ * One plan of the catalog. {@code monthlyPrice} is null for the trial. {@code prices}: the monthly price in every
+ * currency the plan is sold in (ADR 0077), the main one among them.
+ */
+record PlanOffer(String name, String title, BigDecimal monthlyPrice, String currency, PlanLimitsView limits,
+        java.util.Map<String, BigDecimal> prices) {
 }
 
 enum PlanStatus { trial, active, read_only }
 
-/** The company's plan: {@code status} read_only after the trial or the paid period ended. */
+/**
+ * The company's plan: {@code status} read_only after the trial or the paid period ended. {@code subscription}: the
+ * subscription at the payment provider (ADR 0077), null without one.
+ */
 record CurrentPlan(String plan, String title, PlanStatus status, Instant trialEndsAt, Instant accessUntil,
-        PlanLimitsView limits) {
+        PlanLimitsView limits, SubscriptionView subscription) {
 }
 
-record CheckoutRequest(@NotBlank String plan) {
+/**
+ * {@code status} as the provider says: active, past_due (a renewal failed, the provider retries), canceled and
+ * others. {@code cancelAtPeriodEnd}: cancelled, works until {@code paidUntil}.
+ */
+record SubscriptionView(String provider, String status, boolean cancelAtPeriodEnd, Instant paidUntil) {
+}
+
+/** {@code currency}: one the plan is sold in; empty: the plan's main currency. */
+record CheckoutRequest(@NotBlank String plan, @jakarta.validation.constraints.Pattern(regexp = "[A-Za-z]{3}")
+        String currency) {
+}
+
+/** Where the owner changes or cancels the subscription, the card, and reads the invoices. */
+record PortalView(String url) {
+}
+
+/** A payment of the company: one it started, or a renewal the provider charged by itself. */
+record PaymentHistoryRow(UUID id, String plan, BigDecimal amount, String currency, String status,
+        Instant createdAt, Instant paidAt) {
+}
+
+record SubscriptionRow(UUID tenantId, String provider, String subscriptionId, String customerId, String plan,
+        String status, boolean cancelAtPeriodEnd, Instant paidUntil, Instant statusAt) {
+
+    /** A subscription the provider still charges or retries: a second one must not be started next to it. */
+    boolean live() {
+        return switch (status) {
+            case "active", "trialing", "past_due", "unpaid", "incomplete", "paused" -> true;
+            default -> false;
+        };
+    }
 }
 
 /** {@code confirmationUrl}: where to send the payer; null when the payment already succeeded. */

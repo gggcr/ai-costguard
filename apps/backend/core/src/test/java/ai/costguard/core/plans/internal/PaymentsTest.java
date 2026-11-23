@@ -16,10 +16,10 @@ class PaymentsTest {
 
     private static PlansProperties properties(String provider) {
         PlansProperties.Plan plan = new PlansProperties.Plan("P", BigDecimal.TEN, "RUB",
-                new PlansProperties.Limits(null, null, null, null));
+                new PlansProperties.Limits(null, null, null, null), null);
         return new PlansProperties(Period.ofDays(14), Period.ofDays(3), Period.ofMonths(1), Duration.ofMinutes(15),
                 Map.of("trial", plan, "start", plan, "business", plan),
-                new PlansProperties.Payments(provider, "http://localhost:3000/settings/plan"));
+                payments(provider));
     }
 
     @Test
@@ -51,10 +51,15 @@ class PaymentsTest {
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("yookassa");
     }
 
+    static PlansProperties.Payments payments(String provider) {
+        return new PlansProperties.Payments(provider, "http://localhost:3000/settings/plan", Period.ofDays(7),
+                new PlansProperties.Stripe("", "", "https://api.stripe.com", Duration.ofMinutes(5), false, null));
+    }
+
     @Test
     void everyPlanMustBeConfigured() {
         assertThatThrownBy(() -> new PlansProperties(Period.ofDays(14), Period.ofDays(3), Period.ofMonths(1),
-                Duration.ofMinutes(15), Map.of(), new PlansProperties.Payments("", "")))
+                Duration.ofMinutes(15), Map.of(), payments("")))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("costguard.plans.catalog.trial");
     }
 }

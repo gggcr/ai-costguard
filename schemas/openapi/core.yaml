@@ -2682,6 +2682,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Budget"
+  /api/v1/billing/portal:
+    post:
+      tags:
+      - Plans
+      summary: Open the billing portal
+      description: "Owner only. A page of the payment provider where the subscription\
+        \ is changed or cancelled, the card is replaced and the invoices are read\
+        \ (ADR 0077). 409 subscription_missing: no subscription yet, pay for a plan\
+        \ first."
+      operationId: portal
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalView"
   /api/v1/billing/notifications/{provider}:
     post:
       tags:
@@ -3959,6 +3976,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CurrentPlan"
+  /api/v1/billing/payments:
+    get:
+      tags:
+      - Plans
+      summary: List the company's payments for CostGuard
+      description: "The checkouts and the renewals the provider charged, newest first;\
+        \ at most 100."
+      operationId: payments_1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentHistoryRow"
   /api/v1/assets/{id}:
     get:
       tags:
@@ -6701,12 +6735,20 @@ components:
       - level
       - limit
       - name
+    PortalView:
+      type: object
+      properties:
+        url:
+          type: string
     CheckoutRequest:
       type: object
       properties:
         plan:
           type: string
           minLength: 1
+        currency:
+          type: string
+          pattern: "[A-Za-z]{3}"
       required:
       - plan
     CheckoutView:
@@ -6742,6 +6784,8 @@ components:
           format: date-time
         limits:
           $ref: "#/components/schemas/PlanLimitsView"
+        subscription:
+          $ref: "#/components/schemas/SubscriptionView"
     PlanLimitsView:
       type: object
       properties:
@@ -6757,6 +6801,18 @@ components:
         operationsPerMonth:
           type: integer
           format: int64
+    SubscriptionView:
+      type: object
+      properties:
+        provider:
+          type: string
+        status:
+          type: string
+        cancelAtPeriodEnd:
+          type: boolean
+        paidUntil:
+          type: string
+          format: date-time
     NewAsset:
       type: object
       properties:
@@ -7708,6 +7764,30 @@ components:
           type: string
         limits:
           $ref: "#/components/schemas/PlanLimitsView"
+        prices:
+          type: object
+          additionalProperties:
+            type: number
+    PaymentHistoryRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        plan:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
     Month:
       type: object
       properties:

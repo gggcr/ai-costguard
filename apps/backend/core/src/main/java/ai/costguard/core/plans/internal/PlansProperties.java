@@ -41,7 +41,24 @@ record PlansProperties(
      * has none.
      */
     record Plan(String title, BigDecimal monthlyPrice, @DefaultValue("RUB") String currency,
-            @DefaultValue Limits limits) {
+            @DefaultValue Limits limits, Map<String, BigDecimal> prices) {
+
+        Plan {
+            // prices in other currencies (ADR 0077): the currency code in upper case, the main price among them
+            Map<String, BigDecimal> all = new java.util.TreeMap<>();
+            if (prices != null) {
+                prices.forEach((code, amount) -> all.put(code.toUpperCase(java.util.Locale.ROOT), amount));
+            }
+            if (monthlyPrice != null) {
+                all.put(currency.toUpperCase(java.util.Locale.ROOT), monthlyPrice);
+            }
+            prices = Map.copyOf(all);
+        }
+
+        /** The monthly price in {@code code}; empty when the plan is not sold in it. */
+        java.util.Optional<BigDecimal> price(String code) {
+            return java.util.Optional.ofNullable(prices.get(code.toUpperCase(java.util.Locale.ROOT)));
+        }
     }
 
     record Limits(Long agents, Long employees, Long connectedSystems, Long operationsPerMonth) {
@@ -49,11 +66,44 @@ record PlansProperties(
 
     /**
      * {@code provider}: empty (no payments: a checkout answers 503), {@code dummy} (payments succeed at once, for
-     * the local stack and tests only) or the name of a real provider's implementation. {@code returnUrl}: where the
-     * provider sends the payer back.
+     * the local stack and tests only), {@code stripe} (ADR 0077) or the name of another provider's implementation.
+     * {@code returnUrl}: where the provider sends the payer back. {@code grace}: how long after the end of the last
+     * paid period a company whose renewal failed keeps working while the provider retries the charge.
      */
     record Payments(@DefaultValue("") String provider, @DefaultValue("http://localhost:3000/settings/plan")
-            String returnUrl) {
+            String returnUrl, @DefaultValue("P7D") Period grace, @DefaultValue Stripe stripe) {
+    }
+
+    /**
+     * Stripe (ADR 0077). Keys come from the environment only. {@code prices}: the Stripe price id of each plan
+     * and currency, keyed {@code <plan>-<currency>} in lower case (start-usd); the amount shown in the catalog must
+     * be the amount of that price. {@code tolerance}: how old a signed webhook may be.
+     */
+    record Stripe(@DefaultValue("") String secretKey, @DefaultValue("") String webhookSecret,
+            @DefaultValue("https://api.stripe.com") String apiUrl, @DefaultValue("PT5M") Duration tolerance,
+            @DefaultValue("false") boolean automaticTax, Map<String, String> prices) {
+
+        Stripe {
+            Map<String, String> ids = new java.util.TreeMap<>();
+            if (prices != null) {
+                prices.forEach((key, id) -> {
+                    if (id != null && !id.isBlank()) {
+                        ids.put(key.toLowerCase(java.util.Locale.ROOT), id.strip());
+                    }
+                });
+            }
+            prices = Map.copyOf(ids);
+        }
+
+        java.util.Optional<String> price(String plan, String currency) {
+            return java.util.Optional.ofNullable(prices.get((plan + "-" + currency).toLowerCase(java.util.Locale.ROOT)));
+        }
+
+        /** The plan a Stripe price belongs to; empty for a price of something else. */
+        java.util.Optional<String> planOf(String priceId) {
+            return prices.entrySet().stream().filter(e -> e.getValue().equals(priceId))
+                    .map(e -> e.getKey().substring(0, e.getKey().lastIndexOf('-'))).findFirst();
+        }
     }
 
     Plan plan(String name) {

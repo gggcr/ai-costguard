@@ -119,7 +119,8 @@ class PlanService implements PlanLimits, PlanEnrollment {
     List<PlanOffer> catalog() {
         return PlanName.ALL.stream().map(name -> {
             PlansProperties.Plan plan = spec(name);
-            return new PlanOffer(name, plan.title(), plan.monthlyPrice(), plan.currency(), limits(name));
+            return new PlanOffer(name, plan.title(), plan.monthlyPrice(), plan.currency(), limits(name),
+                    plan.prices());
         }).toList();
     }
 
@@ -127,7 +128,9 @@ class PlanService implements PlanLimits, PlanEnrollment {
         PlanStatus status = state.readOnly(clock.instant()) ? PlanStatus.read_only
                 : PlanName.TRIAL.equals(state.plan()) ? PlanStatus.trial : PlanStatus.active;
         return new CurrentPlan(state.plan(), spec(state.plan()).title(), status, state.trialEndsAt(),
-                state.accessUntil(), limits(state.plan()));
+                state.accessUntil(), limits(state.plan()), plans.subscription()
+                        .map(s -> new SubscriptionView(s.provider(), s.status(), s.cancelAtPeriodEnd(), s.paidUntil()))
+                        .orElse(null));
     }
 
     @Transactional(readOnly = true)
@@ -147,23 +150,31 @@ class PlanService implements PlanLimits, PlanEnrollment {
      * Creates the payment, asks the provider for it outside any transaction (a slow provider must not hold a
      * connection), then records what the provider said. A payment that succeeded at once is applied at once.
      */
-    CheckoutView checkout(UUID tenantId, String plan) {
+    CheckoutView checkout(UUID tenantId, String plan, String currency) {
         if (!PlanName.PAID.contains(plan)) {
             throw PlanProblem.PLAN_UNKNOWN.failure();
         }
         PaymentProvider provider = payments.provider().orElseThrow(PlanProblem.PAYMENT_PROVIDER_MISSING::failure);
         PlansProperties.Plan spec = spec(plan);
+        String code = currency == null || currency.isBlank() ? spec.currency()
+                : currency.toUpperCase(java.util.Locale.ROOT);
+        java.math.BigDecimal amount = spec.price(code).orElseThrow(PlanProblem.PLAN_CURRENCY_UNKNOWN::failure);
         UUID paymentId = UUID.randomUUID();
-        transactions.executeWithoutResult(tx -> {
+        // One subscription per company (ADR 0077): a change of plan or a cancellation goes through the portal.
+        String customer = transactions.execute(tx -> {
             session.bind(tenantId);
-            plans.insertPayment(paymentId, tenantId, plan, spec.monthlyPrice(), spec.currency(), provider.name(),
-                    clock.instant());
+            Optional<SubscriptionRow> subscription = plans.subscription();
+            if (subscription.isPresent() && subscription.get().live()) {
+                throw PlanProblem.SUBSCRIPTION_EXISTS.failure();
+            }
+            plans.insertPayment(paymentId, tenantId, plan, amount, code, provider.name(), clock.instant());
+            return subscription.filter(s -> s.provider().equals(provider.name()))
+                    .map(SubscriptionRow::customerId).orElse(null);
         });
         PaymentProvider.Checkout checkout;
         try {
             checkout = provider.start(new PaymentProvider.PaymentRequest(paymentId, tenantId, plan,
-                    spec.monthlyPrice(), spec.currency(), "CostGuard, " + spec.title(),
-                    properties.payments().returnUrl()));
+                    amount, code, "CostGuard, " + spec.title(), properties.payments().returnUrl(), customer));
         } catch (RuntimeException e) {
             // Nothing was charged that the core knows of: the payment is closed, a new checkout starts afresh.
             transactions.executeWithoutResult(tx -> {
@@ -183,18 +194,142 @@ class PlanService implements PlanLimits, PlanEnrollment {
         });
     }
 
-    /** A notice the provider sent. Repeating it changes nothing. */
+    /**
+     * A notice the provider sent. Repeating it changes nothing: a payment moves only from pending, and an event the
+     * provider delivered before (its id is kept with the change, in the same transaction) is skipped. An event about
+     * a subscription the core has not recorded yet fails, so the provider delivers it again later.
+     */
     void notice(String providerName, Map<String, String> headers, String body) {
         PaymentProvider provider = payments.byName(providerName)
                 .orElseThrow(PlanProblem.PAYMENT_PROVIDER_UNKNOWN::failure);
         PaymentProvider.Notice notice = provider.notice(headers, body)
                 .orElseThrow(PlanProblem.PAYMENT_NOTICE_INVALID::failure);
-        PaymentRef ref = transactions.execute(tx -> plans.ref(provider.name(), notice.providerPaymentId()))
-                .orElseThrow(PlanProblem.PAYMENT_UNKNOWN::failure);
-        transactions.executeWithoutResult(tx -> {
-            session.bind(ref.tenantId());
-            settle(ref.paymentId(), notice.status());
+        Instant now = clock.instant();
+        if (notice.providerPaymentId() != null) {
+            PaymentRef ref = transactions.execute(tx -> plans.ref(provider.name(), notice.providerPaymentId()))
+                    .orElseThrow(PlanProblem.PAYMENT_UNKNOWN::failure);
+            transactions.executeWithoutResult(tx -> {
+                if (!plans.firstDelivery(provider.name(), notice.eventId(), ref.tenantId(), now)) {
+                    return;
+                }
+                session.bind(ref.tenantId());
+                settle(ref.paymentId(), notice.status());
+                PaymentProvider.SubscriptionChange started = notice.subscription();
+                if (started != null && notice.status() == PaymentProvider.Status.SUCCEEDED) {
+                    PaymentRow payment = plans.paymentForUpdate(ref.paymentId()).orElseThrow();
+                    Instant until = plans.state().map(PlanState::accessUntil).orElse(null);
+                    plans.subscribe(new SubscriptionRow(ref.tenantId(), provider.name(), started.subscriptionId(),
+                            started.customerId(), payment.plan(), "active", false, until,
+                            notice.at() == null ? now : notice.at()), now);
+                }
+            });
+        } else if (notice.subscription() != null) {
+            PaymentProvider.SubscriptionChange change = notice.subscription();
+            UUID tenantId = transactions.execute(tx -> plans.subscriptionTenant(provider.name(),
+                    change.subscriptionId())).orElseThrow(PlanProblem.SUBSCRIPTION_UNKNOWN::failure);
+            transactions.executeWithoutResult(tx -> {
+                if (!plans.firstDelivery(provider.name(), notice.eventId(), tenantId, now)) {
+                    return;
+                }
+                session.bind(tenantId);
+                change(tenantId, provider.name(), change, notice.at() == null ? now : notice.at(), now);
+            });
+        } else {
+            transactions.executeWithoutResult(tx -> plans.firstDelivery(provider.name(), notice.eventId(), null, now));
+        }
+    }
+
+    /**
+     * Inside a transaction bound to the tenant. Access only grows from a paid period (taking the later end, so a
+     * repeated or late event cannot shorten it); a status older than the stored one is not applied.
+     */
+    private void change(UUID tenantId, String provider, PaymentProvider.SubscriptionChange change, Instant at,
+            Instant now) {
+        SubscriptionRow row = plans.subscriptionForUpdate().orElseThrow(PlanProblem.SUBSCRIPTION_UNKNOWN::failure);
+        if (!row.subscriptionId().equals(change.subscriptionId())) {
+            // an old subscription of the company, replaced by a newer one: its news changes nothing
+            return;
+        }
+        PlanState state = plans.stateForUpdate().orElse(null);
+        String plan = change.plan() != null && PlanName.PAID.contains(change.plan()) ? change.plan() : row.plan();
+        boolean newer = !at.isBefore(row.statusAt());
+        Instant paidUntil = row.paidUntil();
+        Instant accessUntil = state == null ? null : state.accessUntil();
+        String status = newer ? change.status() : row.status();
+        boolean cancel = newer && change.kind() == PaymentProvider.SubscriptionChange.Kind.UPDATED
+                ? change.cancelAtPeriodEnd() : row.cancelAtPeriodEnd();
+        switch (change.kind()) {
+            case PAID -> {
+                paidUntil = later(paidUntil, change.periodEnd());
+                accessUntil = later(accessUntil, change.periodEnd());
+                if (!change.first() && change.amount() != null) {
+                    plans.insertPaid(UUID.randomUUID(), tenantId, plan, change.amount(), change.currency(), provider,
+                            change.reference(), now);
+                    events.publishEvent(ActionTaken.of(tenantId, "plan.renewed", "plan", tenantId,
+                            Map.of("plan", plan, "amount", change.amount(), "currency", change.currency(),
+                                    "until", String.valueOf(accessUntil))));
+                }
+            }
+            case PAYMENT_FAILED -> {
+                // the provider retries the card; the company keeps working for the grace period after what it paid
+                if (paidUntil != null) {
+                    accessUntil = later(accessUntil, plus(paidUntil, properties.payments().grace()));
+                }
+                events.publishEvent(ActionTaken.of(tenantId, "plan.payment_failed", "plan", tenantId,
+                        Map.of("plan", plan, "graceUntil", String.valueOf(accessUntil))));
+            }
+            case ENDED -> events.publishEvent(ActionTaken.of(tenantId, "plan.subscription_ended", "plan",
+                    tenantId, Map.of("plan", plan, "until", String.valueOf(accessUntil))));
+            case STARTED, UPDATED -> {
+                // a change of plan in the portal takes effect at once; the period stays what was paid
+            }
+        }
+        plans.subscribe(new SubscriptionRow(tenantId, provider, row.subscriptionId(),
+                change.customerId() == null ? row.customerId() : change.customerId(), plan, status, cancel, paidUntil,
+                newer ? at : row.statusAt()), now);
+        if (state != null && (!plan.equals(state.plan()) || !java.util.Objects.equals(accessUntil,
+                state.accessUntil()))) {
+            long version = plans.update(plan, accessUntil, now);
+            if (accessUntil != null) {
+                plans.schedule(tenantId, accessUntil);
+            }
+            publish(new PlanState(tenantId, plan, state.trialEndsAt(), accessUntil, version), version, now);
+        }
+    }
+
+    private static Instant later(Instant a, Instant b) {
+        if (a == null) {
+            return b;
+        }
+        return b == null || a.isAfter(b) ? a : b;
+    }
+
+    /** The provider's page for the owner: change or cancel the subscription, the card, the invoices. */
+    PortalView portal(UUID tenantId) {
+        PaymentProvider provider = payments.provider().orElseThrow(PlanProblem.PAYMENT_PROVIDER_MISSING::failure);
+        String customer = transactions.execute(tx -> {
+            session.bind(tenantId);
+            return plans.subscription().filter(s -> s.provider().equals(provider.name()))
+                    .map(SubscriptionRow::customerId).orElse(null);
         });
+        if (customer == null) {
+            throw PlanProblem.SUBSCRIPTION_MISSING.failure();
+        }
+        try {
+            return provider.portal(customer, properties.payments().returnUrl()).map(PortalView::new)
+                    .orElseThrow(PlanProblem.SUBSCRIPTION_MISSING::failure);
+        } catch (RuntimeException e) {
+            if (e instanceof ai.costguard.platform.errors.ApiException) {
+                throw e;
+            }
+            throw PlanProblem.PAYMENT_PROVIDER_FAILED.failure();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    List<PaymentHistoryRow> payments(UUID tenantId) {
+        session.bind(tenantId);
+        return plans.history(100);
     }
 
     /** Inside a transaction bound to the tenant. Only a pending payment moves, so a repeated notice does nothing. */

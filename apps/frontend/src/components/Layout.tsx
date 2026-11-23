@@ -23,6 +23,7 @@ const NAV: { section: Section; to: string; label: string; group: string }[] = [
   { section: 'analytics', to: '/analytics', label: 'Прогнозы и отчёты', group: 'Контур Б: расходы на ПО' },
   { section: 'people', to: '/people', label: 'Запросы сотрудников', group: 'Сотрудники' },
   { section: 'org', to: '/org', label: 'Оргструктура и доступ', group: 'Настройки' },
+  { section: 'billing', to: '/settings/plan', label: 'Тариф и оплата', group: 'Настройки' },
 ];
 
 export function Guard({ section, children }: { section: Section; children: ReactNode }) {

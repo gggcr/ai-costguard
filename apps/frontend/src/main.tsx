@@ -19,6 +19,7 @@ import { FindingDetail, Findings } from './pages/Findings';
 import { Analytics } from './pages/Analytics';
 import { Org } from './pages/Org';
 import { NotFound, Notifications } from './pages/Notifications';
+import { Billing } from './pages/Billing';
 import { Cabinet } from './pages/Cabinet';
 import { People } from './pages/People';
 import './styles.css';
@@ -72,6 +73,7 @@ function App() {
         <Route path="org" element={<Guard section="org"><Org /></Guard>} />
         <Route path="people" element={<Guard section="people"><People /></Guard>} />
         <Route path="notifications" element={<Guard section="notifications"><Notifications /></Guard>} />
+        <Route path="settings/plan" element={<Guard section="billing"><Billing /></Guard>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

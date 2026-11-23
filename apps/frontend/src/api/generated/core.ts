@@ -170,6 +170,7 @@ export type ChecklistSection = {
 
 export type CheckoutRequest = {
   plan: string;
+  currency?: string;
 };
 
 export type CheckoutView = {
@@ -301,6 +302,7 @@ export type CurrentPlan = {
   trialEndsAt?: string;  // date-time
   accessUntil?: string;  // date-time
   limits?: PlanLimitsView;
+  subscription?: SubscriptionView;
 };
 
 export type DayAmount = {
@@ -877,6 +879,16 @@ export type PaymentBatch = {
   payments: Array<ReportedPayment>;
 };
 
+export type PaymentHistoryRow = {
+  id?: string;  // uuid
+  plan?: string;
+  amount?: number;
+  currency?: string;
+  status?: string;
+  createdAt?: string;  // date-time
+  paidAt?: string;  // date-time
+};
+
 export type PayrollImport = {
   stored?: number;
   skipped?: Array<Skipped>;
@@ -956,6 +968,7 @@ export type PlanOffer = {
   monthlyPrice?: number;
   currency?: string;
   limits?: PlanLimitsView;
+  prices?: Record<string, number>;
 };
 
 export type PolicyRule = {
@@ -965,6 +978,10 @@ export type PolicyRule = {
   effect?: "DENY" | "REQUIRE_APPROVAL";
   enabled?: boolean;
   updatedAt?: string;  // date-time
+};
+
+export type PortalView = {
+  url?: string;
 };
 
 export type Price = {
@@ -1311,6 +1328,13 @@ export type SubscriptionDetails = {
   plan?: string;
 };
 
+export type SubscriptionView = {
+  provider?: string;
+  status?: string;
+  cancelAtPeriodEnd?: boolean;
+  paidUntil?: string;  // date-time
+};
+
 export type Summary = {
   agentSpend?: Array<Month>;
   findings?: Totals;
@@ -1457,8 +1481,10 @@ export const operations = {
   assetsRetire: { method: "PUT", path: "/api/v1/assets/{id}/retirement" },
   plansCheckout: { method: "POST", path: "/api/v1/billing/checkout" },
   plansNotice: { method: "POST", path: "/api/v1/billing/notifications/{provider}" },
+  plansPayments_1: { method: "GET", path: "/api/v1/billing/payments" },
   plansCurrent: { method: "GET", path: "/api/v1/billing/plan" },
   plansCatalog: { method: "GET", path: "/api/v1/billing/plans" },
+  plansPortal: { method: "POST", path: "/api/v1/billing/portal" },
   ledgerBudgets: { method: "GET", path: "/api/v1/budgets" },
   ledgerCreate_1: { method: "POST", path: "/api/v1/budgets" },
   ledgerBudget: { method: "GET", path: "/api/v1/budgets/{id}" },

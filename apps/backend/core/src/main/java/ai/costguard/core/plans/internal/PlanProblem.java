@@ -13,6 +13,13 @@ enum PlanProblem implements ProblemCode {
     PAYMENT_PROVIDER_UNKNOWN(HttpStatus.NOT_FOUND, "No such payment provider"),
     PAYMENT_NOTICE_INVALID(HttpStatus.BAD_REQUEST, "The payment notice could not be verified"),
     PAYMENT_UNKNOWN(HttpStatus.NOT_FOUND, "No such payment"),
+    PLAN_CURRENCY_UNKNOWN(HttpStatus.BAD_REQUEST, "The plan is not sold in this currency"),
+    SUBSCRIPTION_EXISTS(HttpStatus.CONFLICT, "The company already has a subscription: change or cancel it in the "
+            + "billing portal"),
+    SUBSCRIPTION_MISSING(HttpStatus.CONFLICT, "The company has no subscription at the payment provider yet"),
+    // Stripe delivers events in any order: an event about a subscription the core has not heard of yet is answered
+    // with an error, and Stripe delivers it again later, after the checkout that started it.
+    SUBSCRIPTION_UNKNOWN(HttpStatus.CONFLICT, "No such subscription yet"),
     OWNER_REQUIRED(HttpStatus.FORBIDDEN, "Only an owner can pay for a plan");
 
     private final HttpStatus status;

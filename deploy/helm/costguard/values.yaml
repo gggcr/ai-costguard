@@ -70,7 +70,8 @@ services:
       # WEB_URL: where links in e-mail and Telegram lead, e.g. https://costguard.example.ru
       # Self-registration and invitations (ADR 0036): KEYCLOAK_REGISTRATION_CLIENT_SECRET in the secret; without it
       # registration answers 503. Payments (ADR 0038): PAYMENT_PROVIDER stays unset until a provider is chosen;
-      # never dummy here, it gives plans away.
+      # never dummy here, it gives plans away. Stripe (ADR 0077): PAYMENT_PROVIDER=stripe here, STRIPE_SECRET_KEY,
+      # STRIPE_WEBHOOK_SECRET and STRIPE_PRICE_* in the secret (docs/STRIPE_SETUP.md).
   gateway:
     enabled: true
     image: gateway

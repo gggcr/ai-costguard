@@ -152,8 +152,21 @@ costguard:
     watch-delay: PT15M
     payments:
       # Empty: no payments (checkout answers 503). dummy: every payment succeeds at once, local stack only (ADR 0038).
+      # stripe: subscriptions through Stripe Checkout and webhooks (ADR 0077, docs/STRIPE_SETUP.md).
       provider: ${PAYMENT_PROVIDER:}
       return-url: ${WEB_URL:http://localhost:3000}/settings/plan
+      # a company whose renewal failed keeps working this long after what it paid, while Stripe retries the card
+      grace: ${PAYMENT_GRACE:P7D}
+      stripe:
+        secret-key: ${STRIPE_SECRET_KEY:}
+        webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+        automatic-tax: ${STRIPE_AUTOMATIC_TAX:false}
+        # The Stripe price of each plan and currency; its amount must be the catalog's price below.
+        prices:
+          start-usd: ${STRIPE_PRICE_START_USD:}
+          start-eur: ${STRIPE_PRICE_START_EUR:}
+          business-usd: ${STRIPE_PRICE_BUSINESS_USD:}
+          business-eur: ${STRIPE_PRICE_BUSINESS_EUR:}
     catalog:
       trial:
         title: Trial
@@ -166,6 +179,10 @@ costguard:
         title: Start
         monthly-price: 4990
         currency: RUB
+        # ADR 0077: for Western companies, per month; marketing/PRICING.md explains the numbers
+        prices:
+          USD: 149
+          EUR: 139
         limits:
           agents: 10
           employees: 100
@@ -175,6 +192,9 @@ costguard:
         title: Business
         monthly-price: 19990
         currency: RUB
+        prices:
+          USD: 699
+          EUR: 649
         limits:
           agents: 50
           employees: 1000

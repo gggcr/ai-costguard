@@ -88,6 +88,9 @@ class PlanRepository {
     void forget(UUID tenantId) {
         jdbc.sql("delete from plan_schedule where tenant_id = ?").param(tenantId).update();
         jdbc.sql("delete from plan_payment_ref where tenant_id = ?").param(tenantId).update();
+        jdbc.sql("delete from plan_subscription_ref where tenant_id = ?").param(tenantId).update();
+        jdbc.sql("delete from plan_billing_event where tenant_id = ?").param(tenantId).update();
+        jdbc.sql("delete from plan_subscription").update();
         jdbc.sql("delete from plan_payment").update();
         jdbc.sql("delete from tenant_plan").update();
     }
@@ -156,5 +159,82 @@ class PlanRepository {
                 .query((rs, n) -> new PaymentRef(rs.getObject("tenant_id", UUID.class),
                         rs.getObject("payment_id", UUID.class)))
                 .optional();
+    }
+
+    // --- Subscriptions at the provider (ADR 0077)
+
+    private static final RowMapper<SubscriptionRow> SUBSCRIPTION = (rs, n) -> new SubscriptionRow(
+            rs.getObject("tenant_id", UUID.class), rs.getString("provider"), rs.getString("subscription_id"),
+            rs.getString("customer_id"), rs.getString("plan"), rs.getString("status"),
+            rs.getBoolean("cancel_at_period_end"), instant(rs, "paid_until"), instant(rs, "status_at"));
+
+    /** False when the provider delivered this event before: the caller then changes nothing. */
+    boolean firstDelivery(String provider, String eventId, UUID tenantId, Instant now) {
+        if (eventId == null) {
+            return true;
+        }
+        return jdbc.sql("""
+                insert into plan_billing_event (provider, event_id, tenant_id, received_at) values (?, ?, ?, ?)
+                on conflict do nothing
+                """).params(provider, eventId, tenantId, ts(now)).update() == 1;
+    }
+
+    Optional<SubscriptionRow> subscription() {
+        return jdbc.sql("""
+                select tenant_id, provider, subscription_id, customer_id, plan, status, cancel_at_period_end,
+                       paid_until, status_at
+                from plan_subscription
+                """).query(SUBSCRIPTION).optional();
+    }
+
+    Optional<SubscriptionRow> subscriptionForUpdate() {
+        return jdbc.sql("""
+                select tenant_id, provider, subscription_id, customer_id, plan, status, cancel_at_period_end,
+                       paid_until, status_at
+                from plan_subscription for update
+                """).query(SUBSCRIPTION).optional();
+    }
+
+    /** A new subscription replaces the company's old one, which ended at the provider. */
+    void subscribe(SubscriptionRow row, Instant now) {
+        jdbc.sql("""
+                insert into plan_subscription (tenant_id, provider, subscription_id, customer_id, plan, status,
+                    cancel_at_period_end, paid_until, status_at, updated_at)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                on conflict (tenant_id) do update set provider = excluded.provider,
+                    subscription_id = excluded.subscription_id, customer_id = excluded.customer_id,
+                    plan = excluded.plan, status = excluded.status,
+                    cancel_at_period_end = excluded.cancel_at_period_end, paid_until = excluded.paid_until,
+                    status_at = excluded.status_at, updated_at = excluded.updated_at
+                """).params(row.tenantId(), row.provider(), row.subscriptionId(), row.customerId(), row.plan(),
+                row.status(), row.cancelAtPeriodEnd(), ts(row.paidUntil()), ts(row.statusAt()), ts(now)).update();
+        jdbc.sql("""
+                insert into plan_subscription_ref (provider, subscription_id, tenant_id) values (?, ?, ?)
+                on conflict do nothing
+                """).params(row.provider(), row.subscriptionId(), row.tenantId()).update();
+    }
+
+    Optional<UUID> subscriptionTenant(String provider, String subscriptionId) {
+        return jdbc.sql("select tenant_id from plan_subscription_ref where provider = ? and subscription_id = ?")
+                .params(provider, subscriptionId).query(UUID.class).optional();
+    }
+
+    /** A payment the provider made by itself (a renewal), for the company's billing history. */
+    void insertPaid(UUID id, UUID tenantId, String plan, BigDecimal amount, String currency, String provider,
+            String reference, Instant now) {
+        jdbc.sql("""
+                insert into plan_payment (id, tenant_id, plan, amount, currency, provider, provider_payment_id, status,
+                    created_at, paid_at)
+                values (?, ?, ?, ?, ?, ?, ?, 'succeeded', ?, ?)
+                """).params(id, tenantId, plan, amount, currency, provider, reference, ts(now), ts(now)).update();
+    }
+
+    List<PaymentHistoryRow> history(int limit) {
+        return jdbc.sql("""
+                select id, plan, amount, currency, status, created_at, paid_at from plan_payment
+                order by created_at desc limit ?
+                """).param(limit).query((rs, n) -> new PaymentHistoryRow(rs.getObject("id", UUID.class),
+                rs.getString("plan"), rs.getBigDecimal("amount"), rs.getString("currency"), rs.getString("status"),
+                instant(rs, "created_at"), instant(rs, "paid_at"))).list();
     }
 }

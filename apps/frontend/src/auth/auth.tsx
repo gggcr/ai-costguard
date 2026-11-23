@@ -48,13 +48,14 @@ export const ROLE_HINT: Record<Role, string> = {
 
 export type Section =
   | 'dashboard' | 'agents' | 'policies' | 'budgets' | 'approvals' | 'operations'
-  | 'software' | 'assets' | 'imports' | 'connections' | 'findings' | 'analytics' | 'org' | 'notifications' | 'cabinet' | 'people';
+  | 'software' | 'assets' | 'imports' | 'connections' | 'findings' | 'analytics' | 'org' | 'notifications' | 'cabinet' | 'people'
+  | 'billing';
 
-const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'org', 'notifications', 'people'];
+const ALL: Section[] = ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'org', 'notifications', 'people', 'billing'];
 
 const VIEW: Record<Role, Section[]> = {
   owner: ALL,
-  finance: ['dashboard', 'agents', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'notifications', 'people'],
+  finance: ['dashboard', 'agents', 'budgets', 'approvals', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'analytics', 'notifications', 'people', 'billing'],
   it_admin: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'imports', 'connections', 'findings', 'org', 'notifications', 'people'],
   agent_owner: ['dashboard', 'agents', 'policies', 'budgets', 'approvals', 'operations', 'assets', 'findings', 'notifications'],
   auditor: ['dashboard', 'agents', 'policies', 'budgets', 'operations', 'software', 'assets', 'connections', 'findings', 'analytics', 'notifications'],

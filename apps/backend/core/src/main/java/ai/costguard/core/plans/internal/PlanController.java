@@ -49,7 +49,24 @@ class PlanController {
             + "status pending: send the payer to confirmationUrl, the plan changes when the provider confirms; "
             + "succeeded: the plan changed already. 503 payment_provider_missing: payments are not configured.")
     CheckoutView checkout(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CheckoutRequest request) {
-        return service.checkout(TenantClaim.of(jwt), request.plan());
+        return service.checkout(TenantClaim.of(jwt), request.plan(), request.currency());
+    }
+
+    @PostMapping("/api/v1/billing/portal")
+    @PreAuthorize("hasRole('owner')")
+    @Operation(summary = "Open the billing portal", description = "Owner only. A page of the payment provider where "
+            + "the subscription is changed or cancelled, the card is replaced and the invoices are read (ADR 0077). "
+            + "409 subscription_missing: no subscription yet, pay for a plan first.")
+    PortalView portal(@AuthenticationPrincipal Jwt jwt) {
+        return service.portal(TenantClaim.of(jwt));
+    }
+
+    @GetMapping("/api/v1/billing/payments")
+    @PreAuthorize("hasAnyRole('owner', 'finance')")
+    @Operation(summary = "List the company's payments for CostGuard", description = "The checkouts and the renewals "
+            + "the provider charged, newest first; at most 100.")
+    List<PaymentHistoryRow> payments(@AuthenticationPrincipal Jwt jwt) {
+        return service.payments(TenantClaim.of(jwt));
     }
 
     @PostMapping("/api/v1/billing/notifications/{provider}")

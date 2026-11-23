@@ -20,12 +20,14 @@ class PlansPersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("tenant_plan", "plan_schedule", "plan_payment", "plan_payment_ref");
+        return List.of("tenant_plan", "plan_schedule", "plan_payment", "plan_payment_ref", "plan_subscription",
+                "plan_subscription_ref", "plan_billing_event");
     }
 
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "plans", "plan_payment_ref", "plan_payment", "plan_schedule", "tenant_plan");
+        TenantRows.delete(jdbc, tenantId, report, "plans", "plan_billing_event", "plan_subscription_ref",
+                "plan_subscription", "plan_payment_ref", "plan_payment", "plan_schedule", "tenant_plan");
         report.tombstone(PlanService.TOPIC, tenantId.toString());
     }
 }
