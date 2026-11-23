@@ -45,4 +45,5 @@ A small team, starting at a NEAR hackathon in November 2026, mostly with AI codi
 direction and review. The repository's 75 ADRs and automated tests are the best way to judge the result.
 
 **What is the license?**
-MIT. See the buyer brief for what that means for an acquisition.
+"All Rights Reserved" since 2026-11-23; earlier public versions were MIT. See
+docs/INTELLECTUAL_PROPERTY_CHECKLIST.md for what that means for an acquisition.

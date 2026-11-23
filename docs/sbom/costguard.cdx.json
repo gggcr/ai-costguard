@@ -1,0 +1,5221 @@
+{
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.5",
+ "version": 1,
+ "serialNumber": "urn:uuid:4b0e43bd-1a30-4148-a47e-83f2203fd634",
+ "metadata": {
+  "timestamp": "2026-11-23T20:24:42+00:00",
+  "component": {
+   "type": "application",
+   "name": "costguard"
+  }
+ },
+ "components": [
+  {
+   "type": "library",
+   "name": "aopalliance",
+   "version": "1.0",
+   "purl": "pkg:maven/aopalliance/aopalliance@1.0",
+   "group": "aopalliance",
+   "licenses": [
+    {
+     "license": {
+      "name": "Public Domain"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "lz4-java",
+   "version": "1.11.4",
+   "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.11.4",
+   "group": "at.yawk.lz4",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "logback-classic",
+   "version": "1.5.38",
+   "purl": "pkg:maven/ch.qos.logback/logback-classic@1.5.38",
+   "group": "ch.qos.logback",
+   "licenses": [
+    {
+     "license": {
+      "name": "EPL-2.0"
+     }
+    },
+    {
+     "license": {
+      "name": "LGPL-2.1-only"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "logback-core",
+   "version": "1.5.38",
+   "purl": "pkg:maven/ch.qos.logback/logback-core@1.5.38",
+   "group": "ch.qos.logback",
+   "licenses": [
+    {
+     "license": {
+      "name": "EPL-2.0"
+     }
+    },
+    {
+     "license": {
+      "name": "LGPL-2.1-only"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "classmate",
+   "version": "1.7.3",
+   "purl": "pkg:maven/com.fasterxml/classmate@1.7.3",
+   "group": "com.fasterxml",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-bom",
+   "version": "2.22.3",
+   "purl": "pkg:maven/com.fasterxml.jackson/jackson-bom@2.22.3",
+   "group": "com.fasterxml.jackson",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-annotations",
+   "version": "2.22",
+   "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.22",
+   "group": "com.fasterxml.jackson.core",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-core",
+   "version": "2.22.3",
+   "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.22.3",
+   "group": "com.fasterxml.jackson.core",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-databind",
+   "version": "2.22.3",
+   "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.22.3",
+   "group": "com.fasterxml.jackson.core",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-dataformat-yaml",
+   "version": "2.22.3",
+   "purl": "pkg:maven/com.fasterxml.jackson.dataformat/jackson-dataformat-yaml@2.22.3",
+   "group": "com.fasterxml.jackson.dataformat",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-datatype-jsr310",
+   "version": "2.22.3",
+   "purl": "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.22.3",
+   "group": "com.fasterxml.jackson.datatype",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "zstd-jni",
+   "version": "1.5.6-10",
+   "purl": "pkg:maven/com.github.luben/zstd-jni@1.5.6-10",
+   "group": "com.github.luben",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD 2-Clause License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "auto-value-annotations",
+   "version": "1.11.1",
+   "purl": "pkg:maven/com.google.auto.value/auto-value-annotations@1.11.1",
+   "group": "com.google.auto.value",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "error_prone_annotations",
+   "version": "2.50.0",
+   "purl": "pkg:maven/com.google.errorprone/error_prone_annotations@2.50.0",
+   "group": "com.google.errorprone",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "failureaccess",
+   "version": "1.0.3",
+   "purl": "pkg:maven/com.google.guava/failureaccess@1.0.3",
+   "group": "com.google.guava",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "guava",
+   "version": "33.7.2-jre",
+   "purl": "pkg:maven/com.google.guava/guava@33.7.2-jre",
+   "group": "com.google.guava",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "listenablefuture",
+   "version": "9999.0-empty-to-avoid-conflict-with-guava",
+   "purl": "pkg:maven/com.google.guava/listenablefuture@9999.0-empty-to-avoid-conflict-with-guava",
+   "group": "com.google.guava",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "j2objc-annotations",
+   "version": "3.1",
+   "purl": "pkg:maven/com.google.j2objc/j2objc-annotations@3.1",
+   "group": "com.google.j2objc",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "protobuf-java",
+   "version": "4.36.2",
+   "purl": "pkg:maven/com.google.protobuf/protobuf-java@4.36.2",
+   "group": "com.google.protobuf",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "re2j",
+   "version": "1.8",
+   "purl": "pkg:maven/com.google.re2j/re2j@1.8",
+   "group": "com.google.re2j",
+   "licenses": [
+    {
+     "license": {
+      "name": "Go License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jtokkit",
+   "version": "1.1.0",
+   "purl": "pkg:maven/com.knuddels/jtokkit@1.1.0",
+   "group": "com.knuddels",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "nimbus-jose-jwt",
+   "version": "10.9.1",
+   "purl": "pkg:maven/com.nimbusds/nimbus-jose-jwt@10.9.1",
+   "group": "com.nimbusds",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "okhttp",
+   "version": "5.5.0",
+   "purl": "pkg:maven/com.squareup.okhttp3/okhttp@5.5.0",
+   "group": "com.squareup.okhttp3",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "okhttp-jvm",
+   "version": "5.5.0",
+   "purl": "pkg:maven/com.squareup.okhttp3/okhttp-jvm@5.5.0",
+   "group": "com.squareup.okhttp3",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "okio",
+   "version": "3.18.1",
+   "purl": "pkg:maven/com.squareup.okio/okio@3.18.1",
+   "group": "com.squareup.okio",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "okio-jvm",
+   "version": "3.18.1",
+   "purl": "pkg:maven/com.squareup.okio/okio-jvm@3.18.1",
+   "group": "com.squareup.okio",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "archunit",
+   "version": "1.4.2",
+   "purl": "pkg:maven/com.tngtech.archunit/archunit@1.4.2",
+   "group": "com.tngtech.archunit",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    },
+    {
+     "license": {
+      "name": "BSD"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "HikariCP",
+   "version": "7.0.2",
+   "purl": "pkg:maven/com.zaxxer/HikariCP@7.0.2",
+   "group": "com.zaxxer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "commons-codec",
+   "version": "1.21.0",
+   "purl": "pkg:maven/commons-codec/commons-codec@1.21.0",
+   "group": "commons-codec",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "commons-io",
+   "version": "2.20.0",
+   "purl": "pkg:maven/commons-io/commons-io@2.20.0",
+   "group": "commons-io",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "commons-logging",
+   "version": "1.3.6",
+   "purl": "pkg:maven/commons-logging/commons-logging@1.3.6",
+   "group": "commons-logging",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "cel",
+   "version": "0.15.0",
+   "purl": "pkg:maven/dev.cel/cel@0.15.0",
+   "group": "dev.cel",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "common",
+   "version": "0.15.0",
+   "purl": "pkg:maven/dev.cel/common@0.15.0",
+   "group": "dev.cel",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "compiler",
+   "version": "0.15.0",
+   "purl": "pkg:maven/dev.cel/compiler@0.15.0",
+   "group": "dev.cel",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "protobuf",
+   "version": "0.15.0",
+   "purl": "pkg:maven/dev.cel/protobuf@0.15.0",
+   "group": "dev.cel",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "runtime",
+   "version": "0.15.0",
+   "purl": "pkg:maven/dev.cel/runtime@0.15.0",
+   "group": "dev.cel",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "v1alpha1",
+   "version": "0.15.0",
+   "purl": "pkg:maven/dev.cel/v1alpha1@0.15.0",
+   "group": "dev.cel",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "lettuce-core",
+   "version": "7.5.2.RELEASE",
+   "purl": "pkg:maven/io.lettuce/lettuce-core@7.5.2.RELEASE",
+   "group": "io.lettuce",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "context-propagation",
+   "version": "1.2.1",
+   "purl": "pkg:maven/io.micrometer/context-propagation@1.2.1",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-commons",
+   "version": "1.17.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-commons@1.17.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-core",
+   "version": "1.17.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-core@1.17.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-jakarta9",
+   "version": "1.17.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-jakarta9@1.17.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-observation",
+   "version": "1.17.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-observation@1.17.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-registry-otlp",
+   "version": "1.17.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-registry-otlp@1.17.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-registry-prometheus",
+   "version": "1.17.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-registry-prometheus@1.17.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-tracing",
+   "version": "1.7.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-tracing@1.7.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "micrometer-tracing-bridge-otel",
+   "version": "1.7.2",
+   "purl": "pkg:maven/io.micrometer/micrometer-tracing-bridge-otel@1.7.2",
+   "group": "io.micrometer",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-buffer",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-buffer@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-base",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-base@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-classes-quic",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-classes-quic@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-compression",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-compression@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-dns",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-dns@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-http",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-http@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-http2",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-http2@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-http3",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-http3@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-native-quic",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-native-quic@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-codec-socks",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-codec-socks@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-common",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-common@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-handler",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-handler@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-handler-proxy",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-handler-proxy@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-resolver",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-resolver@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-resolver-dns",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-resolver-dns@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-resolver-dns-classes-macos",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-resolver-dns-classes-macos@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-resolver-dns-native-macos",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-resolver-dns-native-macos@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-transport",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-transport@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-transport-classes-epoll",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-transport-classes-epoll@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-transport-native-epoll",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-transport-native-epoll@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "netty-transport-native-unix-common",
+   "version": "4.2.19.Final",
+   "purl": "pkg:maven/io.netty/netty-transport-native-unix-common@4.2.19.Final",
+   "group": "io.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-api",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-api@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-bom",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-bom@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-common",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-common@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-context",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-context@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-common",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-exporter-common@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-otlp",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-exporter-otlp@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-otlp-common",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-exporter-otlp-common@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-sender-okhttp",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-exporter-sender-okhttp@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-extension-trace-propagators",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-extension-trace-propagators@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-sdk",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-sdk@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-sdk-common",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-sdk-common@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-sdk-logs",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-sdk-logs@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-sdk-metrics",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-sdk-metrics@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-sdk-trace",
+   "version": "1.67.0",
+   "purl": "pkg:maven/io.opentelemetry/opentelemetry-sdk-trace@1.67.0",
+   "group": "io.opentelemetry",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-proto",
+   "version": "1.10.0-alpha",
+   "purl": "pkg:maven/io.opentelemetry.proto/opentelemetry-proto@1.10.0-alpha",
+   "group": "io.opentelemetry.proto",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-semconv",
+   "version": "1.41.1",
+   "purl": "pkg:maven/io.opentelemetry.semconv/opentelemetry-semconv@1.41.1",
+   "group": "io.opentelemetry.semconv",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "reactor-core",
+   "version": "3.8.8",
+   "purl": "pkg:maven/io.projectreactor/reactor-core@3.8.8",
+   "group": "io.projectreactor",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "reactor-extra",
+   "version": "3.6.2",
+   "purl": "pkg:maven/io.projectreactor.addons/reactor-extra@3.6.2",
+   "group": "io.projectreactor.addons",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "reactor-netty-core",
+   "version": "1.3.8",
+   "purl": "pkg:maven/io.projectreactor.netty/reactor-netty-core@1.3.8",
+   "group": "io.projectreactor.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "reactor-netty-http",
+   "version": "1.3.8",
+   "purl": "pkg:maven/io.projectreactor.netty/reactor-netty-http@1.3.8",
+   "group": "io.projectreactor.netty",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "prometheus-metrics-config",
+   "version": "1.7.0",
+   "purl": "pkg:maven/io.prometheus/prometheus-metrics-config@1.7.0",
+   "group": "io.prometheus",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "prometheus-metrics-core",
+   "version": "1.7.0",
+   "purl": "pkg:maven/io.prometheus/prometheus-metrics-core@1.7.0",
+   "group": "io.prometheus",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "prometheus-metrics-exposition-formats",
+   "version": "1.7.0",
+   "purl": "pkg:maven/io.prometheus/prometheus-metrics-exposition-formats@1.7.0",
+   "group": "io.prometheus",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "prometheus-metrics-exposition-textformats",
+   "version": "1.7.0",
+   "purl": "pkg:maven/io.prometheus/prometheus-metrics-exposition-textformats@1.7.0",
+   "group": "io.prometheus",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "prometheus-metrics-model",
+   "version": "1.7.0",
+   "purl": "pkg:maven/io.prometheus/prometheus-metrics-model@1.7.0",
+   "group": "io.prometheus",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "prometheus-metrics-tracer-common",
+   "version": "1.7.0",
+   "purl": "pkg:maven/io.prometheus/prometheus-metrics-tracer-common@1.7.0",
+   "group": "io.prometheus",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "swagger-annotations-jakarta",
+   "version": "2.2.38",
+   "purl": "pkg:maven/io.swagger.core.v3/swagger-annotations-jakarta@2.2.38",
+   "group": "io.swagger.core.v3",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "swagger-core-jakarta",
+   "version": "2.2.38",
+   "purl": "pkg:maven/io.swagger.core.v3/swagger-core-jakarta@2.2.38",
+   "group": "io.swagger.core.v3",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "swagger-models-jakarta",
+   "version": "2.2.38",
+   "purl": "pkg:maven/io.swagger.core.v3/swagger-models-jakarta@2.2.38",
+   "group": "io.swagger.core.v3",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jakarta.activation-api",
+   "version": "2.1.4",
+   "purl": "pkg:maven/jakarta.activation/jakarta.activation-api@2.1.4",
+   "group": "jakarta.activation",
+   "licenses": [
+    {
+     "license": {
+      "name": "EDL 1.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jakarta.annotation-api",
+   "version": "3.0.0",
+   "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api@3.0.0",
+   "group": "jakarta.annotation",
+   "licenses": [
+    {
+     "license": {
+      "name": "EPL 2.0"
+     }
+    },
+    {
+     "license": {
+      "name": "GPL2 w/ CPE"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jakarta.mail-api",
+   "version": "2.1.5",
+   "purl": "pkg:maven/jakarta.mail/jakarta.mail-api@2.1.5",
+   "group": "jakarta.mail",
+   "licenses": [
+    {
+     "license": {
+      "name": "EPL 2.0"
+     }
+    },
+    {
+     "license": {
+      "name": "GPL2 w/ CPE"
+     }
+    },
+    {
+     "license": {
+      "name": "EDL 1.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jakarta.validation-api",
+   "version": "3.1.1",
+   "purl": "pkg:maven/jakarta.validation/jakarta.validation-api@3.1.1",
+   "group": "jakarta.validation",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jakarta.xml.bind-api",
+   "version": "4.0.5",
+   "purl": "pkg:maven/jakarta.xml.bind/jakarta.xml.bind-api@4.0.5",
+   "group": "jakarta.xml.bind",
+   "licenses": [
+    {
+     "license": {
+      "name": "Eclipse Distribution License - v 1.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "antlr4-runtime",
+   "version": "4.13.2",
+   "purl": "pkg:maven/org.antlr/antlr4-runtime@4.13.2",
+   "group": "org.antlr",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "avro",
+   "version": "1.12.2",
+   "purl": "pkg:maven/org.apache.avro/avro@1.12.2",
+   "group": "org.apache.avro",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "commons-compress",
+   "version": "1.28.0",
+   "purl": "pkg:maven/org.apache.commons/commons-compress@1.28.0",
+   "group": "org.apache.commons",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "commons-lang3",
+   "version": "3.20.0",
+   "purl": "pkg:maven/org.apache.commons/commons-lang3@3.20.0",
+   "group": "org.apache.commons",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "httpclient5",
+   "version": "5.6.5",
+   "purl": "pkg:maven/org.apache.httpcomponents.client5/httpclient5@5.6.5",
+   "group": "org.apache.httpcomponents.client5",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "httpcore5",
+   "version": "5.4.4",
+   "purl": "pkg:maven/org.apache.httpcomponents.core5/httpcore5@5.4.4",
+   "group": "org.apache.httpcomponents.core5",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "httpcore5-h2",
+   "version": "5.4.4",
+   "purl": "pkg:maven/org.apache.httpcomponents.core5/httpcore5-h2@5.4.4",
+   "group": "org.apache.httpcomponents.core5",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "kafka-clients",
+   "version": "4.2.2",
+   "purl": "pkg:maven/org.apache.kafka/kafka-clients@4.2.2",
+   "group": "org.apache.kafka",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "log4j-api",
+   "version": "2.25.5",
+   "purl": "pkg:maven/org.apache.logging.log4j/log4j-api@2.25.5",
+   "group": "org.apache.logging.log4j",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "log4j-to-slf4j",
+   "version": "2.25.5",
+   "purl": "pkg:maven/org.apache.logging.log4j/log4j-to-slf4j@2.25.5",
+   "group": "org.apache.logging.log4j",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "fontbox",
+   "version": "3.0.5",
+   "purl": "pkg:maven/org.apache.pdfbox/fontbox@3.0.5",
+   "group": "org.apache.pdfbox",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pdfbox",
+   "version": "3.0.5",
+   "purl": "pkg:maven/org.apache.pdfbox/pdfbox@3.0.5",
+   "group": "org.apache.pdfbox",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pdfbox-io",
+   "version": "3.0.5",
+   "purl": "pkg:maven/org.apache.pdfbox/pdfbox-io@3.0.5",
+   "group": "org.apache.pdfbox",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "tomcat-embed-core",
+   "version": "11.0.27",
+   "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@11.0.27",
+   "group": "org.apache.tomcat.embed",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "tomcat-embed-el",
+   "version": "11.0.27",
+   "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-el@11.0.27",
+   "group": "org.apache.tomcat.embed",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "tomcat-embed-websocket",
+   "version": "11.0.27",
+   "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-websocket@11.0.27",
+   "group": "org.apache.tomcat.embed",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "bcprov-jdk18on",
+   "version": "1.85.2",
+   "purl": "pkg:maven/org.bouncycastle/bcprov-jdk18on@1.85.2",
+   "group": "org.bouncycastle",
+   "licenses": [
+    {
+     "license": {
+      "name": "Bouncy Castle Licence"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "checker-qual",
+   "version": "3.55.1",
+   "purl": "pkg:maven/org.checkerframework/checker-qual@3.55.1",
+   "group": "org.checkerframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "The MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "angus-activation",
+   "version": "2.0.3",
+   "purl": "pkg:maven/org.eclipse.angus/angus-activation@2.0.3",
+   "group": "org.eclipse.angus",
+   "licenses": [
+    {
+     "license": {
+      "name": "EDL 1.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "angus-mail",
+   "version": "2.0.5",
+   "purl": "pkg:maven/org.eclipse.angus/angus-mail@2.0.5",
+   "group": "org.eclipse.angus",
+   "licenses": [
+    {
+     "license": {
+      "name": "EPL 2.0"
+     }
+    },
+    {
+     "license": {
+      "name": "GPL2 w/ CPE"
+     }
+    },
+    {
+     "license": {
+      "name": "EDL 1.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "flyway-core",
+   "version": "12.4.0",
+   "purl": "pkg:maven/org.flywaydb/flyway-core@12.4.0",
+   "group": "org.flywaydb",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "flyway-database-postgresql",
+   "version": "12.4.0",
+   "purl": "pkg:maven/org.flywaydb/flyway-database-postgresql@12.4.0",
+   "group": "org.flywaydb",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "HdrHistogram",
+   "version": "2.2.2",
+   "purl": "pkg:maven/org.hdrhistogram/HdrHistogram@2.2.2",
+   "group": "org.hdrhistogram",
+   "licenses": [
+    {
+     "license": {
+      "name": "Public Domain, per Creative Commons CC0"
+     }
+    },
+    {
+     "license": {
+      "name": "BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "hibernate-validator",
+   "version": "9.1.5.Final",
+   "purl": "pkg:maven/org.hibernate.validator/hibernate-validator@9.1.5.Final",
+   "group": "org.hibernate.validator",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jboss-logging",
+   "version": "3.6.3.Final",
+   "purl": "pkg:maven/org.jboss.logging/jboss-logging@3.6.3.Final",
+   "group": "org.jboss.logging",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "annotations",
+   "version": "13.0",
+   "purl": "pkg:maven/org.jetbrains/annotations@13.0",
+   "group": "org.jetbrains",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "kotlin-stdlib",
+   "version": "2.3.21",
+   "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.21",
+   "group": "org.jetbrains.kotlin",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jmolecules-events",
+   "version": "2.0.1",
+   "purl": "pkg:maven/org.jmolecules/jmolecules-events@2.0.1",
+   "group": "org.jmolecules",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jstereotype",
+   "version": "2.0.1",
+   "purl": "pkg:maven/org.jmolecules/jstereotype@2.0.1",
+   "group": "org.jmolecules",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jspecify",
+   "version": "1.0.1",
+   "purl": "pkg:maven/org.jspecify/jspecify@1.0.1",
+   "group": "org.jspecify",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "postgresql",
+   "version": "42.7.14",
+   "purl": "pkg:maven/org.postgresql/postgresql@42.7.14",
+   "group": "org.postgresql",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "reactive-streams",
+   "version": "1.0.4",
+   "purl": "pkg:maven/org.reactivestreams/reactive-streams@1.0.4",
+   "group": "org.reactivestreams",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT-0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jcl-over-slf4j",
+   "version": "2.0.20",
+   "purl": "pkg:maven/org.slf4j/jcl-over-slf4j@2.0.20",
+   "group": "org.slf4j",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jul-to-slf4j",
+   "version": "2.0.20",
+   "purl": "pkg:maven/org.slf4j/jul-to-slf4j@2.0.20",
+   "group": "org.slf4j",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "slf4j-api",
+   "version": "2.0.20",
+   "purl": "pkg:maven/org.slf4j/slf4j-api@2.0.20",
+   "group": "org.slf4j",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "springdoc-openapi-starter-common",
+   "version": "3.0.0",
+   "purl": "pkg:maven/org.springdoc/springdoc-openapi-starter-common@3.0.0",
+   "group": "org.springdoc",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "springdoc-openapi-starter-webflux-api",
+   "version": "3.0.0",
+   "purl": "pkg:maven/org.springdoc/springdoc-openapi-starter-webflux-api@3.0.0",
+   "group": "org.springdoc",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "springdoc-openapi-starter-webmvc-api",
+   "version": "3.0.0",
+   "purl": "pkg:maven/org.springdoc/springdoc-openapi-starter-webmvc-api@3.0.0",
+   "group": "org.springdoc",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-aop",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-aop@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-beans",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-beans@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-context",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-context@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-context-support",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-context-support@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-core",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-core@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-expression",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-expression@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-jdbc",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-jdbc@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-messaging",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-messaging@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-oxm",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-oxm@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-tx",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-tx@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-web",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-web@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-webflux",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-webflux@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-webmvc",
+   "version": "7.0.10",
+   "purl": "pkg:maven/org.springframework/spring-webmvc@7.0.10",
+   "group": "org.springframework",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-actuator",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-actuator@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-actuator-autoconfigure",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-actuator-autoconfigure@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-autoconfigure",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-data-commons",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-data-commons@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-data-jdbc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-data-jdbc@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-data-redis",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-data-redis@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-dependencies",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-dependencies@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-flyway",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-flyway@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-health",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-health@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-http-client",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-http-client@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-http-codec",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-http-codec@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-http-converter",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-http-converter@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-jackson",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-jackson@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-jdbc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-jdbc@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-kafka",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-kafka@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-mail",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-mail@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-micrometer-metrics",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-micrometer-metrics@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-micrometer-observation",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-micrometer-observation@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-micrometer-tracing",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-micrometer-tracing@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-micrometer-tracing-opentelemetry",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-micrometer-tracing-opentelemetry@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-netty",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-netty@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-opentelemetry",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-opentelemetry@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-persistence",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-persistence@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-reactor",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-reactor@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-reactor-netty",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-reactor-netty@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-restclient",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-restclient@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-security",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-security@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-security-oauth2-resource-server",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-security-oauth2-resource-server@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-servlet",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-servlet@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-sql",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-sql@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-actuator",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-data-jdbc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-data-jdbc@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-data-redis-reactive",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-data-redis-reactive@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-flyway",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-flyway@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-jackson",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-jackson@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-jdbc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-jdbc@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-kafka",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-kafka@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-logging",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-logging@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-mail",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-mail@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-micrometer-metrics",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-micrometer-metrics@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-opentelemetry",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-opentelemetry@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-reactor-netty",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-reactor-netty@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-security",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-security@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-security-oauth2-resource-server",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-security-oauth2-resource-server@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-tomcat",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-tomcat@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-tomcat-runtime",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-tomcat-runtime@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-validation",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-validation@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-webflux",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-webflux@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-starter-webmvc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-webmvc@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-tomcat",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-tomcat@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-transaction",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-transaction@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-validation",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-validation@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-web-server",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-web-server@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-webflux",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-webflux@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-boot-webmvc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.boot/spring-boot-webmvc@4.1.2",
+   "group": "org.springframework.boot",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-commons",
+   "version": "5.0.4",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-commons@5.0.4",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-context",
+   "version": "5.0.4",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-context@5.0.4",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-dependencies",
+   "version": "2025.1.4",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-dependencies@2025.1.4",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-gateway-server-webflux",
+   "version": "5.0.4",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-gateway-server-webflux@5.0.4",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-starter",
+   "version": "5.0.4",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-starter@5.0.4",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-starter-gateway-server-webflux",
+   "version": "5.0.4",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-starter-gateway-server-webflux@5.0.4",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-starter-vault-config",
+   "version": "5.0.3",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-starter-vault-config@5.0.3",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-cloud-vault-config",
+   "version": "5.0.3",
+   "purl": "pkg:maven/org.springframework.cloud/spring-cloud-vault-config@5.0.3",
+   "group": "org.springframework.cloud",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-data-commons",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.data/spring-data-commons@4.1.2",
+   "group": "org.springframework.data",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-data-jdbc",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.data/spring-data-jdbc@4.1.2",
+   "group": "org.springframework.data",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-data-keyvalue",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.data/spring-data-keyvalue@4.1.2",
+   "group": "org.springframework.data",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-data-redis",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.data/spring-data-redis@4.1.2",
+   "group": "org.springframework.data",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-data-relational",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.data/spring-data-relational@4.1.2",
+   "group": "org.springframework.data",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-kafka",
+   "version": "4.1.2",
+   "purl": "pkg:maven/org.springframework.kafka/spring-kafka@4.1.2",
+   "group": "org.springframework.kafka",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-api",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-api@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-apt",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-apt@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-bom",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-bom@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-core",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-core@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-events-api",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-events-api@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-events-core",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-events-core@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-events-jackson",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-events-jackson@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-events-jdbc",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-events-jdbc@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-events-kafka",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-events-kafka@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-moments",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-moments@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-starter-core",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-starter-core@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-modulith-starter-jdbc",
+   "version": "2.1.2",
+   "purl": "pkg:maven/org.springframework.modulith/spring-modulith-starter-jdbc@2.1.2",
+   "group": "org.springframework.modulith",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-config",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-config@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-core",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-core@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-crypto",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-crypto@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-oauth2-core",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-oauth2-core@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-oauth2-jose",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-oauth2-jose@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-oauth2-resource-server",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-oauth2-resource-server@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-security-web",
+   "version": "7.1.2",
+   "purl": "pkg:maven/org.springframework.security/spring-security-web@7.1.2",
+   "group": "org.springframework.security",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "spring-vault-core",
+   "version": "4.0.4",
+   "purl": "pkg:maven/org.springframework.vault/spring-vault-core@4.0.4",
+   "group": "org.springframework.vault",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "threeten-extra",
+   "version": "1.11.0",
+   "purl": "pkg:maven/org.threeten/threeten-extra@1.11.0",
+   "group": "org.threeten",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD 3-clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "snappy-java",
+   "version": "1.1.10.9",
+   "purl": "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.9",
+   "group": "org.xerial.snappy",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "snakeyaml",
+   "version": "2.7",
+   "purl": "pkg:maven/org.yaml/snakeyaml@2.7",
+   "group": "org.yaml",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "redis-authx-core",
+   "version": "0.1.1-beta2",
+   "purl": "pkg:maven/redis.clients.authentication/redis-authx-core@0.1.1-beta2",
+   "group": "redis.clients.authentication",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "annotations",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/annotations@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "arns",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/arns@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "auth",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/auth@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "aws-core",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/aws-core@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "aws-query-protocol",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/aws-query-protocol@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "aws-xml-protocol",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/aws-xml-protocol@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "bom",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/bom@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "checksums",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/checksums@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "checksums-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/checksums-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "crt-core",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/crt-core@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "endpoints-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/endpoints-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "http-auth",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/http-auth@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "http-auth-aws",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/http-auth-aws@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "http-auth-aws-eventstream",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/http-auth-aws-eventstream@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "http-auth-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/http-auth-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "http-client-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/http-client-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "identity-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/identity-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "json-utils",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/json-utils@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "metrics-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/metrics-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "profiles",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/profiles@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "protocol-core",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/protocol-core@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "regions",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/regions@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "retries",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/retries@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "retries-spi",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/retries-spi@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "s3",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/s3@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "sdk-core",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/sdk-core@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "third-party-jackson-core",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/third-party-jackson-core@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "url-connection-client",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/url-connection-client@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "utils",
+   "version": "2.30.0",
+   "purl": "pkg:maven/software.amazon.awssdk/utils@2.30.0",
+   "group": "software.amazon.awssdk",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "eventstream",
+   "version": "1.0.1",
+   "purl": "pkg:maven/software.amazon.eventstream/eventstream@1.0.1",
+   "group": "software.amazon.eventstream",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-bom",
+   "version": "3.1.7",
+   "purl": "pkg:maven/tools.jackson/jackson-bom@3.1.7",
+   "group": "tools.jackson",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-core",
+   "version": "3.1.7",
+   "purl": "pkg:maven/tools.jackson.core/jackson-core@3.1.7",
+   "group": "tools.jackson.core",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jackson-databind",
+   "version": "3.1.7",
+   "purl": "pkg:maven/tools.jackson.core/jackson-databind@3.1.7",
+   "group": "tools.jackson.core",
+   "licenses": [
+    {
+     "license": {
+      "name": "The Apache Software License, Version 2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "cookie",
+   "version": "1.1.1",
+   "purl": "pkg:npm/cookie@1.1.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "qrcode-generator",
+   "version": "1.4.4",
+   "purl": "pkg:npm/qrcode-generator@1.4.4",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "react",
+   "version": "19.3.1",
+   "purl": "pkg:npm/react@19.3.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "react-dom",
+   "version": "19.3.1",
+   "purl": "pkg:npm/react-dom@19.3.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "react-router",
+   "version": "7.18.5",
+   "purl": "pkg:npm/react-router@7.18.5",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "react-router-dom",
+   "version": "7.18.5",
+   "purl": "pkg:npm/react-router-dom@7.18.5",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "scheduler",
+   "version": "0.28.0",
+   "purl": "pkg:npm/scheduler@0.28.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "set-cookie-parser",
+   "version": "2.7.3",
+   "purl": "pkg:npm/set-cookie-parser@2.7.3",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "annotated-doc",
+   "version": "0.0.5",
+   "purl": "pkg:pypi/annotated-doc@0.0.5",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "annotated-types",
+   "version": "0.8.0",
+   "purl": "pkg:pypi/annotated-types@0.8.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "anyio",
+   "version": "4.16.0",
+   "purl": "pkg:pypi/anyio@4.16.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "boto3",
+   "version": "1.43.126",
+   "purl": "pkg:pypi/boto3@1.43.126",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "botocore",
+   "version": "1.43.126",
+   "purl": "pkg:pypi/botocore@1.43.126",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "cachetools",
+   "version": "7.3.0",
+   "purl": "pkg:pypi/cachetools@7.3.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "certifi",
+   "version": "2026.10.23",
+   "purl": "pkg:pypi/certifi@2026.10.23",
+   "licenses": [
+    {
+     "license": {
+      "name": "Mozilla Public License 2.0 (MPL 2.0)"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "cffi",
+   "version": "2.1.1",
+   "purl": "pkg:pypi/cffi@2.1.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT-0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "charset-normalizer",
+   "version": "3.5.2",
+   "purl": "pkg:pypi/charset-normalizer@3.5.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "click",
+   "version": "8.5.1",
+   "purl": "pkg:pypi/click@8.5.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "cloudpickle",
+   "version": "3.1.2",
+   "purl": "pkg:pypi/cloudpickle@3.1.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "colorama",
+   "version": "0.4.6",
+   "purl": "pkg:pypi/colorama@0.4.6",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "confluent-kafka",
+   "version": "2.16.1",
+   "purl": "pkg:pypi/confluent-kafka@2.16.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "cryptography",
+   "version": "50.0.2",
+   "purl": "pkg:pypi/cryptography@50.0.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0 OR BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "databricks-sdk",
+   "version": "0.162.0",
+   "purl": "pkg:pypi/databricks-sdk@0.162.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "et-xmlfile",
+   "version": "2.0.0",
+   "purl": "pkg:pypi/et-xmlfile@2.0.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "fastapi",
+   "version": "0.162.2",
+   "purl": "pkg:pypi/fastapi@0.162.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "fastavro",
+   "version": "1.13.1",
+   "purl": "pkg:pypi/fastavro@1.13.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "fonttools",
+   "version": "4.68.0",
+   "purl": "pkg:pypi/fonttools@4.68.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "fpdf2",
+   "version": "2.9.0",
+   "purl": "pkg:pypi/fpdf2@2.9.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "LGPL-3.0-only"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "gitdb",
+   "version": "4.0.12",
+   "purl": "pkg:pypi/gitdb@4.0.12",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "gitpython",
+   "version": "3.2.1",
+   "purl": "pkg:pypi/gitpython@3.2.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "google-auth",
+   "version": "2.62.1",
+   "purl": "pkg:pypi/google-auth@2.62.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "googleapis-common-protos",
+   "version": "1.76.0",
+   "purl": "pkg:pypi/googleapis-common-protos@1.76.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "h11",
+   "version": "0.16.0",
+   "purl": "pkg:pypi/h11@0.16.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "httpcore",
+   "version": "1.0.9",
+   "purl": "pkg:pypi/httpcore@1.0.9",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "httpx",
+   "version": "0.28.1",
+   "purl": "pkg:pypi/httpx@0.28.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "idna",
+   "version": "3.20",
+   "purl": "pkg:pypi/idna@3.20",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "importlib-metadata",
+   "version": "10.1.0",
+   "purl": "pkg:pypi/importlib-metadata@10.1.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "iniconfig",
+   "version": "2.3.1",
+   "purl": "pkg:pypi/iniconfig@2.3.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "jmespath",
+   "version": "1.1.0",
+   "purl": "pkg:pypi/jmespath@1.1.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "joblib",
+   "version": "1.6.0",
+   "purl": "pkg:pypi/joblib@1.6.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "mlflow-skinny",
+   "version": "3.18.0",
+   "purl": "pkg:pypi/mlflow-skinny@3.18.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "narwhals",
+   "version": "2.28.0",
+   "purl": "pkg:pypi/narwhals@2.28.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "numpy",
+   "version": "2.5.4",
+   "purl": "pkg:pypi/numpy@2.5.4",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "openpyxl",
+   "version": "3.1.5",
+   "purl": "pkg:pypi/openpyxl@3.1.5",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-api",
+   "version": "1.45.2",
+   "purl": "pkg:pypi/opentelemetry-api@1.45.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-http-transport",
+   "version": "0.66b2",
+   "purl": "pkg:pypi/opentelemetry-exporter-http-transport@0.66b2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-otlp-common",
+   "version": "0.66b2",
+   "purl": "pkg:pypi/opentelemetry-exporter-otlp-common@0.66b2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-otlp-proto-common",
+   "version": "1.45.2",
+   "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-common@1.45.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-exporter-otlp-proto-http",
+   "version": "1.45.2",
+   "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.45.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-instrumentation",
+   "version": "0.66b2",
+   "purl": "pkg:pypi/opentelemetry-instrumentation@0.66b2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-instrumentation-httpx",
+   "version": "0.66b2",
+   "purl": "pkg:pypi/opentelemetry-instrumentation-httpx@0.66b2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-proto",
+   "version": "1.45.2",
+   "purl": "pkg:pypi/opentelemetry-proto@1.45.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-sdk",
+   "version": "1.45.2",
+   "purl": "pkg:pypi/opentelemetry-sdk@1.45.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-semantic-conventions",
+   "version": "0.66b2",
+   "purl": "pkg:pypi/opentelemetry-semantic-conventions@0.66b2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "opentelemetry-util-http",
+   "version": "0.66b2",
+   "purl": "pkg:pypi/opentelemetry-util-http@0.66b2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "packaging",
+   "version": "26.3",
+   "purl": "pkg:pypi/packaging@26.3",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0 OR BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pdfminer-six",
+   "version": "20260107",
+   "purl": "pkg:pypi/pdfminer-six@20260107",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pdfplumber",
+   "version": "0.11.10",
+   "purl": "pkg:pypi/pdfplumber@0.11.10",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pillow",
+   "version": "13.0.0",
+   "purl": "pkg:pypi/pillow@13.0.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT-CMU"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pluggy",
+   "version": "1.7.0",
+   "purl": "pkg:pypi/pluggy@1.7.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "protobuf",
+   "version": "7.36.2",
+   "purl": "pkg:pypi/protobuf@7.36.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "3-Clause BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pyarrow",
+   "version": "26.0.1",
+   "purl": "pkg:pypi/pyarrow@26.0.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pyasn1",
+   "version": "0.6.5",
+   "purl": "pkg:pypi/pyasn1@0.6.5",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pyasn1-modules",
+   "version": "0.4.2",
+   "purl": "pkg:pypi/pyasn1-modules@0.4.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pycparser",
+   "version": "3.12",
+   "purl": "pkg:pypi/pycparser@3.12",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pydantic",
+   "version": "2.14.3",
+   "purl": "pkg:pypi/pydantic@2.14.3",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pydantic-core",
+   "version": "2.50.4",
+   "purl": "pkg:pypi/pydantic-core@2.50.4",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pydantic-settings",
+   "version": "2.16.2",
+   "purl": "pkg:pypi/pydantic-settings@2.16.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pygments",
+   "version": "2.21.0",
+   "purl": "pkg:pypi/pygments@2.21.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pypdf",
+   "version": "7.0.0",
+   "purl": "pkg:pypi/pypdf@7.0.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pypdfium2",
+   "version": "5.15.1",
+   "purl": "pkg:pypi/pypdfium2@5.15.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause, Apache-2.0, dependency licenses"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pytest",
+   "version": "9.2.0",
+   "purl": "pkg:pypi/pytest@9.2.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "python-dateutil",
+   "version": "2.9.0.post0",
+   "purl": "pkg:pypi/python-dateutil@2.9.0.post0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    },
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "python-dotenv",
+   "version": "1.2.4",
+   "purl": "pkg:pypi/python-dotenv@1.2.4",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "python-multipart",
+   "version": "0.0.33",
+   "purl": "pkg:pypi/python-multipart@0.0.33",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "pyyaml",
+   "version": "6.0.3",
+   "purl": "pkg:pypi/pyyaml@6.0.3",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "requests",
+   "version": "2.34.2",
+   "purl": "pkg:pypi/requests@2.34.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "river",
+   "version": "0.26.1",
+   "purl": "pkg:pypi/river@0.26.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "ruff",
+   "version": "0.17.4",
+   "purl": "pkg:pypi/ruff@0.17.4",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "s3transfer",
+   "version": "0.19.3",
+   "purl": "pkg:pypi/s3transfer@0.19.3",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache Software License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "scikit-learn",
+   "version": "1.9.1",
+   "purl": "pkg:pypi/scikit-learn@1.9.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "scipy",
+   "version": "1.18.1",
+   "purl": "pkg:pypi/scipy@1.18.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "six",
+   "version": "1.17.0",
+   "purl": "pkg:pypi/six@1.17.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "smmap",
+   "version": "5.0.3",
+   "purl": "pkg:pypi/smmap@5.0.3",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "sqlparse",
+   "version": "0.6.1",
+   "purl": "pkg:pypi/sqlparse@0.6.1",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD License"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "starlette",
+   "version": "1.10.0",
+   "purl": "pkg:pypi/starlette@1.10.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "threadpoolctl",
+   "version": "3.8.0",
+   "purl": "pkg:pypi/threadpoolctl@3.8.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "typing-extensions",
+   "version": "4.16.0",
+   "purl": "pkg:pypi/typing-extensions@4.16.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "PSF-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "typing-inspection",
+   "version": "0.4.5",
+   "purl": "pkg:pypi/typing-inspection@0.4.5",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "tzdata",
+   "version": "2026.6",
+   "purl": "pkg:pypi/tzdata@2026.6",
+   "licenses": [
+    {
+     "license": {
+      "name": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "urllib3",
+   "version": "2.8.0",
+   "purl": "pkg:pypi/urllib3@2.8.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "uvicorn",
+   "version": "0.54.0",
+   "purl": "pkg:pypi/uvicorn@0.54.0",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-3-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "wrapt",
+   "version": "2.5.2",
+   "purl": "pkg:pypi/wrapt@2.5.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "name": "zipp",
+   "version": "4.1.2",
+   "purl": "pkg:pypi/zipp@4.1.2",
+   "licenses": [
+    {
+     "license": {
+      "name": "MIT"
+     }
+    }
+   ]
+  }
+ ]
+}

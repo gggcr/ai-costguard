@@ -18,7 +18,7 @@ from what exists in the repository.
 ### What pulls it down
 
 - No customers, revenue or users: the buyer pays for code, not a business.
-- MIT license: copies already distributed stay usable by anyone (see the readiness report, Licensing).
+- Earlier public versions were MIT: copies obtained before 2026-11-23 stay usable by anyone (IP checklist).
 - A heavy stack to operate, Russian-market origins, and gaps listed in the buyer brief.
 
 ### Suggested packages

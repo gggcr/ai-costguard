@@ -163,7 +163,8 @@ In `make demo` the notary service is off, because it needs a funded NEAR key; th
   Spring Cloud Gateway and Spring Modulith (Java); Python services on confluent-kafka, httpx and cryptography; React, Vite and TypeScript for the UI; PostgreSQL, Kafka, ClickHouse, Redis, Keycloak, SeaweedFS.
   Exact versions: `gradle/libs.versions.toml`, `uv.lock`, `apps/frontend/package-lock.json`,
   `contracts/notary/Cargo.lock`.
-- **License:** [MIT](LICENSE).
+- **License:** all rights reserved since 2026-11-23 ([LICENSE](LICENSE)); versions published before were MIT
+  ([docs/INTELLECTUAL_PROPERTY_CHECKLIST.md](docs/INTELLECTUAL_PROPERTY_CHECKLIST.md)).
 
 ---
 

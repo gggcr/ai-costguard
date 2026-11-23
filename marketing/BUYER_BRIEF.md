@@ -47,10 +47,11 @@ the repository; nothing is projected or invented.
 - **No customers and no revenue.** The product was built from 2026-11-02, starting at a NEAR hackathon.
 - **Most code was written with AI coding assistants** under the team's direction and review (disclosed in the
   README). Quality is backed by the tests and ADRs, but a buyer should budget for their own review.
-- **License and ownership.** The repository is under the MIT license, copyright "AI CostGuard contributors". MIT
-  lets anyone who already has a copy use it, so a purchase buys the copyright, the history and the team's know-how,
-  not exclusivity over copies already distributed. The seller should provide written assignment from every
-  contributor. See `docs/COMMERCIAL_READINESS_REPORT.md` → Licensing. This is not legal advice.
+- **License and ownership.** Since 2026-11-23 the code is "All Rights Reserved". Before that the public repository
+  was under the MIT license (from the NEAR hackathon), and copies obtained then stay usable by anyone under MIT: a
+  purchase buys the copyright, the later work, the history and the team's know-how, not exclusivity over those
+  copies. Written assignments from both Git authors are still missing. See
+  `docs/INTELLECTUAL_PROPERTY_CHECKLIST.md`. This is not legal advice.
 - **Heavy stack** for a small team to operate: PostgreSQL, Kafka, ClickHouse, Redis, Keycloak, S3. `make demo-lite`
   shows a lighter mode is possible.
 - **Origin.** Built for the Russian market first. Selling or hosting for Western customers needs a non-Russian legal
