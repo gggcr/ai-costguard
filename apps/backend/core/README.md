@@ -95,7 +95,8 @@ Prices of models and paid APIs, per tenant, and Bank of Russia rates for everyon
 
 - A price change is a new row from a date: past operations keep the price they were estimated with.
 - `CbrRatesLoader` reads `XML_daily.asp` on start and every 6 hours; a failure keeps earlier rates.
-  `CBR_RATES_ENABLED=false` turns it off. `fx_rate` has no tenant and no RLS: the rates are public.
+  `RATES_SOURCE=ecb` takes the European Central Bank's euro rates instead (ADR 0075);
+  `CBR_RATES_ENABLED=false` turns loading off. `fx_rate` has no tenant and no RLS: the rates are public.
 
 ## journal
 

@@ -13,6 +13,8 @@ The product has no tagged release yet; this lists what changed by milestone. Eve
 - **The company's language**: notifications, e-mails, Telegram replies, audit findings, the agent traffic light and
   license leases are written in English for English-speaking companies; the UI starts in the browser's language
   and writes numbers, money and dates by the UI language (ADR 0074).
+- **European Central Bank rates** as an alternative to the Bank of Russia; a rate now has a base currency
+  (ADR 0075).
 - **An American demo company**, Brightline Analytics Inc. (USD, English), next to the Russian one; all synthetic.
 - **Security**: Jackson 2, OpenTelemetry, snappy-java and lz4-java upgraded past 14 known advisories (9 high).
 - **Documentation in English**: product overview, architecture, installation, configuration, deployment, security,

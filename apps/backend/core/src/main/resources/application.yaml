@@ -53,7 +53,13 @@ costguard:
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8085}
   catalog:
     cbr:
+      # Loading of exchange rates, from either source; false: no rates are loaded
       enabled: ${CBR_RATES_ENABLED:true}
+    rates:
+      # cbr: the Bank of Russia, roubles per unit; ecb: the European Central Bank, euros per unit (ADR 0075).
+      # Choose it before the first start: one conversion never mixes rates of the two.
+      source: ${RATES_SOURCE:cbr}
+      url: ${RATES_URL:}
   journal:
     private-key: ${JOURNAL_PRIVATE_KEY:}
     public-key: ${JOURNAL_PUBLIC_KEY:}

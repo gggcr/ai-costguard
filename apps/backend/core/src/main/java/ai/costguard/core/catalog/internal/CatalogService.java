@@ -22,8 +22,14 @@ class CatalogService implements ExchangeRates {
     private final TenantSession session;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    /** The base of the configured source first, then the other one: rates loaded before a switch still convert. */
+    private final List<String> bases;
 
-    CatalogService(CatalogRepository catalog, TenantSession session, Clock clock, ApplicationEventPublisher events) {
+    CatalogService(CatalogRepository catalog, TenantSession session, Clock clock, ApplicationEventPublisher events,
+            @org.springframework.beans.factory.annotation.Value("${costguard.catalog.rates.source:cbr}") String source) {
+        String base = RatesSource.of(source).base;
+        this.bases = java.util.stream.Stream.concat(java.util.stream.Stream.of(base),
+                java.util.Arrays.stream(RatesSource.values()).map(s -> s.base).filter(b -> !b.equals(base))).toList();
         this.catalog = catalog;
         this.session = session;
         this.clock = clock;
@@ -59,7 +65,7 @@ class CatalogService implements ExchangeRates {
 
     @Transactional(readOnly = true)
     List<FxRate> rates(LocalDate date) {
-        return catalog.ratesOn(date == null ? LocalDate.now(clock) : date);
+        return catalog.ratesOn(date == null ? LocalDate.now(clock) : date, bases.getFirst());
     }
 
     @Override
@@ -70,12 +76,14 @@ class CatalogService implements ExchangeRates {
         if (source.equals(target)) {
             return Optional.of(amount);
         }
-        Optional<BigDecimal> perSource = roubles(source, date);
-        Optional<BigDecimal> perTarget = roubles(target, date);
-        if (perSource.isEmpty() || perTarget.isEmpty()) {
-            return Optional.empty();
+        for (String base : bases) {
+            Optional<BigDecimal> perSource = inBase(source, date, base);
+            Optional<BigDecimal> perTarget = inBase(target, date, base);
+            if (perSource.isPresent() && perTarget.isPresent()) {
+                return Optional.of(amount.multiply(perSource.get()).divide(perTarget.get(), 2, RoundingMode.HALF_EVEN));
+            }
         }
-        return Optional.of(amount.multiply(perSource.get()).divide(perTarget.get(), 2, RoundingMode.HALF_EVEN));
+        return Optional.empty();
     }
 
     private static String rouble(String currency) {
@@ -83,9 +91,10 @@ class CatalogService implements ExchangeRates {
         return code.equals("RUR") ? "RUB" : code;
     }
 
-    /** Roubles for one unit of the currency. */
-    private Optional<BigDecimal> roubles(String currency, LocalDate date) {
-        return currency.equals("RUB") ? Optional.of(BigDecimal.ONE) : catalog.rateOn(currency, date).map(FxRate::rate);
+    /** The price of one unit of the currency in {@code base}: roubles or euros (ADR 0075). */
+    private Optional<BigDecimal> inBase(String currency, LocalDate date, String base) {
+        return currency.equals(base) ? Optional.of(BigDecimal.ONE)
+                : catalog.rateOn(currency, date, base).map(FxRate::rate);
     }
 
     private Optional<BigDecimal> toRub(BigDecimal amount, String currency, LocalDate date) {

@@ -44,6 +44,7 @@ Never reuse the local values from `.env.example` outside a developer machine.
 | Telegram notifications | `TELEGRAM_BOT_TOKEN` | 0031 |
 | Personal-data retention | `PRIVACY_RETENTION_ENABLED`, `PRIVACY_RETAIN_*` (ISO-8601 periods) | 0021 |
 | Plans and trial | `PLAN_TRIAL_LENGTH`, `PLAN_WARN_BEFORE`, `COSTGUARD_PLANS_CATALOG_*` | 0037 |
+| Exchange rates | `RATES_SOURCE` (`cbr` Bank of Russia, default; `ecb` European Central Bank, for Western installations), `RATES_URL`, `CBR_RATES_ENABLED=false` turns loading off | 0072, 0075 |
 | Payments for plans | `PAYMENT_PROVIDER` (empty = off; `dummy` = local test provider only) | 0038 |
 
 ## Per company (in the product, not in the environment)

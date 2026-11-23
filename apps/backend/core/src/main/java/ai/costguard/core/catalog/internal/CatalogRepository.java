@@ -46,28 +46,29 @@ class CatalogRepository {
     }
 
     /** Re-reading a day replaces it: the bank sometimes publishes a correction. */
-    void saveRate(FxRate rate) {
+    void saveRate(FxRate rate, String base) {
         jdbc.sql("""
-                insert into fx_rate (rate_date, currency, rate) values (?, ?, ?)
-                on conflict (rate_date, currency) do update set rate = excluded.rate
-                """).params(rate.date(), rate.currency(), rate.rate()).update();
+                insert into fx_rate (rate_date, base, currency, rate) values (?, ?, ?, ?)
+                on conflict (rate_date, base, currency) do update set rate = excluded.rate
+                """).params(rate.date(), base, rate.currency(), rate.rate()).update();
     }
 
-    Optional<FxRate> rateOn(String currency, LocalDate date) {
+    /** The price of one unit of {@code currency} in {@code base} in force on {@code date} (ADR 0075). */
+    Optional<FxRate> rateOn(String currency, LocalDate date, String base) {
         return jdbc.sql("""
                 select rate_date, currency, rate from fx_rate
-                where currency = ? and rate_date <= ? order by rate_date desc limit 1
-                """).params(currency, date)
+                where currency = ? and base = ? and rate_date <= ? order by rate_date desc limit 1
+                """).params(currency, base, date)
                 .query((rs, n) -> new FxRate(rs.getObject("rate_date", LocalDate.class), rs.getString("currency"),
                         rs.getBigDecimal("rate").stripTrailingZeros()))
                 .optional();
     }
 
-    List<FxRate> ratesOn(LocalDate date) {
+    List<FxRate> ratesOn(LocalDate date, String base) {
         return jdbc.sql("""
                 select distinct on (currency) rate_date, currency, rate from fx_rate
-                where rate_date <= ? order by currency, rate_date desc
-                """).param(date)
+                where rate_date <= ? and base = ? order by currency, rate_date desc
+                """).params(date, base)
                 .query((rs, n) -> new FxRate(rs.getObject("rate_date", LocalDate.class), rs.getString("currency"),
                         rs.getBigDecimal("rate").stripTrailingZeros()))
                 .list();

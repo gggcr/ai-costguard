@@ -33,19 +33,19 @@ record of who allowed it cannot be quietly rewritten.*
    subscriptions and hardware.
 4. **Self-hostable and multi-tenant.** Runs on Kubernetes from one Helm chart; tenant isolation is enforced by the
    database (row-level security), not only by application code.
-5. **Open architecture.** 74 written architecture decisions, contracts-first events, OpenAPI specs checked by tests.
+5. **Open architecture.** 75 written architecture decisions, contracts-first events, OpenAPI specs checked by tests.
 
 ## What to say carefully
 
 - It is a **new product without production customers yet**. Say "built to", not "used by".
 - The NEAR anchoring is optional and works on testnet; mainnet use has not been exercised.
 - The first version was built for Russian companies; Western readiness (currency, time zone, language, US demo
-  company) was added in November 2026. Stripe billing, AWS Terraform and an ECB rate source are not built yet.
+  company) was added in November 2026. Stripe billing and AWS Terraform are not built yet.
 - Savings shown in the demo are computed from **synthetic** data.
 
 ## Proof points that are true today
 
-- 74 ADRs; about 590 automated Java tests, about 470 Python tests, 45 UI tests and 20 Rust contract tests (see
+- 75 ADRs; about 590 automated Java tests, about 470 Python tests, 45 UI tests and 20 Rust contract tests (see
   `docs/COMMERCIAL_READINESS_REPORT.md` for the exact runs).
 - Security review findings fixed and documented (ADR 0069–0071); dependency scan clean as of 2026-11-23.
 - A NEAR testnet contract with real anchored transactions (links in the README).

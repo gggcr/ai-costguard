@@ -85,7 +85,6 @@ Not implemented yet, or not production-ready:
   implemented; Stripe is planned.
 - **Hosting outside Russia**: Terraform exists for Yandex Cloud only; the Helm chart is cloud-neutral, an AWS module
   is planned.
-- **FX rates**: only the Bank of Russia is a source; a non-Russian source (ECB) is planned.
 - **English**: the UI has an RU/EN switch and the core writes notifications and findings in English for English
   companies, but some employee-cabinet notices and the PDF documents are still Russian.
 - **Country rules**: vacation allowance (28 days) and payroll schedule follow Russian labor law.

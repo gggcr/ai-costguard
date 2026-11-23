@@ -68,7 +68,7 @@ pay for."
 
 ## 5. Close (2 minutes)
 
-- What is real today and what is not (Stripe billing, AWS Terraform, an ECB rate source, SOC 2) —
+- What is real today and what is not (Stripe billing, AWS Terraform, SOC 2) —
   [BUYER_BRIEF.md](BUYER_BRIEF.md).
 - Every number they saw came from synthetic data.
 

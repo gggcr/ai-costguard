@@ -7,7 +7,7 @@ the repository; nothing is projected or invented.
 
 - **Source code** of a working multi-tenant product: a Java 25 / Spring Boot core, an agent gateway, five Python
   services, a React web UI, Python and TypeScript SDKs, and a Rust smart contract.
-- **74 architecture decision records** explaining why each part is built the way it is.
+- **75 architecture decision records** explaining why each part is built the way it is.
 - **Contracts and tests**: Avro schemas for every Kafka topic, OpenAPI specs checked against the code, about
   1,100 automated tests across Java, Python, TypeScript and Rust.
 - **Operations**: Docker Compose for local runs, a Helm chart, Argo CD applications, Terraform (Yandex Cloud),
@@ -37,7 +37,6 @@ the repository; nothing is projected or invented.
 |---|---|
 | Card payments for plans (Stripe): the provider interface exists, only a test provider is implemented | 1–2 weeks |
 | AWS / GCP / Azure Terraform (the Helm chart is cloud-neutral) | 1–2 weeks |
-| A non-Russian FX source (ECB) — today rates come from the Bank of Russia | 2–3 days |
 | Country rules outside Russia: vacation allowance, payroll frequency, e-signature wording | 1–2 weeks |
 | Some employee-cabinet notices and PDF documents are still in Russian | 3–5 days |
 | JWT audience validation, general API rate limiting at the core | 1–2 days |

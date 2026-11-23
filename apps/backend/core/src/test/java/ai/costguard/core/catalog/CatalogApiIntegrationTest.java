@@ -127,7 +127,7 @@ class CatalogApiIntegrationTest extends PostgresTestSupport {
     void aCompanyInDollarsConvertsThroughTheRouble() {
         jdbc.sql("""
                 insert into fx_rate values ('2025-03-03', 'USD', 80), ('2025-03-03', 'EUR', 88)
-                on conflict (rate_date, currency) do update set rate = excluded.rate""").update();
+                on conflict (rate_date, base, currency) do update set rate = excluded.rate""").update();
         LocalDate day = LocalDate.of(2025, 3, 4);
 
         assertThat(rates.convert(new BigDecimal("100"), "EUR", "USD", day)).contains(new BigDecimal("110.00"));
@@ -135,5 +135,19 @@ class CatalogApiIntegrationTest extends PostgresTestSupport {
         assertThat(rates.convert(new BigDecimal("100"), "USD", "USD", day)).contains(new BigDecimal("100"));
         assertThat(rates.convert(new BigDecimal("100"), "RUR", "RUB", day)).contains(new BigDecimal("100"));
         assertThat(rates.convert(BigDecimal.ONE, "XYZ", "USD", day)).isEmpty();
+    }
+
+    /** ADR 0075: ECB rates are euros per unit; both currencies of a conversion come from one base. */
+    @Test
+    void euroRatesConvertWithoutTheRouble() {
+        jdbc.sql("""
+                insert into fx_rate (rate_date, base, currency, rate)
+                values ('2024-01-02', 'EUR', 'CHF', 1.05), ('2024-01-02', 'EUR', 'SEK', 0.0875)
+                on conflict (rate_date, base, currency) do update set rate = excluded.rate""").update();
+        LocalDate day = LocalDate.of(2024, 1, 3);
+
+        assertThat(rates.convert(new BigDecimal("10"), "CHF", "SEK", day)).contains(new BigDecimal("120.00"));
+        assertThat(rates.convert(new BigDecimal("10"), "CHF", "EUR", day)).contains(new BigDecimal("10.50"));
+        assertThat(rates.convert(new BigDecimal("10"), "CHF", "RUB", day)).isEmpty();
     }
 }

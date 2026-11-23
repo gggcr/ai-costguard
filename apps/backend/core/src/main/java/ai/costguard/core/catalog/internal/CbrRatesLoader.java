@@ -17,8 +17,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Loads today's rates on start and every few hours; a failure keeps the previous rates. Each load also goes to the
- * gateway ({@code catalog.rates.v1}, ADR 0072), which keeps the latest rate of every currency.
+ * Loads today's rates of the configured source (the Bank of Russia or the ECB, ADR 0075) on start and every few
+ * hours; a failure keeps the previous rates. Each load also goes to the gateway ({@code catalog.rates.v1}, ADR 0072),
+ * which keeps the latest rate of every currency. {@code costguard.catalog.cbr.enabled=false} turns loading off.
  */
 @Component
 @ConditionalOnProperty(name = "costguard.catalog.cbr.enabled", havingValue = "true", matchIfMissing = true)
@@ -27,16 +28,19 @@ class CbrRatesLoader {
     private static final Logger log = LoggerFactory.getLogger(CbrRatesLoader.class);
 
     private final CatalogRepository catalog;
-    private final URI source;
+    private final RatesSource source;
+    private final URI url;
     private final ApplicationEventPublisher events;
     private final TransactionTemplate tx;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
     CbrRatesLoader(CatalogRepository catalog,
-            @Value("${costguard.catalog.cbr.url:https://www.cbr.ru/scripts/XML_daily.asp}") URI source,
+            @Value("${costguard.catalog.rates.source:cbr}") String source,
+            @Value("${costguard.catalog.rates.url:}") String url,
             ApplicationEventPublisher events, TransactionTemplate tx) {
         this.catalog = catalog;
-        this.source = source;
+        this.source = RatesSource.of(source);
+        this.url = url.isBlank() ? this.source.defaultUrl : URI.create(url);
         this.events = events;
         this.tx = tx;
     }
@@ -45,25 +49,25 @@ class CbrRatesLoader {
     void refresh() {
         try {
             HttpResponse<byte[]> response = http.send(
-                    HttpRequest.newBuilder(source).timeout(Duration.ofSeconds(20)).GET().build(),
+                    HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(20)).GET().build(),
                     HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() != 200) {
-                log.warn("Bank of Russia answered {}, keeping previous rates", response.statusCode());
+                log.warn("{} answered {}, keeping previous rates", source, response.statusCode());
                 return;
             }
-            List<FxRate> rates = CbrRatesParser.parse(response.body());
+            List<FxRate> rates = source.parse(response.body());
             tx.executeWithoutResult(status -> save(rates));
         } catch (Exception e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            log.warn("Could not load Bank of Russia rates, keeping previous rates: {}", e.toString());
+            log.warn("Could not load {} rates, keeping previous rates: {}", source, e.toString());
         }
     }
 
     /** In one transaction with the events, so the outbox sends them only once the rates are saved. */
     void save(List<FxRate> rates) {
-        rates.forEach(catalog::saveRate);
+        rates.forEach(r -> catalog.saveRate(r, source.base));
         rates.forEach(r -> events.publishEvent(new ExchangeRateChanged(r.currency(), r.rate(), r.date())));
     }
 }

@@ -27,8 +27,8 @@ Yes; that is the only way today. Docker Compose for evaluation, a Helm chart for
 offering yet.
 
 **Which currencies, languages and countries?**
-Any ISO currency per company, converted at the rate of the day (today from the Bank of Russia; a European Central
-Bank source is planned). The UI is in English and Russian; server texts follow the company's language. Files are
+Any ISO currency per company, converted at the rate of the day, from the European Central Bank or the Bank of
+Russia (one source per installation). The UI is in English and Russian; server texts follow the company's language. Files are
 read by the company's country conventions (US dates are month/day/year). Vacation and payroll rules currently
 follow Russian law.
 
@@ -42,7 +42,7 @@ notice exist only as drafts for a lawyer. There is no SOC 2 or ISO 27001 report.
 
 **Who built it, and how?**
 A small team, starting at a NEAR hackathon in November 2026, mostly with AI coding assistants under the team's
-direction and review. The repository's 74 ADRs and automated tests are the best way to judge the result.
+direction and review. The repository's 75 ADRs and automated tests are the best way to judge the result.
 
 **What is the license?**
 MIT. See the buyer brief for what that means for an acquisition.

@@ -155,7 +155,7 @@ class AuditRulesIntegrationTest extends PostgresTestSupport {
         LocalDate paid = today.minusDays(3);
         jdbc.sql("""
                 insert into fx_rate (rate_date, currency, rate) values (?, 'USD', 100)
-                on conflict (rate_date, currency) do update set rate = excluded.rate
+                on conflict (rate_date, base, currency) do update set rate = excluded.rate
                 """).param(paid).update();
 
         String day = today.minusDays(10).toString();

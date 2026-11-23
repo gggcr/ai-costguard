@@ -11,7 +11,7 @@ from what exists in the repository.
 
 - A working, tested codebase of real breadth (core, gateway, five services, UI, SDKs, contract) that would take a
   small team months to rebuild.
-- Unusual engineering hygiene for its age: 74 ADRs, contract tests, OpenAPI specs checked by tests, security
+- Unusual engineering hygiene for its age: 75 ADRs, contract tests, OpenAPI specs checked by tests, security
   review fixes, runbooks, Helm and CI.
 - A demonstrable niche: enforcement of AI agent spend before payment, with a verifiable journal.
 
