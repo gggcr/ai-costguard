@@ -1,0 +1,5 @@
+# A small staging installation: one NAT gateway, single-AZ databases, two brokers. Roughly the smallest that runs
+# the whole stack; see docs/AWS_DEPLOYMENT_GUIDE.md for the cost estimate.
+environment         = "staging"
+region              = "us-east-2"
+cluster_admin_cidrs = ["203.0.113.10/32"]   # your office or VPN address

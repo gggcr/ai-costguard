@@ -63,6 +63,8 @@ spring-modulith-starter-test = { module = "org.springframework.modulith:spring-m
 
 # S3: uploaded files of the core (Yandex Object Storage, SeaweedFS locally)
 aws-s3 = { module = "software.amazon.awssdk:s3" }
+# web identity (IAM roles of Kubernetes service accounts on EKS) for S3 without static keys
+aws-sts = { module = "software.amazon.awssdk:sts" }
 aws-url-connection-client = { module = "software.amazon.awssdk:url-connection-client" }
 
 # Databases

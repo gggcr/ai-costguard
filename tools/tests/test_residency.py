@@ -83,5 +83,13 @@ def test_the_rendered_chart_points_every_service_at_its_region():
                 assert env["S3_REGION"] == env["DATA_REGION"] == "ru-central1"
             if "MLFLOW_S3_ENDPOINT_URL" in env:
                 assert env["AWS_DEFAULT_REGION"] == "ru-central1"
+    # a region of the AWS module (ADR 0078) gets its own S3 endpoint
+    for doc in render("region=eu-central-1"):
+        if doc["kind"] == "Deployment":
+            for container in doc["spec"]["template"]["spec"]["containers"]:
+                env = {e["name"]: e.get("value") for e in container.get("env", [])}
+                if "S3_ENDPOINT" in env:
+                    assert env["S3_ENDPOINT"] == "https://s3.eu-central-1.amazonaws.com"
+                    assert env["S3_REGION"] == env["DATA_REGION"] == "eu-central-1"
     with pytest.raises(subprocess.CalledProcessError):
-        render("region=eu-west-1")
+        render("region=ap-south-1")

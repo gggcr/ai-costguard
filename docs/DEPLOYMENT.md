@@ -10,7 +10,8 @@ values are the same in any language).
 |---|---|
 | Local Docker Compose (`make demo`, `make demo-lite`) | the supported way to evaluate the product |
 | Helm chart | `helm lint` and `helm template` with the staging and prod values in CI (`.github/workflows/deploy.yml`), plus `tools/tests/test_helm.py` |
-| Terraform for Yandex Cloud (`deploy/terraform/yandex`) | `terraform fmt -check` and `terraform validate` in CI; this is the only cloud module |
+| Terraform for Yandex Cloud (`deploy/terraform/yandex`) | `terraform fmt -check` and `terraform validate` in CI |
+| Terraform for AWS, US and EU regions (`deploy/terraform/aws`, ADR 0078) | `fmt`, `validate` and checkov pass; not applied to an account yet. Guide: [AWS_DEPLOYMENT_GUIDE.md](AWS_DEPLOYMENT_GUIDE.md) |
 | AWS, GCP, Azure | **not provided yet.** The chart itself is cloud-neutral (it needs an ingress controller, a storage class and the managed services below) |
 | A production installation serving customers | none so far |
 

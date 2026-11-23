@@ -46,7 +46,9 @@ jobs:
   terraform:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: deploy/terraform/yandex } }
+    strategy:
+      matrix: { module: [yandex, aws] }
+    defaults: { run: { working-directory: "deploy/terraform/${{ matrix.module }}" } }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3

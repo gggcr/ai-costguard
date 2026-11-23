@@ -31,6 +31,11 @@ dependencies {
         exclude(group = "software.amazon.awssdk", module = "apache-client")
     }
     implementation(libs.aws.url.connection.client)
+    // IAM roles of service accounts on EKS (web identity) when no static S3 key is set; the same HTTP client as S3
+    runtimeOnly(libs.aws.sts) {
+        exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+        exclude(group = "software.amazon.awssdk", module = "apache-client")
+    }
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)

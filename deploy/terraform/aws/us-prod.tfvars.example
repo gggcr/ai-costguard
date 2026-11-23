@@ -1,0 +1,19 @@
+# Production in the US (data of US customers stays in us-east-1).
+environment           = "prod"
+region                = "us-east-1"
+az_count              = 3
+single_nat_gateway    = false
+node_instance_types   = ["m6i.xlarge"]
+nodes_min             = 3
+nodes_desired         = 3
+nodes_max             = 8
+postgres_instance_class = "db.m7g.large"
+postgres_storage_gb     = 100
+backup_retention_days = 30
+redis_node_type       = "cache.m7g.large"
+kafka_instance_type   = "kafka.m7g.large"
+kafka_brokers         = 3
+kafka_disk_gb         = 200
+log_retention_days    = 365
+cluster_admin_cidrs   = []   # private API endpoint; reach it through your VPN
+tags                  = { CostCenter = "costguard-prod-us" }

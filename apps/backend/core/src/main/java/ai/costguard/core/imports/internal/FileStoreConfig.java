@@ -39,7 +39,10 @@ class FileStoreConfig {
                 .forcePathStyle(true)
                 .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
                 .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)));
+                // No key: the default chain, i.e. the IAM role of the pod's service account on EKS (deploy/terraform/aws)
+                .credentialsProvider(accessKey.isBlank()
+                        ? software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.builder().build()
+                        : StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)));
         if (!endpoint.isBlank()) {
             builder.endpointOverride(URI.create(endpoint));
         }

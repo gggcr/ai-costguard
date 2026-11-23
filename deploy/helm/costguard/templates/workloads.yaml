@@ -32,6 +32,9 @@ spec:
         app.kubernetes.io/part-of: costguard
         app.kubernetes.io/name: {{ $name }}
     spec:
+      {{- with $.Values.serviceAccount.name }}
+      serviceAccountName: {{ . }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }

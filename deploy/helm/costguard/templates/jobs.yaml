@@ -51,6 +51,9 @@ spec:
       template:
         spec:
           restartPolicy: Never
+          {{- with $.Values.serviceAccount.name }}
+          serviceAccountName: {{ . }}
+          {{- end }}
           securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
           containers:
             - name: connectors

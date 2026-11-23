@@ -1,0 +1,11 @@
+# Copy to backend.tf. One state per environment and region: create the bucket and the lock table once, by hand or
+# with a bootstrap stack, in the same region (the state names the data stores of that region).
+terraform {
+  backend "s3" {
+    bucket         = "costguard-terraform-state-<account-id>"
+    key            = "aws/<environment>/<region>/terraform.tfstate"
+    region         = "<region>"
+    dynamodb_table = "costguard-terraform-locks"
+    encrypt        = true
+  }
+}

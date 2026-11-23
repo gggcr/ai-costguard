@@ -11,6 +11,27 @@ region: ru-central1
 regions:
   ru-central1:
     s3Endpoint: https://storage.yandexcloud.net
+  # AWS (deploy/terraform/aws): the US and EU regions the Terraform module allows
+  us-east-1:
+    s3Endpoint: https://s3.us-east-1.amazonaws.com
+  us-east-2:
+    s3Endpoint: https://s3.us-east-2.amazonaws.com
+  us-west-2:
+    s3Endpoint: https://s3.us-west-2.amazonaws.com
+  eu-central-1:
+    s3Endpoint: https://s3.eu-central-1.amazonaws.com
+  eu-west-1:
+    s3Endpoint: https://s3.eu-west-1.amazonaws.com
+  eu-north-1:
+    s3Endpoint: https://s3.eu-north-1.amazonaws.com
+
+# The Kubernetes service account of the workloads. Empty name: the namespace's default account. On AWS set
+# create: true, a name, and the annotation eks.amazonaws.com/role-arn with terraform output workloads_role_arn, and
+# leave S3_ACCESS_KEY and S3_SECRET_KEY out of the secret: the pods then use the IAM role.
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
 
 # Managed services outside the cluster (deploy/terraform creates them). Secrets are not here: every service reads
 # the Kubernetes secret named in `secretName` (create it from Lockbox or Vault, see docs/runbooks/secrets.md).

@@ -85,6 +85,23 @@ and tampered deliveries; disabling the signature check or the dedup makes tests 
 | `dangerouslySetInnerHTML` | one: a QR code SVG generated locally from the TOTP URI |
 | `helm lint`, `helm template` (default, staging, prod values) | pass |
 
+## AWS Terraform (checkov 3, `deploy/terraform/aws`)
+
+First scan: 221 passed, 36 failed. Fixed: descriptions on security group rules, RDS enhanced monitoring and IAM
+authentication, all five EKS control-plane log types, a year of log retention in the prod examples. Second scan:
+**232 passed, 30 failed**, all reviewed and accepted:
+
+| Check | Why it stays |
+|---|---|
+| CKV_AWS_144 cross-region replication of buckets | contradicts data residency: EU data must not be copied to another region (ADR 0078) |
+| CKV_AWS_18 S3 access logging | server access logs cannot be written to an SSE-KMS bucket; use CloudTrail S3 data events if a customer requires object-level audit |
+| CKV2_AWS_62 S3 event notifications | nothing consumes them |
+| CKV_AWS_21 versioning of `logs` and `mlflow` | logs expire anyway; models are reproducible; `imports` and `backups` are versioned |
+| CKV2_AWS_6, CKV2_AWS_61, CKV_AWS_145 on three buckets | false positives: the public access block, lifecycle and KMS encryption are applied to every bucket with `for_each` (checkov links only some instances) |
+| CKV2_AWS_57 automatic rotation of the Redis and Kafka secrets | rotation needs a Lambda per service; rotate with `secret_generation` and a rolling restart (guide) |
+| CKV_AWS_338 log retention under a year | staging defaults to 30 days for cost; prod examples use 365 |
+| CKV_AWS_394 pinning availability zone ids | the module takes the first `az_count` zones; acceptable |
+
 ## Areas reviewed without new findings
 
 Tenant isolation (PostgreSQL RLS forced on tenant tables, the app connects as a non-superuser; ClickHouse row

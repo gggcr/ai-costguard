@@ -63,8 +63,8 @@ class S3Bucket:
                  region: str = "ru-central1") -> None:
         import boto3
 
-        self._s3 = boto3.client("s3", endpoint_url=endpoint, region_name=region, aws_access_key_id=access_key,
-                                aws_secret_access_key=secret_key)
+        self._s3 = boto3.client("s3", endpoint_url=endpoint, region_name=region, aws_access_key_id=access_key or None,
+                                aws_secret_access_key=secret_key or None)  # none: the pod's IAM role
         self._bucket = bucket
 
     def objects(self, prefix: str) -> Iterator[Object]:
