@@ -21,14 +21,17 @@ from costguard_common import llm, tracing
 from costguard_reports import explain, report
 
 
-def fetch(core: httpx.Client, months: int) -> tuple[str, str, list[tuple[date, Decimal]], dict]:
+def fetch(core: httpx.Client, months: int) -> tuple[str, str, list[tuple[date, Decimal]], dict, str]:
+    """The company's name, currency, monthly agent spend, findings and language (ADR 0074: ru or en)."""
     summary = core.get("/api/v1/analytics/summary", params={"months": months})
     summary.raise_for_status()
     company = core.get("/api/v1/company")
     info = company.json() if company.status_code == 200 else {}
     body = summary.json()
     series = [(date.fromisoformat(m["month"] + "-01"), Decimal(str(m["amount"]))) for m in body["agentSpend"]]
-    return info.get("name", "компании"), info.get("currency", "RUB"), series, body.get("findings", {})
+    language = str(info.get("language") or "ru").lower()
+    return (info.get("name") or report.TEXT[report._lang(language)]["company"], info.get("currency", "RUB"), series,
+            body.get("findings", {}), language)
 
 
 def fetch_clickhouse(clickhouse: httpx.Client, tenant: str, currency: str, months: int,
@@ -62,14 +65,14 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     core = httpx.Client(base_url=os.environ["CORE_URL"], timeout=60,
                         headers={"Authorization": f"Bearer {os.environ['CORE_TOKEN']}"})
-    company, currency, series, findings = fetch(core, args.months)
+    company, currency, series, findings, language = fetch(core, args.months)
     if args.tenant and os.environ.get("CLICKHOUSE_URL"):
         clickhouse = httpx.Client(base_url=os.environ["CLICKHOUSE_URL"], timeout=60,
                                   auth=(os.environ.get("CLICKHOUSE_USER", "default"),
                                         os.environ.get("CLICKHOUSE_PASSWORD", "")))
         series = fetch_clickhouse(clickhouse, args.tenant, currency, args.months,
                                   os.environ.get("CLICKHOUSE_TENANT_SETTING") == "1")
-    r = report.build(company, currency, series, findings, date.today(), args.horizon)
+    r = report.build(company, currency, series, findings, date.today(), args.horizon, language)
     text = explain.explain(r, model(os.environ), f"report-{date.today():%Y-%m}")
     args.out.write_bytes(report.xlsx(r, text.text) if args.format == "xlsx" else report.pdf(r, text.text))
     print(f"{args.out}: {len(series)} months, forecast {r.forecast.method}, explanation by {text.source}")

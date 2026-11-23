@@ -39,8 +39,21 @@ final class HandoverActPdf {
     /** What the act shows. {@code company} and {@code employee} are as they were at the moment of the issue. */
     record ActData(String number, LocalDate issuedOn, String company, String currency, EmployeeCard employee,
             String model, AssetType type, String inventoryNumber, String serialNumber, BigDecimal cost,
-            LocalDate returnDue, String issuedBy, UUID assignmentId, Instant createdAt) {
+            LocalDate returnDue, String issuedBy, UUID assignmentId, Instant createdAt, ai.costguard.core.shared.names.Language language) {
+
+        ActData(String number, LocalDate issuedOn, String company, String currency, EmployeeCard employee,
+                String model, AssetType type, String inventoryNumber, String serialNumber, BigDecimal cost,
+                LocalDate returnDue, String issuedBy, UUID assignmentId, Instant createdAt) {
+            this(number, issuedOn, company, currency, employee, model, type, inventoryNumber, serialNumber, cost,
+                    returnDue, issuedBy, assignmentId, createdAt, ai.costguard.core.shared.names.Language.RU);
+        }
+
+        boolean english() {
+            return language == ai.costguard.core.shared.names.Language.EN;
+        }
     }
+
+    private static final DateTimeFormatter DAY_EN = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH);
 
     private static final String FONT = "/fonts/DejaVuSans.ttf";
     private static final Locale RU = Locale.forLanguageTag("ru");
@@ -66,7 +79,12 @@ final class HandoverActPdf {
             PDPage page = new PDPage(PDRectangle.A4);
             doc.addPage(page);
             try (PDPageContentStream out = new PDPageContentStream(doc, page)) {
-                write(new Canvas(out, font, PDRectangle.A4.getHeight() - MARGIN), d);
+                Canvas canvas = new Canvas(out, font, PDRectangle.A4.getHeight() - MARGIN);
+                if (d.english()) {
+                    writeEnglish(canvas, d);
+                } else {
+                    write(canvas, d);
+                }
             }
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             doc.save(bytes);
@@ -78,8 +96,9 @@ final class HandoverActPdf {
 
     private static void info(PDDocument doc, ActData d) {
         PDDocumentInformation info = doc.getDocumentInformation();
-        info.setTitle("Акт № " + d.number() + " приёма-передачи оборудования");
-        info.setSubject(d.model() + ", инв. № " + d.inventoryNumber());
+        info.setTitle(d.english() ? "Equipment handover receipt No. " + d.number()
+                : "Акт № " + d.number() + " приёма-передачи оборудования");
+        info.setSubject(d.model() + (d.english() ? ", asset tag " : ", инв. № ") + d.inventoryNumber());
         info.setCreator("CostGuard");
         info.setProducer("CostGuard");
         Calendar created = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
@@ -144,6 +163,80 @@ final class HandoverActPdf {
         c.footer("Акт сформирован CostGuard автоматически при выдаче " + MOMENT.format(d.createdAt())
                 + (reported ? " по данным " + d.issuedBy().substring(AssetService.CONNECTOR.length()) : "")
                 + ". Выдача " + d.assignmentId() + ".", 7.5f);
+    }
+
+    /**
+     * The act of an English company (ADR 0074): the same content as the Russian act, in plain English, with no
+     * reference to a particular law. Names are written in full, as an English signature line has them.
+     */
+    private static void writeEnglish(Canvas c, ActData d) throws IOException {
+        String company = blankIfMissing(d.company());
+        EmployeeCard who = d.employee();
+
+        c.centered("EQUIPMENT HANDOVER RECEIPT No. " + d.number(), 14);
+        c.gap(4);
+        c.centered("equipment issued to an employee", 11);
+        c.gap(16);
+        c.line(DAY_EN.format(d.issuedOn()), 10.5f);
+        c.gap(10);
+
+        c.line("Employer: " + company, 10.5f);
+        c.line("Employee: " + who.name(), 10.5f);
+        c.line("Position: " + who.position(), 10.5f);
+        c.line("Department: " + who.department(), 10.5f);
+        c.gap(10);
+
+        c.line(company + " (the Employer) hands over, and " + who.name()
+                + " (the Employee) receives, the following equipment for the Employee's work:", 10.5f);
+        c.gap(6);
+
+        c.table(COLUMNS, List.of(
+                List.of("#", "Item", "Type", "Asset tag", "Serial number",
+                        "Value, " + (d.currency() == null ? "" : d.currency())),
+                List.of("1", d.model(), typeNameEn(d.type()), d.inventoryNumber(),
+                        d.serialNumber() == null ? "—" : d.serialNumber(), moneyEn(d.cost()))), 9);
+        c.gap(10);
+
+        c.line(d.returnDue() == null
+                ? "No return date: the equipment is returned at the Employer's request or when employment ends."
+                : "Return by: " + DAY_EN.format(d.returnDue()), 10.5f);
+        c.gap(6);
+        for (String clause : List.of(
+                "1. The equipment was handed over in working order. The Employee checked that it is complete and "
+                        + "works.",
+                "2. The Employee will use the equipment for work, keep it safe, and return it to the Employer at the "
+                        + "end of the term, on request, or when employment ends.",
+                "3. This receipt is made in two copies, one for each party.")) {
+            c.line(clause, 10.5f);
+            c.gap(3);
+        }
+        c.gap(28);
+
+        float half = WIDTH / 2;
+        c.columns(half, "Handed over (for the Employer)", "Received (the Employee)", 10.5f);
+        c.gap(22);
+        boolean reported = d.issuedBy().startsWith(AssetService.CONNECTOR);
+        c.columns(half, "______________ / " + (reported ? "________________" : d.issuedBy()) + " /",
+                "______________ / " + who.name().strip() + " /", 10.5f);
+        c.gap(8);
+        c.columns(half, "Date: ____________", "Date: ____________", 10.5f);
+
+        c.footer("Generated by CostGuard when the equipment was issued, " + MOMENT.format(d.createdAt())
+                + (reported ? ", from data of " + d.issuedBy().substring(AssetService.CONNECTOR.length()) : "")
+                + ". Issue " + d.assignmentId() + ".", 7.5f);
+    }
+
+    static String typeNameEn(AssetType type) {
+        return switch (type) {
+            case LAPTOP -> "Laptop";
+            case PHONE -> "Phone";
+            case MONITOR -> "Monitor";
+            case OTHER -> "Other";
+        };
+    }
+
+    static String moneyEn(BigDecimal amount) {
+        return new DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(Locale.ENGLISH)).format(amount);
     }
 
     static String typeName(AssetType type) {

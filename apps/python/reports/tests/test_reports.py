@@ -93,8 +93,22 @@ def test_fetch_from_the_core():
         return httpx.Response(200, json={"name": "Ромашка", "currency": "RUB"})
 
     core = httpx.Client(base_url="http://core", transport=httpx.MockTransport(handle))
-    company, currency, series, findings = cli.fetch(core, 6)
+    company, currency, series, findings, language = cli.fetch(core, 6)
     assert company == "Ромашка" and series == [(date(2026, 10, 1), Decimal("120.5"))] and findings["open"] == 3
+    assert language == "ru"
+
+
+def test_an_english_company_gets_an_english_report():
+    from pypdf import PdfReader
+
+    r = report.build("Brightline Analytics Inc.", "USD", sample().months, FINDINGS, date(2026, 11, 7),
+                     language="en")
+    text = PdfReader(io.BytesIO(report.pdf(r))).pages[0].extract_text()
+    assert "Spend of Brightline Analytics Inc." in text and "Forecast" in text and "Nov 2026" in text
+    assert "Generated Nov 07, 2026, currency USD" in text
+    assert not any("\u0400" <= ch <= "\u04ff" for ch in text)
+    book = load_workbook(io.BytesIO(report.xlsx(r)))
+    assert book["Spend"]["A5"].value == "Dec 2025" and book["Summary"]["A3"].value == "Open findings"
 
 
 def test_fetch_from_clickhouse():

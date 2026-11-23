@@ -45,7 +45,8 @@ class HandoverActs {
         byte[] pdf = HandoverActPdf.render(new HandoverActPdf.ActData(number, issued.issuedAt(),
                 company == null ? null : company.name(), company == null ? null : company.currency(), employee,
                 asset.model(), asset.type(), asset.inventoryNumber(), asset.serialNumber(), asset.cost(),
-                issued.returnDue(), issuedBy, issued.id(), now));
+                issued.returnDue(), issuedBy, issued.id(), now,
+                company == null ? ai.costguard.core.shared.names.Language.RU : company.language()));
         jdbc.sql("""
                 insert into asset_act (id, tenant_id, assignment_id, number, issued_on, issued_by, pdf, sha256,
                                        created_at)

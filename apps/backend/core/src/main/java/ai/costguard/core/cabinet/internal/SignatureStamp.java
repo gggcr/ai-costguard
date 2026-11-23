@@ -20,7 +20,8 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 /**
  * The signed copy of a PDF (ADR 0068): every page gets a line «Подписано электронной подписью» at the top, and a last
  * page lists each signature in a stamp: who, as which side, when, how, and the SHA-256 of the original file. The
- * original stays in storage as it was uploaded; this copy is drawn on every download.
+ * original stays in storage as it was uploaded; this copy is drawn on every download. The stamp speaks the company's
+ * language (ADR 0074); the English one claims no particular law, since which law applies depends on the document.
  */
 final class SignatureStamp {
 
@@ -29,6 +30,13 @@ final class SignatureStamp {
     static DateTimeFormatter moment(ZoneId zone) {
         String pattern = zone.equals(ZoneId.of("Europe/Moscow")) ? "dd.MM.yyyy HH:mm 'МСК'" : "dd.MM.yyyy HH:mm z";
         return DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH).withZone(zone);
+    }
+
+    /** As an English reader writes it: Nov 23, 2026 14:05 EST. */
+    static DateTimeFormatter moment(ZoneId zone, ai.costguard.core.shared.names.Language lang) {
+        return lang == ai.costguard.core.shared.names.Language.EN
+                ? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm z", java.util.Locale.ENGLISH).withZone(zone)
+                : moment(zone);
     }
     private static final PDColor BLUE = new PDColor(new float[] {0.11f, 0.30f, 0.62f}, PDDeviceRGB.INSTANCE);
     private static final float MARGIN = 56;
@@ -55,17 +63,29 @@ final class SignatureStamp {
         };
     }
 
-    private static String method(String method) {
-        return "totp".equals(method) ? "одноразовый код из приложения-аутентификатора" : "ПИН-код подписи";
+    private static String method(String method, ai.costguard.core.shared.names.Language lang) {
+        return "totp".equals(method)
+                ? lang.pick("одноразовый код из приложения-аутентификатора", "a one-time code from an authenticator app")
+                : lang.pick("ПИН-код подписи", "a signing PIN");
+    }
+
+    private static String party(String party, ai.costguard.core.shared.names.Language lang) {
+        return lang == ai.costguard.core.shared.names.Language.EN ? partyEn(party) : party(party);
     }
 
     static byte[] stamp(byte[] pdf, String title, UUID documentId, List<DocumentSignature> signatures,
             ZoneId zone) {
-        DateTimeFormatter moment = moment(zone);
+        return stamp(pdf, title, documentId, signatures, zone, ai.costguard.core.shared.names.Language.RU);
+    }
+
+    static byte[] stamp(byte[] pdf, String title, UUID documentId, List<DocumentSignature> signatures,
+            ZoneId zone, ai.costguard.core.shared.names.Language lang) {
+        DateTimeFormatter moment = moment(zone, lang);
         try (PDDocument doc = Loader.loadPDF(pdf); InputStream fontFile = SignatureStamp.class.getResourceAsStream(FONT)) {
             PDType0Font font = PDType0Font.load(doc, fontFile);
-            String line = "Подписано электронной подписью: " + String.join("; ", signatures.stream()
-                    .map(s -> s.signerName() + " (" + party(s.party()).toLowerCase() + ") "
+            String line = lang.pick("Подписано электронной подписью: ", "Signed electronically: ")
+                    + String.join("; ", signatures.stream()
+                    .map(s -> s.signerName() + " (" + party(s.party(), lang).toLowerCase() + ") "
                             + moment.format(s.signedAt()))
                     .toList());
             for (PDPage page : doc.getPages()) {
@@ -85,9 +105,10 @@ final class SignatureStamp {
             float width = PDRectangle.A4.getWidth() - 2 * MARGIN;
             try (PDPageContentStream c = new PDPageContentStream(doc, sheet)) {
                 float y = PDRectangle.A4.getHeight() - MARGIN;
-                y = text(c, font, 14, MARGIN, y, "Лист электронных подписей");
-                y = text(c, font, 10, MARGIN, y - 4, fit(font, 10, "Документ: " + title, width));
-                y = text(c, font, 8, MARGIN, y, "Идентификатор документа: " + documentId);
+                y = text(c, font, 14, MARGIN, y, lang.pick("Лист электронных подписей", "Electronic signature sheet"));
+                y = text(c, font, 10, MARGIN, y - 4, fit(font, 10, lang.pick("Документ: ", "Document: ") + title,
+                        width));
+                y = text(c, font, 8, MARGIN, y, lang.pick("Идентификатор документа: ", "Document ID: ") + documentId);
                 y -= 12;
                 for (DocumentSignature s : signatures) {
                     float h = 92;
@@ -96,22 +117,34 @@ final class SignatureStamp {
                     c.addRect(MARGIN, y - h, width, h);
                     c.stroke();
                     c.setNonStrokingColor(BLUE);
-                    float ty = text(c, font, 11, MARGIN + 10, y - 8, "ДОКУМЕНТ ПОДПИСАН ПРОСТОЙ ЭЛЕКТРОННОЙ ПОДПИСЬЮ");
+                    float ty = text(c, font, 11, MARGIN + 10, y - 8, lang.pick(
+                            "ДОКУМЕНТ ПОДПИСАН ПРОСТОЙ ЭЛЕКТРОННОЙ ПОДПИСЬЮ", "SIGNED WITH AN ELECTRONIC SIGNATURE"));
                     c.setNonStrokingColor(0f, 0f, 0f);
-                    ty = text(c, font, 9, MARGIN + 10, ty, "Сторона: " + party(s.party()));
-                    ty = text(c, font, 9, MARGIN + 10, ty, fit(font, 9, "Подписант: " + s.signerName() + ", "
-                            + s.signerEmail(), width - 20));
-                    ty = text(c, font, 9, MARGIN + 10, ty, "Дата и время: " + moment.format(s.signedAt()));
-                    ty = text(c, font, 9, MARGIN + 10, ty, "Способ подтверждения: " + method(s.method()));
-                    text(c, font, 7, MARGIN + 10, ty, "SHA-256 исходного файла: " + s.documentSha256());
+                    ty = text(c, font, 9, MARGIN + 10, ty, lang.pick("Сторона: ", "Party: ") + party(s.party(), lang));
+                    ty = text(c, font, 9, MARGIN + 10, ty, fit(font, 9, lang.pick("Подписант: ", "Signer: ")
+                            + s.signerName() + ", " + s.signerEmail(), width - 20));
+                    ty = text(c, font, 9, MARGIN + 10, ty, lang.pick("Дата и время: ", "Date and time: ")
+                            + moment.format(s.signedAt()));
+                    ty = text(c, font, 9, MARGIN + 10, ty, lang.pick("Способ подтверждения: ", "Verified by: ")
+                            + method(s.method(), lang));
+                    text(c, font, 7, MARGIN + 10, ty, lang.pick("SHA-256 исходного файла: ",
+                            "SHA-256 of the original file: ") + s.documentSha256());
                     y -= h + 12;
                     if (y < MARGIN + 100) {
                         break;
                     }
                 }
                 c.setNonStrokingColor(0.4f, 0.4f, 0.4f);
-                text(c, font, 7, MARGIN, MARGIN, fit(font, 7, "Простая электронная подпись (63-ФЗ, ст. 5, 9) в "
-                        + "системе CostGuard. Хэш позволяет проверить, что подписан именно этот файл.", width));
+                if (lang == ai.costguard.core.shared.names.Language.EN) {
+                    // two lines: the note must not be cut
+                    text(c, font, 7, MARGIN, MARGIN + 10, fit(font, 7, "An electronic signature made in CostGuard. "
+                            + "The hash lets anyone check that this exact file was signed.", width));
+                    text(c, font, 7, MARGIN, MARGIN, fit(font, 7, "Whether it suffices for a document depends on the "
+                            + "law that applies to it.", width));
+                } else {
+                    text(c, font, 7, MARGIN, MARGIN, fit(font, 7, "Простая электронная подпись (63-ФЗ, ст. 5, 9) в "
+                            + "системе CostGuard. Хэш позволяет проверить, что подписан именно этот файл.", width));
+                }
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             doc.save(out);

@@ -144,7 +144,8 @@ class DocumentService {
         List<DocumentSignature> signed = documents.signatures(d.id());
         if (!signed.isEmpty() && SignatureStamp.isPdf(bytes)) {
             return new DocumentFile(d.fileName(), "application/pdf", SignatureStamp.stamp(bytes, d.title(), d.id(),
-                    signed, employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY)));
+                    signed, employees.company().map(EmployeeDirectory.CompanyCard::zone).orElse(TimeZones.LEGACY),
+                    lang()));
         }
         return new DocumentFile(d.fileName(), d.contentType(), bytes);
     }
