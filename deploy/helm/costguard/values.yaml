@@ -136,6 +136,9 @@ ingress:
   maxBodySize: 50m
   # Agents stream answers of models through the gateway
   gatewayReadTimeoutSeconds: 600
+  # Requests per second from one client address to the web client, the API and Keycloak (ingress-nginx), with
+  # bursts of five times that; 0 turns it off. The gateway is limited per agent instead.
+  rateLimitRps: 20
 
 # Keycloak in the cluster (ADR 0035): Keycloak 26 on its own PostgreSQL database, behind the ingress on
 # ingress.hosts.keycloak. On the first start it imports the realm files/keycloak-realm.json (the roles and clients of

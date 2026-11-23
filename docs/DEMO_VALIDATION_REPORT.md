@@ -9,7 +9,7 @@ Date: 2026-11-23 (evening, UTC+3). Branch `work` → `goidochka`, from commit `d
 | Host | Windows 11 Pro, 12 logical CPUs, 16 GB RAM |
 | Docker | Docker Desktop, engine 29.9.3, Compose v5.7.0; 8 GB and 12 CPUs given to Docker |
 | Java | Temurin JDK 25.0.5 (for `./gradlew :core:bootJar :gateway:bootJar`) |
-| Python | 3.13 virtual environment with the workspace packages (`uv.lock`) |
+| Python | 3.14 virtual environment with the workspace packages (`uv.lock`) |
 | Compose project | `costguard-rc` (a separate project name so the run starts from empty volumes) |
 
 ## Commands executed

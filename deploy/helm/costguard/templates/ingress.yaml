@@ -39,6 +39,11 @@ metadata:
     cert-manager.io/cluster-issuer: {{ . | quote }}
     {{- end }}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    {{- if and $ing.rateLimitRps (ne .name "gateway") }}
+    {{- /* per client address; the gateway has its own limits per agent (ADR 0010) */}}
+    nginx.ingress.kubernetes.io/limit-rps: {{ $ing.rateLimitRps | quote }}
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    {{- end }}
     {{- range $k, $v := .annotations }}
     {{ $k }}: {{ $v | quote }}
     {{- end }}
