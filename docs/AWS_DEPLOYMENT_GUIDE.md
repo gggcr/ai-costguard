@@ -109,6 +109,37 @@ Pricing Calculator before committing. EU regions are typically 5–15% more.
 Cheaper staging: fewer/smaller nodes, `t3.large`, stop the node group out of hours. MSK is the largest fixed cost;
 for a single small customer a self-run Kafka in the cluster is an option (not provided here).
 
+## Plan first, without applying
+
+`terraform plan` creates nothing and costs nothing. It needs only the account id and the availability zones, so the
+identity that runs it can have the two permissions of [`deploy/terraform/aws/plan-policy.json`](../deploy/terraform/aws/plan-policy.json).
+
+1. **The account** (the owner, by hand): sign up at aws.amazon.com with the operating company's details and card, turn
+   on MFA for the root user, set a billing alarm. Nobody else should hold the root credentials.
+2. **A plan-only identity:** IAM → Users → `costguard-plan`, no console access; attach an inline policy with the
+   content of `plan-policy.json`; create an access key ("Command Line Interface").
+3. **The profile, in your own terminal** (never paste keys into a chat or a file in the repository):
+   `aws configure --profile costguard-plan` (region `us-east-2`), or write `~/.aws/credentials` by hand:
+   ```ini
+   [costguard-plan]
+   aws_access_key_id = AKIA...
+   aws_secret_access_key = ...
+   ```
+4. **Run:** `AWS_PROFILE=costguard-plan tools/terraform/plan_staging.sh` — plan without a state backend, then
+   `tools/terraform/check_plan.py` (only creations; US/EU region; tags; no public database, cache, bucket or API;
+   encryption; no security group open to the internet) and checkov on the plan if installed.
+5. Delete or deactivate the access key when the plan is reviewed; `terraform apply` needs a different, broader
+   identity and a decision to pay.
+
+Rehearsed on 2026-11-24 against a local AWS API stand-in (moto 5.2, AWS provider 5.x, Terraform 1.9.8; no AWS
+account): staging **112 to add, 0 to change, 0 to destroy**; `us-prod` and `eu-prod` examples **121 to add** each;
+`check_plan.py` passed on all three; with `cluster_admin_cidrs=["0.0.0.0/0"]` it fails, and `region=ap-south-1` is
+refused by the module. checkov on the staging plan: 231 passed, 35 failed — the kinds already accepted in the
+static scan (counted per bucket a little differently on a plan) plus four that follow from the cheap staging
+defaults and are absent from both prod plans: RDS and ElastiCache without Multi-AZ (CKV_AWS_157, CKV2_AWS_50), RDS
+without deletion protection (CKV_AWS_293), and the EKS API reachable from `cluster_admin_cidrs` (CKV_AWS_39). The plan against a
+real account is still to be run.
+
 ## Deployment
 
 1. **State.** Copy `backend.tf.example` to `backend.tf`, fill in the bucket, key and region.
