@@ -82,7 +82,9 @@ class DocumentService {
                 upload.content().length, by, clock.instant(), signers);
         documents.insert(tenantId, d);
         boolean mine = signers.contains("employee");
-        notices.send(tenantId, employeeId, (mine ? "Подпишите документ: " : "Новый документ: ") + d.title(),
+        ai.costguard.core.shared.names.Language lang = lang();
+        notices.send(tenantId, employeeId, (mine ? lang.pick("Подпишите документ: ", "Please sign: ")
+                : lang.pick("Новый документ: ", "New document: ")) + d.title(),
                 "/cabinet/documents", mine ? "warning" : "info");
         events.publishEvent(ActionTaken.of(tenantId, "document.added", "employee_document", id,
                 ActionTaken.details("employeeId", employeeId, "kind", d.kind())));
@@ -183,11 +185,13 @@ class DocumentService {
         documents.sign(tenantId, d.id(), signature, signer.id());
         int left = d.signers().size() - before.size() - 1;
         if (left == 0) {
-            notices.send(tenantId, d.employeeId(), "Документ подписан всеми сторонами: " + d.title(),
+            notices.send(tenantId, d.employeeId(), lang().pick("Документ подписан всеми сторонами: ",
+                    "Signed by all parties: ") + d.title(),
                     "/cabinet/documents", "good");
         } else if (party != SignerParty.employee) {
-            notices.send(tenantId, d.employeeId(), SignatureStamp.party(party.name()) + " подписал(а) документ: "
-                    + d.title(), "/cabinet/documents", "info");
+            ai.costguard.core.shared.names.Language lang = lang();
+            notices.send(tenantId, d.employeeId(), lang.pick(SignatureStamp.party(party.name()) + " подписал(а) документ: ",
+                    SignatureStamp.partyEn(party.name()) + " signed: ") + d.title(), "/cabinet/documents", "info");
         }
         events.publishEvent(ActionTaken.of(tenantId, "document.signed", "employee_document", d.id(),
                 ActionTaken.details("party", party.name(), "method", method, "sha256", signature.documentSha256())));
@@ -244,5 +248,10 @@ class DocumentService {
 
     private static String blank(String s) {
         return s == null || s.isBlank() ? null : s.strip();
+    }
+
+    private ai.costguard.core.shared.names.Language lang() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language)
+                .orElse(ai.costguard.core.shared.names.Language.RU);
     }
 }

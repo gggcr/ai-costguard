@@ -303,7 +303,7 @@ class PayrollService {
         session.bind(tenantId);
         int told = 0;
         for (PayrollPayment p : payroll.due(today())) {
-            notices.send(tenantId, p.employeeId(), text(p), "/cabinet/pay", "good");
+            notices.send(tenantId, p.employeeId(), text(p, lang()), "/cabinet/pay", "good");
             payroll.notified(p.id());
             told++;
         }
@@ -320,15 +320,24 @@ class PayrollService {
         return new DecimalFormat("#,##0.00", symbols);
     }
 
-    private static String text(PayrollPayment p) {
+    private static String text(PayrollPayment p, ai.costguard.core.shared.names.Language lang) {
         String what = switch (p.kind()) {
-            case "advance" -> "Аванс";
-            case "salary" -> "Зарплата";
-            case "vacation_pay" -> "Отпускные";
-            case "bonus" -> "Премия";
-            default -> "Выплата";
+            case "advance" -> lang.pick("Аванс", "Advance");
+            case "salary" -> lang.pick("Зарплата", "Salary");
+            case "vacation_pay" -> lang.pick("Отпускные", "Vacation pay");
+            case "bonus" -> lang.pick("Премия", "Bonus");
+            default -> lang.pick("Выплата", "Payment");
         };
+        if (lang == ai.costguard.core.shared.names.Language.EN) {
+            return what + " on " + LeaseService.day(p.payDate(), lang) + ": "
+                    + String.format(Locale.ENGLISH, "%,.2f %s", p.amount(), p.currency());
+        }
         String sum = MONEY.format(p.amount()) + ("RUB".equals(p.currency()) ? " ₽" : " " + p.currency());
         return what + " " + DAY.format(p.payDate()) + ": " + sum;
+    }
+
+    private ai.costguard.core.shared.names.Language lang() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language)
+                .orElse(ai.costguard.core.shared.names.Language.RU);
     }
 }

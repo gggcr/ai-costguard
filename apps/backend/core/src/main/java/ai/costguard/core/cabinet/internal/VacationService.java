@@ -104,8 +104,10 @@ class VacationService {
         UUID id = UUID.randomUUID();
         vacations.insert(tenantId, id, me, request, days, clock.instant());
         String name = employees.card(me).map(EmployeeDirectory.EmployeeCard::name).orElse("Сотрудник");
-        heads.headOf(me).ifPresent(head -> notices.send(tenantId, head, name + " просит отпуск "
-                + span(request.startsOn(), request.endsOn(), days), "/cabinet/vacations", "warning"));
+        ai.costguard.core.shared.names.Language lang = lang();
+        heads.headOf(me).ifPresent(head -> notices.send(tenantId, head, lang.pick(name + " просит отпуск ",
+                name + " asks for a vacation ") + span(request.startsOn(), request.endsOn(), days, lang),
+                "/cabinet/vacations", "warning"));
         events.publishEvent(ActionTaken.of(tenantId, "vacation.requested", "vacation_request", id,
                 ActionTaken.details("employeeId", me, "days", days)));
         return vacations.find(id).orElseThrow();
@@ -123,8 +125,11 @@ class VacationService {
         }
         vacations.decide(id, "cancelled", Whoami.who(jwt), clock.instant(), null);
         if (future) {
-            heads.headOf(me).ifPresent(head -> notices.send(tenantId, head, "Отменён согласованный отпуск "
-                    + span(v.startsOn(), v.endsOn(), v.days()) + " сотрудника " + v.employeeName(),
+            ai.costguard.core.shared.names.Language lang = lang();
+            heads.headOf(me).ifPresent(head -> notices.send(tenantId, head, lang.pick(
+                    "Отменён согласованный отпуск " + span(v.startsOn(), v.endsOn(), v.days(), lang) + " сотрудника "
+                            + v.employeeName(),
+                    v.employeeName() + " cancelled an approved vacation " + span(v.startsOn(), v.endsOn(), v.days(), lang)),
                     "/cabinet/vacations", "info"));
         }
     }
@@ -168,8 +173,10 @@ class VacationService {
         }
         String status = decision.approve() ? "approved" : "rejected";
         vacations.decide(v.id(), status, by, clock.instant(), decision.comment());
-        String text = (decision.approve() ? "Отпуск согласован: " : "Отпуск не согласован: ")
-                + span(v.startsOn(), v.endsOn(), v.days())
+        ai.costguard.core.shared.names.Language lang = lang();
+        String text = (decision.approve() ? lang.pick("Отпуск согласован: ", "Vacation approved: ")
+                : lang.pick("Отпуск не согласован: ", "Vacation declined: "))
+                + span(v.startsOn(), v.endsOn(), v.days(), lang)
                 + (decision.comment() == null || decision.comment().isBlank() ? "" : ". " + decision.comment().strip());
         notices.send(tenantId, v.employeeId(), text, "/cabinet/vacations", decision.approve() ? "good" : "warning");
         events.publishEvent(ActionTaken.of(tenantId, "vacation." + status, "vacation_request", v.id(),
@@ -177,7 +184,16 @@ class VacationService {
         return vacations.find(v.id()).orElseThrow();
     }
 
-    private static String span(LocalDate from, LocalDate to, int days) {
-        return DAY.format(from) + "–" + DAY.format(to) + " (" + days + " дн.)";
+    private static String span(LocalDate from, LocalDate to, int days, ai.costguard.core.shared.names.Language lang) {
+        if (lang == ai.costguard.core.shared.names.Language.RU) {
+            return DAY.format(from) + "–" + DAY.format(to) + " (" + days + " дн.)";
+        }
+        return LeaseService.day(from, lang) + " – " + LeaseService.day(to, lang) + " (" + days
+                + (days == 1 ? " day" : " days") + ")";
+    }
+
+    private ai.costguard.core.shared.names.Language lang() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language)
+                .orElse(ai.costguard.core.shared.names.Language.RU);
     }
 }

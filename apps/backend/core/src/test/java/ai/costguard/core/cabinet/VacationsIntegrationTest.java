@@ -120,6 +120,26 @@ class VacationsIntegrationTest extends PostgresTestSupport {
                 .with(as(boss, "employee"))).andExpect(status().isConflict());
     }
 
+    /** ADR 0074: an English company's head and employee are told in English. */
+    @Test
+    void anEnglishCompanyIsToldInEnglish() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\",\"language\":\"en\"}")
+                .with(admin())).andExpect(status().isOk());
+        String dept = department();
+        String boss = mail("boss");
+        String worker = mail("worker");
+        head(dept, employee(dept, boss));
+        employee(dept, worker);
+        String id = ask(worker, start, start.plusDays(1));
+        mvc.perform(get("/api/v1/me/notifications").with(as(boss, "employee")))
+                .andExpect(jsonPath("$.items[0].text").value(Matchers.containsString("asks for a vacation")))
+                .andExpect(jsonPath("$.items[0].text").value(Matchers.endsWith("(2 days)")));
+        mvc.perform(json(put("/api/v1/me/team/vacations/{id}/decision", id), "{\"approve\":true}")
+                .with(as(boss, "employee"))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/notifications").with(as(worker, "employee")))
+                .andExpect(jsonPath("$.items[0].text").value(Matchers.startsWith("Vacation approved: ")));
+    }
+
     @Test
     void onlyTheHeadOfTheDepartmentDecides() throws Exception {
         String dept = department();

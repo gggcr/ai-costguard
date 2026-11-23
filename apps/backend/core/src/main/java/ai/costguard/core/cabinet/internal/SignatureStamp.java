@@ -36,6 +36,16 @@ final class SignatureStamp {
     private SignatureStamp() {
     }
 
+    /** The party in English, for notices of an English company (ADR 0074). */
+    static String partyEn(String party) {
+        return switch (party) {
+            case "employee" -> "The employee";
+            case "employer" -> "The employer";
+            case "accountant" -> "Accounting";
+            default -> party;
+        };
+    }
+
     static String party(String party) {
         return switch (party) {
             case "employee" -> "Работник";
