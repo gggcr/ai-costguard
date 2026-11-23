@@ -54,6 +54,10 @@ record MandateDetails(
         @NotNull @DecimalMin("0") @Digits(integer = 12, fraction = 6) BigDecimal maxPerOperation,
         @NotNull @DecimalMin("0") @Digits(integer = 12, fraction = 6) BigDecimal approvalThreshold,
         @NotNull @Pattern(regexp = MandateExpression.HOURS) String hours) {
+
+    MandateDetails {
+        hours = MandateExpression.canonical(hours);
+    }
 }
 
 /** What the gateway enforces. Empty fields mean the mandate was never published. */

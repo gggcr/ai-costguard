@@ -78,8 +78,8 @@ web UI and the plan page are served; plans are priced in USD.
 - The login page says a Google Authenticator code follows the e-mail; for the demo users the password works
   ("Sign in with login and password"). The wording is accurate for companies that set up codes, but it may confuse
   a first-time viewer.
-- Mandate hours are Russian words in the API (`круглосуточно`, `только рабочие дни`, or `HH:MM–HH:MM`); the web UI
-  shows them in English. Integrators calling the API directly see the Russian values.
+- Mandate hours: the API accepts `24/7`, `workdays` or `HH:MM–HH:MM` (and the Russian names) but answers with the
+  stored Russian names; the web UI shows them in English.
 - The demo uses `PAYMENT_PROVIDER=dummy`: "Subscribe" succeeds without money. Stripe needs real test keys
   ([STRIPE_SETUP.md](STRIPE_SETUP.md)).
 - NEAR anchoring of receipts is not part of this run (it needs a testnet account and key).

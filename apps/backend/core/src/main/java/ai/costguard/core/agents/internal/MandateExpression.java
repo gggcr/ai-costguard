@@ -12,10 +12,25 @@ final class MandateExpression {
 
     static final String ALL_DAY = "круглосуточно";
     static final String WORKDAYS = "только рабочие дни";
-    static final String HOURS = ALL_DAY + "|" + WORKDAYS
+    /** English names an API client may send instead; stored as the Russian ones, which the gateway reads. */
+    static final String ALL_DAY_EN = "24/7";
+    static final String WORKDAYS_EN = "workdays";
+    static final String HOURS = ALL_DAY + "|" + WORKDAYS + "|" + ALL_DAY_EN + "|(?i:" + WORKDAYS_EN + ")"
             + "|([01]\\d|2[0-3]):[0-5]\\d[–-]([01]\\d|2[0-3]):[0-5]\\d";
 
     private MandateExpression() {
+    }
+
+    /** "24/7" and "workdays" as the stored names; anything else as it is. */
+    static String canonical(String hours) {
+        if (hours == null) {
+            return null;
+        }
+        return switch (hours.strip().toLowerCase(java.util.Locale.ROOT)) {
+            case ALL_DAY_EN -> ALL_DAY;
+            case WORKDAYS_EN -> WORKDAYS;
+            default -> hours;
+        };
     }
 
     static String of(Mandate mandate) {

@@ -4995,8 +4995,8 @@ components:
           minimum: 0
         hours:
           type: string
-          pattern: "круглосуточно|только рабочие дни|([01]\\d|2[0-3]):[0-5]\\d[–-]([01]\\\
-            d|2[0-3]):[0-5]\\d"
+          pattern: "круглосуточно|только рабочие дни|24/7|(?i:workdays)|([01]\\d|2[0-3]):[0-5]\\\
+            d[–-]([01]\\d|2[0-3]):[0-5]\\d"
       required:
       - approvalThreshold
       - hours
