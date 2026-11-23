@@ -149,6 +149,23 @@ class PurchasesIntegrationTest extends PostgresTestSupport {
                 .with(as("f@corp.ru", "finance"))).andExpect(status().isConflict());
     }
 
+    /** ADR 0074: an English company's employee hears the answer in English. */
+    @Test
+    void anEnglishCompanyHearsTheAnswerInEnglish() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\",\"language\":\"en\"}")
+                .with(owner())).andExpect(status().isOk());
+        String worker = mail("worker");
+        employee(worker);
+        String id = JsonPath.read(mvc.perform(multipart("/api/v1/me/purchase-requests")
+                        .param("product", "Cursor Pro").param("amount", "20").param("period", "month")
+                        .with(as(worker, "employee")))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(json(put("/api/v1/purchase-requests/{id}/decision", id), "{\"approve\":true}")
+                .with(as("f@corp.ru", "finance"))).andExpect(jsonPath("$.status").value("approved"));
+        mvc.perform(get("/api/v1/me/notifications").with(as(worker, "employee")))
+                .andExpect(jsonPath("$.items[0].text").value("Approved: purchase of Cursor Pro"));
+    }
+
     @Test
     void anotherEmployeeSeesNothingOfIt() throws Exception {
         String a = mail("a");

@@ -92,14 +92,18 @@ class PurchaseService {
             LicensePool.Offer o = offer.get();
             boolean held = pool.heldBy(me).stream().anyMatch(h -> h.subscriptionId().equals(o.subscriptionId()));
             status = "has_license";
+            ai.costguard.core.shared.names.Language lang = lang();
             if (held) {
-                comment = "У вас уже есть лицензия " + o.product();
+                comment = lang.pick("У вас уже есть лицензия " + o.product(), "You already have a " + o.product() + " license");
             } else if (o.free() > 0 || o.idle() > 0) {
-                LicenseRequest r = licenses.ask(tenantId, me, o.subscriptionId(), "Вместо покупки: " + a.product(), null);
+                LicenseRequest r = licenses.ask(tenantId, me, o.subscriptionId(),
+                        lang.pick("Вместо покупки: ", "Instead of buying: ") + a.product(), null);
                 licenseRequest = r.id();
                 comment = "granted".equals(r.status())
-                        ? "В компании есть свободная лицензия " + o.product() + ": она выдана вам из пула"
-                        : "У коллеги простаивает лицензия " + o.product() + ": ИТ вернёт её в пул и выдаст вам";
+                        ? lang.pick("В компании есть свободная лицензия " + o.product() + ": она выдана вам из пула",
+                                "The company has a free " + o.product() + " license: it was given to you from the pool")
+                        : lang.pick("У коллеги простаивает лицензия " + o.product() + ": ИТ вернёт её в пул и выдаст вам",
+                                "A colleague's " + o.product() + " license is idle: IT will return it to the pool and give it to you");
             } else {
                 // the company has the program, but no seat is free or idle: buying a seat is finance's call
                 status = "pending";
@@ -111,7 +115,7 @@ class PurchaseService {
                 key == null ? null : a.fileName(), status, offer.map(LicensePool.Offer::subscriptionId).orElse(null),
                 licenseRequest, comment, clock.instant()));
         if ("has_license".equals(status)) {
-            tell(tenantId, me, "Отклонено: " + comment, "warning");
+            tell(tenantId, me, lang().pick("Отклонено: ", "Declined: ") + comment, "warning");
         }
         events.publishEvent(ActionTaken.of(tenantId, "purchase.requested", "purchase_request", id,
                 ActionTaken.details("employeeId", me, "status", status)));
@@ -172,8 +176,10 @@ class PurchaseService {
         PurchaseRequest r = purchases.find(id).orElseThrow();
         purchases.decide(id, decision.approve() ? "approved" : "rejected", by, clock.instant(), decision.comment());
         String note = decision.comment() == null || decision.comment().isBlank() ? "" : ": " + decision.comment().strip();
-        tell(tenantId, r.employeeId(), (decision.approve() ? "Одобрено: " : "Отклонено: ") + "покупка " + r.product()
-                + note, decision.approve() ? "good" : "warning");
+        ai.costguard.core.shared.names.Language lang = lang();
+        tell(tenantId, r.employeeId(), (decision.approve() ? lang.pick("Одобрено: покупка ", "Approved: purchase of ")
+                : lang.pick("Отклонено: покупка ", "Declined: purchase of ")) + r.product() + note,
+                decision.approve() ? "good" : "warning");
         events.publishEvent(ActionTaken.of(tenantId, decision.approve() ? "purchase.approved" : "purchase.rejected",
                 "purchase_request", id, ActionTaken.details("employeeId", r.employeeId())));
         return purchases.find(id).orElseThrow();
@@ -182,12 +188,20 @@ class PurchaseService {
     /** The employee and the head of their department (the manager) hear the decision. */
     private void tell(UUID tenantId, UUID employeeId, String text, String level) {
         notices.send(tenantId, employeeId, text, "/cabinet/purchases", level);
-        String name = employees.card(employeeId).map(EmployeeDirectory.EmployeeCard::name).orElse("сотрудника");
-        heads.headOf(employeeId).ifPresent(head -> notices.send(tenantId, head, "Запрос " + name + ". " + text,
+        ai.costguard.core.shared.names.Language lang = lang();
+        String name = employees.card(employeeId).map(EmployeeDirectory.EmployeeCard::name)
+                .orElse(lang.pick("сотрудника", "an employee"));
+        heads.headOf(employeeId).ifPresent(head -> notices.send(tenantId, head,
+                lang.pick("Запрос " + name + ". ", "Request of " + name + ". ") + text,
                 "/cabinet/purchases", level));
     }
 
     private static String blank(String s) {
         return s == null || s.isBlank() ? null : s.strip();
+    }
+
+    private ai.costguard.core.shared.names.Language lang() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language)
+                .orElse(ai.costguard.core.shared.names.Language.RU);
     }
 }
