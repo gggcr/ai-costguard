@@ -14,4 +14,6 @@
 | 05:20 | Licensing review; readiness report; core 499/0; ADR 0075 committed (`2da52a2`) |
 | 05:25 | License notices in English (`7c85e47`) |
 | 05:28 | Vacation, payroll and document notices in English (`3cdc9e3`) |
-| 05:34 | Final run: core 501/0, gateway 70/0; report, progress and checkpoint committed |
+| 05:34 | Final run: core 501/0, gateway 70/0; report, progress and checkpoint committed (`0033bb0`) |
+| 05:37 | Purchase answers in English (`b072e08`); cabinet tests 81/0 |
+| 05:44 | Final core run 502/0; docs updated and committed |

@@ -24,7 +24,7 @@ UI, Python/TypeScript SDKs and a NEAR contract in Rust.
 | Priority | Problem | Status |
 |---|---|---|
 | P1 security | 14 known advisories (9 high) in transitive Java libraries: jackson-core/databind 2.22.1, snappy-java 1.1.10.7, lz4-java 1.11.2, opentelemetry-api 1.62.0. CI's Trivy gate fails only on critical, so these were reported but not blocking | fixed |
-| P1 Western | Server texts (notifications, e-mails, Telegram, findings) only in Russian; e-mails and Telegram are not translated by the browser | fixed, except purchase/shadow-spend notices, the signature stamp and PDFs |
+| P1 Western | Server texts (notifications, e-mails, Telegram, findings) only in Russian; e-mails and Telegram are not translated by the browser | fixed, except the signature stamp, PDFs and shadow-spend category names |
 | P1 Western | UI defaulted to Russian; numbers and dates always in Russian format | fixed |
 | P1 Western | Exchange rates only from the Bank of Russia | fixed: ECB source |
 | P2 | No English product documentation for a buyer; demo company only Russian | fixed |
@@ -48,6 +48,7 @@ No P0 problem (data loss, tenant leak, auth bypass) was found in the parts revie
 | `2da52a2` | ADR 0075: ECB rates, a rate has a base currency |
 | `7c85e47` | license notices of the cabinet in the company's language |
 | `3cdc9e3` | vacation, payroll and document notices in the company's language |
+| `b072e08` | purchase request answers in the company's language |
 | last commit | this report, progress log and checkpoint |
 
 ## 6–7. Security
@@ -69,7 +70,7 @@ Run on this machine (Windows, JDK 25 Temurin, Python 3.14, Node 22), without Doc
 
 | Suite | Command | Result |
 |---|---|---|
-| Core (Java) | `gradle :core:test` | 501 passed, 0 failed (final run, 05:34, all commits included) |
+| Core (Java) | `gradle :core:test` | 502 passed, 0 failed (final run, 05:44, all commits included) |
 | Gateway (Java) | `gradle :gateway:test` | 70 passed, 0 failed (final run) |
 | platform-starter | `gradle :platform-starter:test` | 22 passed, 0 failed |
 | Tools (Python) | `pytest tools/tests` | 41 passed, 22 skipped (helm, terraform and Docker checks) |
@@ -88,8 +89,8 @@ Not executed (UNVERIFIED): tests that need Docker (`*IT` Testcontainers tests, `
 - Deployment: Helm chart and Argo CD are documented; Terraform exists only for Yandex Cloud. **Not deployment-ready
   for AWS/GCP/Azure** without new infrastructure code.
 - UX: English by default for non-Russian browsers, English number/date/money formats, a US demo company, English
-  server texts for English companies. Cabinet notices about licenses, vacations, payroll and documents are now English too.
-  Remaining Russian: purchase and shadow-spend notices, the signature stamp and the PDF handover acts.
+  server texts for English companies. Cabinet notices about licenses, vacations, payroll, documents and purchases are now English too.
+  Remaining Russian: the signature stamp, the PDF handover acts and shadow-spend category names.
 
 ## 15–17. Documentation and commercial materials
 
@@ -145,5 +146,5 @@ was lifted.
 
 The product is real, broad and well tested, and it is now presentable to an English-speaking evaluator. But the
 local demo was not run end to end tonight, card billing and Western cloud infrastructure do not exist, some texts
-(purchases, signature stamp, PDFs) are still Russian, and the ownership and licensing questions have to be settled before a sale. With a rehearsed
+(signature stamp, PDFs) are still Russian, and the ownership and licensing questions have to be settled before a sale. With a rehearsed
 demo and the contributor assignment in hand, it would be fit for limited buyer demonstrations.

@@ -1,6 +1,6 @@
 # Overnight resume checkpoint
 
-Updated: 2026-11-23 05:35 (local time, UTC+3).
+Updated: 2026-11-23 05:45 (local time, UTC+3).
 
 ## Where the work is
 
@@ -27,11 +27,11 @@ Updated: 2026-11-23 05:35 (local time, UTC+3).
 | 4 | English docs and buyer materials | done |
 | 5 | ADR 0075, ECB rates | done |
 | 6 | License review, readiness report | done |
-| 7 | Cabinet texts in English | licenses, vacations, payroll, documents done; purchases, shadow spend, signature stamp, PDFs remain |
+| 7 | Cabinet texts in English | licenses, vacations, payroll, documents, purchases done; signature stamp, PDFs, shadow-spend categories remain |
 
 ## Tests run tonight
 
-Final: core 501/0, gateway 70/0; platform-starter 22/0, Python 443 passed / 38 skipped,
+Final: core 502/0, gateway 70/0; platform-starter 22/0, Python 443 passed / 38 skipped,
 Python contracts 25/0, tools 41/0, UI 45/0 and build OK, ruff clean. UNVERIFIED: Docker tests, Rust (no cargo),
 Helm/Terraform (no binaries), `make demo`, the demo script.
 
@@ -42,5 +42,4 @@ They exist only while this Claude Code session is open.
 
 ## Next exact action
 
-Mission work is complete and committed. If time remains before 06:50: purchase and shadow-spend notices in the
-company's language (PurchaseService, ShadowService), with a test, a core run and a commit. Otherwise nothing.
+Mission work is complete and committed; nothing left to do tonight.
