@@ -86,7 +86,7 @@ Not implemented yet, or not production-ready:
 - **Hosting outside Russia**: Terraform exists for Yandex Cloud only; the Helm chart is cloud-neutral, an AWS module
   is planned.
 - **English**: the UI has an RU/EN switch and the core writes notifications and findings in English for English
-  companies, but some employee-cabinet notices and the PDF documents are still Russian.
+  companies; purchase notices, the signature stamp and the PDF documents are still Russian.
 - **Country rules**: vacation allowance (28 days) and payroll schedule follow Russian labor law.
 - **Compliance**: no SOC 2 report; GDPR/CCPA documents are drafts for a lawyer (`docs/privacy`).
 

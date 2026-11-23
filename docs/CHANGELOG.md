@@ -10,8 +10,8 @@ The product has no tagged release yet; this lists what changed by milestone. Eve
   way the company's country writes them (ADR 0072).
 - **The company's time zone**: "today", monthly boundaries, pay days and morning reminders follow it; the
   gateway's working hours of a mandate too (ADR 0073).
-- **The company's language**: notifications, e-mails, Telegram replies, audit findings, the agent traffic light and
-  license leases are written in English for English-speaking companies; the UI starts in the browser's language
+- **The company's language**: notifications, e-mails, Telegram replies, audit findings, the agent traffic light, cabinet
+  notices about licenses, vacations, pay days and documents are written in English for English-speaking companies; the UI starts in the browser's language
   and writes numbers, money and dates by the UI language (ADR 0074).
 - **European Central Bank rates** as an alternative to the Bank of Russia; a rate now has a base currency
   (ADR 0075).

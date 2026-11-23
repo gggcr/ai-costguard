@@ -38,7 +38,7 @@ the repository; nothing is projected or invented.
 | Card payments for plans (Stripe): the provider interface exists, only a test provider is implemented | 1–2 weeks |
 | AWS / GCP / Azure Terraform (the Helm chart is cloud-neutral) | 1–2 weeks |
 | Country rules outside Russia: vacation allowance, payroll frequency, e-signature wording | 1–2 weeks |
-| Some employee-cabinet notices and PDF documents are still in Russian | 3–5 days |
+| Purchase and shadow-spend notices, the signature stamp and PDF documents are still in Russian | 2–3 days |
 | JWT audience validation, general API rate limiting at the core | 1–2 days |
 | SOC 2 / ISO 27001, external penetration test, GDPR documents reviewed by a lawyer | outside engineering |
 
