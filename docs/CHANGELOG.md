@@ -1,7 +1,21 @@
 # Changelog
 
-The product has no tagged release yet; this lists what changed by milestone. Every decision has an ADR in
+Releases are tagged `vX.Y.Z` ([RELEASE_PROCESS.md](RELEASE_PROCESS.md)); this lists what changed by milestone. Every decision has an ADR in
 [`docs/adr`](adr).
+
+## 1.0.0-rc.1 (2026-11-24): commercial release candidate
+
+- **Security:** the core accepts only RS256 tokens issued for `costguard-api` (ADR 0076; add the Keycloak audience
+  mapper before upgrading); the web client sends security headers and a CSP on every path; per-address rate limits
+  at the ingress.
+- **Billing:** Stripe subscriptions in USD and EUR with Checkout, customer portal, signed and replay-safe webhooks,
+  renewals, failed-payment grace and a Plan & billing page (ADR 0077, migration V53).
+- **AWS:** Terraform for one installation per US or EU region; pods reach S3 through IAM roles (ADR 0078).
+- **Privacy:** export of a person's data from every module (ADR 0079); legal drafts in `docs/legal`.
+- **Documents in the company's language:** signature stamp, equipment handover receipt, spend report.
+- **Demo:** validated on a clean Docker stack with `tools/demo/check_demo.py`; demo script corrected.
+- **Release tooling:** `tools/release/verify.sh` (gate), `tools/release/sbom.py` (CycloneDX SBOM).
+- **License:** the repository is "All Rights Reserved" since 2026-11-23 (earlier versions were MIT).
 
 ## Unreleased: readiness for Western companies (2026-11-22 to 2026-11-23)
 

@@ -104,7 +104,8 @@ def main() -> int:
     mandate = core.post("/api/v1/mandates", json={
         "name": f"Paid APIs {run}", "models": ["gpt-5"], "vendors": ["Acme Data"], "maxPerOperation": 300,
         "approvalThreshold": 100, "hours": "круглосуточно"})
-    ok = step("a mandate: paid APIs up to $300, approval above $100", mandate.status_code in (200, 201), mandate.text[:120])
+    ok = step("a mandate: paid APIs up to $300, approval above $100", mandate.status_code in (200, 201),
+              mandate.text[:120])
     if not ok:
         return summary()
     mandate_id = mandate.json()["id"]
@@ -195,7 +196,8 @@ def main() -> int:
     plan_page = httpx.get(f"{WEB}/settings/plan", trust_env=False, timeout=30)
     step("the plan page route is served", plan_page.status_code == 200)
     plans = core.get("/api/v1/billing/plans")
-    usd = plans.status_code == 200 and all("USD" in (p.get("prices") or {}) for p in plans.json() if p["name"] != "trial")
+    usd = plans.status_code == 200 and all("USD" in (p.get("prices") or {})
+                                           for p in plans.json() if p["name"] != "trial")
     step("plans are priced in USD", usd)
     return summary()
 

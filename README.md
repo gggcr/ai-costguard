@@ -3,7 +3,47 @@
 **Одна платформа, которая держит под контролем цифровые расходы компании:** ИИ-агентов, подписки на ПО, лицензии и
 технику сотрудников.
 
-> **English summary for NEAR HACKATHON judges** is [below](#near-hackathon-english). Русское описание идёт дальше.
+> **English:** the product overview is [right below](#costguard-in-english); the NEAR hackathon summary is
+> [further down](#near-hackathon-english). Русское описание — после английского раздела.
+
+## CostGuard in English
+
+**CostGuard puts a spending check in front of your AI agents and finds the money your company already wastes on
+software and equipment.** Release candidate, not yet in production with customers.
+
+**Who needs it:** companies running AI agents that spend money (models, paid APIs), and IT/finance teams paying for
+more SaaS seats and devices than they use. Details: [marketing/PRODUCT_OVERVIEW.md](marketing/PRODUCT_OVERVIEW.md).
+
+**Main capabilities**
+- *AI agent governance:* a fail-closed gateway (identity → mandate → loop → risk → budget → task fit → approval),
+  mandates, budgets, approvals, operations journal with signed receipts.
+- *Software and equipment spend:* connectors (Entra ID, Google Workspace, Okta, Jamf, Intune, Merge.dev, mailbox,
+  bank statements), invoice import, a self-running audit (idle seats, leavers' licenses, duplicates,
+  auto-renewals, unreturned devices), savings confirmed by the next invoice, employee self-service.
+- *Platform:* multi-company SaaS with row-level tenant isolation, SSO, six roles, English/Russian UI, company
+  currency and time zone, US or EU data region, Stripe subscriptions, GDPR/CCPA export and erasure.
+
+**Architecture:** Java 25 / Spring Boot 4 core and gateway, Python services (ingest, anomaly detection, reports,
+connectors), React web client, PostgreSQL, Kafka, ClickHouse, Redis, Keycloak; Kubernetes via Helm.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), decisions in [docs/adr](docs/adr).
+
+| Topic | Where |
+|---|---|
+| Install and run the demo locally (Docker, ~8 GB) | [docs/INSTALLATION.md](docs/INSTALLATION.md), then `python tools/demo/check_demo.py` |
+| Demo script (US company, 15 minutes) and its validation | [marketing/DEMO_SCRIPT.md](marketing/DEMO_SCRIPT.md), [docs/DEMO_VALIDATION_REPORT.md](docs/DEMO_VALIDATION_REPORT.md) |
+| Configuration | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) |
+| Billing (Stripe) | [docs/STRIPE_SETUP.md](docs/STRIPE_SETUP.md), [docs/BILLING_OPERATIONS.md](docs/BILLING_OPERATIONS.md), [marketing/PRICING.md](marketing/PRICING.md) |
+| Security | [docs/SECURITY.md](docs/SECURITY.md), [docs/SECURITY_RELEASE_AUDIT.md](docs/SECURITY_RELEASE_AUDIT.md), [marketing/SECURITY_OVERVIEW.md](marketing/SECURITY_OVERVIEW.md) |
+| Deployment (AWS US/EU, Helm) | [docs/AWS_DEPLOYMENT_GUIDE.md](docs/AWS_DEPLOYMENT_GUIDE.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Privacy and legal drafts | [docs/legal](docs/legal/README.md) |
+| API | [docs/API.md](docs/API.md), `schemas/openapi` |
+| Licenses, SBOM, IP | [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md), [docs/INTELLECTUAL_PROPERTY_CHECKLIST.md](docs/INTELLECTUAL_PROPERTY_CHECKLIST.md) |
+| Release state and blockers | [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md), [docs/FINAL_QA_REPORT.md](docs/FINAL_QA_REPORT.md), [docs/COMMERCIAL_READINESS_REPORT.md](docs/COMMERCIAL_READINESS_REPORT.md) |
+
+**Limitations:** no production customers; no SOC 2 or independent pen test; the AWS Terraform has not been applied
+to an account and Stripe has not been exercised against a real account; employee-cabinet labour rules (leave,
+payroll, e-signature) follow Russian law only ([docs/COUNTRY_RULES_ROADMAP.md](docs/COUNTRY_RULES_ROADMAP.md));
+legal documents are drafts. **Support:** `[SUPPORT EMAIL]`.
 
 ![Обзор: расходы компании, находки аудита, согласования](docs/screenshots/dashboard.png)
 

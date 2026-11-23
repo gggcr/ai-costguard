@@ -2,5 +2,5 @@ apiVersion: v2
 name: costguard
 description: CostGuard platform - core, agent gateway, ingest, anomaly detector, notary, connectors
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 1.0.0-rc.1
+appVersion: "1.0.0-rc.1"
