@@ -14,6 +14,7 @@ Empty optional settings switch a feature off; they never fall back to an insecur
 | `DB_ADMIN_USER`, `DB_ADMIN_PASSWORD` | migrations | the owner role Flyway migrates with |
 | `KAFKA_BOOTSTRAP_SERVERS`, `SCHEMA_REGISTRY_URL` | all | Kafka and the Schema Registry |
 | `KEYCLOAK_ISSUER_URI` | core, gateway | the OIDC issuer whose tokens the API accepts |
+| `JWT_AUDIENCE` | core | the audience an access token must carry (default `costguard-api`, ADR 0076); it cannot be empty |
 | `REDIS_HOST`, `REDIS_PORT` | gateway | budget reserves and rate limits |
 | `CLICKHOUSE_URL`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_READER_PASSWORD` | core, services | operations and costs |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | core, ingest | uploaded files |

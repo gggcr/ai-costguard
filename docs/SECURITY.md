@@ -6,7 +6,8 @@ vulnerability privately to the repository owners, not in a public issue.
 ## Identity and access
 
 - **People** sign in through OIDC (Keycloak by default; Microsoft Entra ID and Google can be brokered). The core
-  validates JWT signatures, issuer and expiry as an OAuth2 resource server; there are no sessions or
+  validates JWT signatures (RS256 only), issuer, expiry and audience (`costguard-api`, ADR 0076: a token made for
+  another client of the realm is refused) as an OAuth2 resource server; there are no sessions or
   cookies in the API, so CSRF does not apply.
 - **The company of a request comes only from the token** (`tenant_id` claim, set by the realm administrator, not
   editable by the user). Ids in paths or bodies never select another company.
@@ -63,7 +64,5 @@ Last manual check (2026-11-23): OSV for the 281 resolved Java runtime libraries 
 - No SOC 2 or ISO 27001 report.
 - GDPR/CCPA: the data inventory and retention are implemented; the DPA, list of subprocessors and privacy notice are
   drafts for a lawyer ([privacy/for-lawyer.md](privacy/for-lawyer.md)).
-- The JWT audience is not checked: any token of the CostGuard realm is accepted. Keep the realm dedicated to
-  CostGuard, or add an audience mapper and validator before sharing it.
 - Rate limits exist for registration and for agents; there is no general API rate limit in front of the core
   (expected from the ingress).

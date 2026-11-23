@@ -36,7 +36,8 @@ Realm импортируется только при первом запуске
 Для коннекторов (роль `connector`, ADR 0030), задачи прогнозов (роль `forecast`, ADR 0034) и выгрузок FOCUS из
 бакета (роль `importer`, ADR 0046) создайте в realm
 клиента с `serviceAccountsEnabled`, назначьте его сервисному аккаунту роль и атрибут `tenant_id`, добавьте маппер
-`tenant_id`, как у `costguard-frontend`. Секрет клиента положите туда, откуда его берёт Airflow
+`tenant_id` и маппер Audience с адресатом `costguard-api`, как у `costguard-frontend` (без него ядро отклонит
+токен, ADR 0076). Секрет клиента положите туда, откуда его берёт Airflow
 (`<TENANT>_CORE_TOKEN` получается по client credentials).
 
 ## Если Keycloak не стартует

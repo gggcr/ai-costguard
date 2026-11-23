@@ -27,6 +27,10 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/costguard}
+          # Only access tokens made for the core (ADR 0076): the realm's clients that call it add this audience;
+          # a token of any other client of the realm is refused. Keycloak signs with RS256, nothing else is taken.
+          audiences: ${JWT_AUDIENCE:costguard-api}
+          jws-algorithms: RS256
   modulith:
     events:
       republish-outstanding-events-on-restart: true

@@ -35,7 +35,14 @@ class SecurityConfig {
             "importer"};
 
     @Bean
-    SecurityFilterChain api(HttpSecurity http, RealmRoles realmRoles, ProblemHandler problems) throws Exception {
+    SecurityFilterChain api(HttpSecurity http, RealmRoles realmRoles, ProblemHandler problems,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${spring.security.oauth2.resourceserver.jwt.audiences:}") String audiences) throws Exception {
+        // Without an audience every token of the realm would be taken, whichever client it was made for (ADR 0076)
+        if (audiences.isBlank()) {
+            throw new IllegalStateException("JWT_AUDIENCE is empty: the core would accept tokens made for any client"
+                    + " of the realm. Set it to the audience the realm's clients add (costguard-api).");
+        }
         // the same problem+json with code role_required as the controllers' own role checks
         var json = new com.fasterxml.jackson.databind.ObjectMapper();
         JwtAuthenticationConverter tokens = new JwtAuthenticationConverter();
