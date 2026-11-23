@@ -1,5 +1,12 @@
 # Commercial readiness report
 
+> **Update 2026-11-24.** This report describes the night of 2026-11-22/23 and is kept as history. The current state
+> is in [RELEASE_NOTES.md](RELEASE_NOTES.md) and [FINAL_QA_REPORT.md](FINAL_QA_REPORT.md): JWT audience, Stripe,
+> AWS Terraform, data export and the Docker demo validation were done since, and everything was pushed to
+> `goidochka` at the owner's request. Current status: **RELEASE CANDIDATE — EXTERNAL BLOCKERS REMAIN**. The
+> licensing section below describes the MIT license; since 2026-11-23 the code is "All Rights Reserved" — see
+> [INTELLECTUAL_PROPERTY_CHECKLIST.md](INTELLECTUAL_PROPERTY_CHECKLIST.md).
+
 Mission: prepare AI CostGuard for sale to Western buyers (target price USD 2,000–3,000). Night of 2026-11-22/23,
 local time UTC+3. Work done autonomously by Claude Code in a separate clone, committed locally, **never pushed**.
 
