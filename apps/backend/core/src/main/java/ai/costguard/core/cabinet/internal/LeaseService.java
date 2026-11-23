@@ -204,11 +204,11 @@ class LeaseService {
     }
 
     /** The company's language (ADR 0074); the session is bound. */
-    private Language lang() {
+    Language lang() {
         return employees.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
     }
 
-    private static String day(LocalDate day, Language lang) {
+    static String day(LocalDate day, Language lang) {
         return lang == Language.RU ? DAY.format(day)
                 : DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH).format(day);
     }

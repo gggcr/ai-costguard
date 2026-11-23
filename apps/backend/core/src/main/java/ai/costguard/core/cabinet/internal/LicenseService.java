@@ -2,6 +2,7 @@ package ai.costguard.core.cabinet.internal;
 
 import ai.costguard.core.notifications.PersonalNotices;
 import ai.costguard.core.shared.activity.ActionTaken;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.software.LicensePool;
 import ai.costguard.platform.tenant.TenantSession;
 import java.time.Clock;
@@ -86,8 +87,12 @@ class LicenseService {
             if (days != null) {
                 leasing.lease(tenantId, given.get(), subscriptionId, me, null, days, offer.product());
             }
-            notices.send(tenantId, me, "Вам выдана лицензия " + offer.product() + " из пула компании"
-                    + (days == null ? "" : " на " + days + " дн."), "/cabinet/licenses", "good");
+            Language lang = leasing.lang();
+            notices.send(tenantId, me, lang.pick("Вам выдана лицензия " + offer.product() + " из пула компании"
+                    + (days == null ? "" : " на " + days + " дн."),
+                    "You were given a " + offer.product() + " license from the company pool"
+                    + (days == null ? "" : " for " + days + (days == 1 ? " day" : " days"))),
+                    "/cabinet/licenses", "good");
         } else {
             UUID idle = pool.idlest(subscriptionId, idleDays, me).map(LicensePool.Idle::licenseId).orElse(null);
             requests.insert(tenantId, id, me, subscriptionId, reason, "pending", idle, clock.instant(), days);
@@ -154,13 +159,18 @@ class LicenseService {
             }
             events.publishEvent(new SeatChanged(tenantId, r.subscriptionId(), r.employeeId(), true));
             requests.decide(id, "approved", by, clock.instant(), decision.comment());
-            notices.send(tenantId, r.employeeId(), "Вам выдана лицензия " + r.product()
-                    + (r.days() == null ? "" : " на " + r.days() + " дн."), "/cabinet/licenses", "good");
+            Language lang = leasing.lang();
+            notices.send(tenantId, r.employeeId(), lang.pick("Вам выдана лицензия " + r.product()
+                    + (r.days() == null ? "" : " на " + r.days() + " дн."),
+                    "You were given a " + r.product() + " license"
+                    + (r.days() == null ? "" : " for " + r.days() + (r.days() == 1 ? " day" : " days"))),
+                    "/cabinet/licenses", "good");
         } else {
             requests.decide(id, "rejected", by, clock.instant(), decision.comment());
-            notices.send(tenantId, r.employeeId(), "Лицензия " + r.product() + " не выдана"
-                    + (decision.comment() == null || decision.comment().isBlank() ? "" : ": " + decision.comment().strip()),
-                    "/cabinet/licenses", "warning");
+            String why = decision.comment() == null || decision.comment().isBlank() ? ""
+                    : ": " + decision.comment().strip();
+            notices.send(tenantId, r.employeeId(), leasing.lang().pick("Лицензия " + r.product() + " не выдана" + why,
+                    "Your " + r.product() + " license request was declined" + why), "/cabinet/licenses", "warning");
         }
         events.publishEvent(ActionTaken.of(tenantId, decision.approve() ? "license.request.approved"
                 : "license.request.rejected", "license_request", id, ActionTaken.details("employeeId", r.employeeId())));
@@ -185,10 +195,15 @@ class LicenseService {
         if (pool.reclaim(i.licenseId())) {
             events.publishEvent(new SeatChanged(tenantId, i.subscriptionId(), i.employeeId(), false));
             if (!lent) {
-                notices.send(tenantId, i.employeeId(), "Лицензия " + i.product() + " возвращена в общий пул: "
+                Language lang = leasing.lang();
+                notices.send(tenantId, i.employeeId(), lang.pick("Лицензия " + i.product() + " возвращена в общий пул: "
                         + (i.lastActive() == null ? "не использовалась"
                                 : "не использовалась с " + DAY.format(i.lastActive()))
-                        + ". Понадобится — запросите в кабинете", "/cabinet/licenses", "info");
+                        + ". Понадобится — запросите в кабинете",
+                        "Your " + i.product() + " license went back to the company pool: "
+                        + (i.lastActive() == null ? "it was never used"
+                                : "unused since " + LeaseService.day(i.lastActive(), lang))
+                        + ". Request it in your cabinet when you need it again"), "/cabinet/licenses", "info");
             }
             events.publishEvent(ActionTaken.of(tenantId, "license.reclaimed", "license_assignment", i.licenseId(),
                     ActionTaken.details("employeeId", i.employeeId(), "subscriptionId", i.subscriptionId())));

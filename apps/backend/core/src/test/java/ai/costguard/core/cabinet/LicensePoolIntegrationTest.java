@@ -114,6 +114,20 @@ class LicensePoolIntegrationTest extends PostgresTestSupport {
                 .andExpect(jsonPath("$.code").value("license_held"));
     }
 
+    /** ADR 0074: an English company's employee is told in English. */
+    @Test
+    void anEnglishCompanyIsToldInEnglish() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\",\"language\":\"en\"}")
+                .with(as("o@corp.ru", "owner"))).andExpect(status().isOk());
+        String figma = subscription("Figma", 1);
+        String anna = mail("anna");
+        employee(anna);
+        mvc.perform(json(post("/api/v1/me/license-requests"), "{\"subscriptionId\":\"%s\"}".formatted(figma))
+                .with(as(anna, "employee"))).andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/me/notifications").with(as(anna, "employee")))
+                .andExpect(jsonPath("$.items[0].text").value("You were given a Figma license from the company pool"));
+    }
+
     @Test
     void anIdleLicenseOfAColleagueGoesBackToThePoolWhenItApproves() throws Exception {
         String miro = subscription("Miro", 1);
