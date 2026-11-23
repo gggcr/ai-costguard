@@ -27,6 +27,19 @@ make demo                     # 5–10 minutes on the first run: builds the jars
 Keycloak, SeaweedFS (S3), Mailpit and the services, creates the ClickHouse tables, and loads the demo data
 (`tools/seed/seed.py`). Audit findings appear within a minute.
 
+Without make (Windows without WSL, for example), the same steps by hand, from the repository root in Git Bash:
+
+```bash
+./gradlew :core:bootJar :gateway:bootJar
+docker compose -f infra/local/docker-compose.yml --env-file .env --profile demo up -d --build --wait
+CLICKHOUSE_URL=http://localhost:8123 CLICKHOUSE_USER=costguard CLICKHOUSE_PASSWORD=costguard \
+  CLICKHOUSE_ACCESS_MANAGEMENT=1 CLICKHOUSE_READER_PASSWORD=costguard-reader KAFKA_BROKERS=kafka:29092 \
+  SCHEMA_REGISTRY_URL=http://schema-registry:8081 uv run python schemas/clickhouse/apply.py
+uv run python tools/seed/seed.py | docker compose -f infra/local/docker-compose.yml exec -T postgres \
+  psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
+uv run python tools/demo/check_demo.py     # optional: walks the demo through the API, PASS/FAIL per step
+```
+
 On a smaller machine `make demo-lite` (about 2 GB) runs the core, the web UI, PostgreSQL, Keycloak, Mailpit and S3
 only: the employee cabinet, the organisation, software and the audit work; the AI gateway, spend charts and imports
 do not.

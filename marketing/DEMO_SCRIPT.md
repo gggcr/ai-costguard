@@ -6,11 +6,13 @@ authorize/settle API, which charges budgets without calling a model.
 
 ## Before the call (10 minutes)
 
-> Rehearse once on your machine: this script was written against the code and its API specs, but it has not been
-> run end to end on this version (the walkthrough needs Docker, which was not available when it was written).
+> Checked on 2026-11-23 on a clean Docker stack: `python tools/demo/check_demo.py` walks every API step below as
+> Brightline (23 of 23 passed, again after a restart; see docs/DEMO_VALIDATION_REPORT.md). The clicks in the web
+> interface were not recorded by that check: rehearse them once before a call.
 
 ```bash
 cp .env.example .env && make demo        # docs/INSTALLATION.md
+python tools/demo/check_demo.py          # optional: walks the API steps below and prints PASS/FAIL
 ```
 
 Open http://localhost:3000 in a browser set to English, sign in as `demo-us` / `demo`. Have a terminal ready.
@@ -50,12 +52,19 @@ pay for."
      -d '{"kind":"paid_api","vendor":"Acme Data","product":"Company report","amount":40,"taskId":"demo-1"}'
    ```
 
-   The answer is an authorization; **Operations journal** shows the operation, **Budgets** the reserve.
+   The answer is an authorization (`authorizationId`); **Operations journal** shows the operation, **Budgets** the
+   reserve. When the agent has its report, it reports what it paid, and the operation is charged:
+
+   ```bash
+   curl -s http://localhost:8081/v1/spend/settle -H "Authorization: Bearer $KEY"      -H "Content-Type: application/json" -d '{"authorizationId":"<authorizationId>","amount":40}'
+   ```
 4. Ask for an amount above the approval threshold (`"amount":150`): `403 approval_required` with an approval id.
-   **Approvals**: approve it as the owner; repeat the same request with the same `Idempotency-Key` and it passes.
+   **Approvals**: the request appears a moment later; approve it as the owner. Repeat the same request with the
+   same `Idempotency-Key` and it passes. (The agent's `approvalId` is what it polls at the gateway,
+   `GET /v1/spend/approvals/{id}`; people decide in **Approvals**.)
 5. One more request of $150 with a new key: only $10 is left of the $200 limit, so `402 budget_exceeded` — before
    any money moved.
-6. **Operations journal → an operation**: the receipt with its hash and signature. "Batches of these receipts are
+6. **Operations journal → the settled operation**: the receipt with its hash and signature. "Batches of these receipts are
    anchored in a NEAR contract; anyone can check a receipt without trusting us." Show it without Docker:
    `uv run python tools/near/demo.py verify` (a real testnet transaction; the tampered receipt fails).
 

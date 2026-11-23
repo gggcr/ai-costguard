@@ -106,7 +106,7 @@ class SoftwareAuditRules implements AuditRules {
         List<Subscription> subscriptions = software.subscriptions();
 
         for (Subscription s : subscriptions) {
-            String name = vendors.get(s.vendorId()).name() + " " + s.product();
+            String name = productName(vendors.get(s.vendorId()).name(), s.product());
             BigDecimal price = monthly(s);
             for (License l : software.licenses(s.id())) {
                 if (dismissed.containsKey(l.employeeId())) {
@@ -148,7 +148,7 @@ class SoftwareAuditRules implements AuditRules {
                     .min((a, b) -> monthly(a).multiply(BigDecimal.valueOf(a.seats()))
                             .compareTo(monthly(b).multiply(BigDecimal.valueOf(b.seats()))))
                     .orElseThrow();
-            String name = vendors.get(cheaper.vendorId()).name() + " " + cheaper.product();
+            String name = productName(vendors.get(cheaper.vendorId()).name(), cheaper.product());
             found.add(new Detection(DUPLICATE, DUPLICATE + ":" + cheaper.id(),
                     lang.pick("Две подписки на ", "Two subscriptions to ") + name,
                     lang.pick("У компании " + same.size() + " подписки на " + name + ". Перенесите пользователей в одну.",
@@ -178,7 +178,7 @@ class SoftwareAuditRules implements AuditRules {
         overlaps(subscriptions, vendors, found, lang);
         List<Plan> plans = software.plans();
         for (Subscription s : subscriptions) {
-            String name = vendors.get(s.vendorId()).name() + " " + s.product();
+            String name = productName(vendors.get(s.vendorId()).name(), s.product());
             Plan plan = planOf(s, plans).orElse(null);
             oversized(s, name, plan, plans, found, lang);
             monthlyBilling(s, name, plan, found, lang);
@@ -332,5 +332,11 @@ class SoftwareAuditRules implements AuditRules {
                 lang.pick("Занято " + s.assigned() + " из " + s.seats() + " мест, подписка используется. ",
                         s.assigned() + " of " + s.seats() + " seats are taken, the subscription is in use. ") + why,
                 saving, s.id()));
+    }
+
+    /** "Google Workspace", not "Google Google Workspace": the vendor only when the product does not name it. */
+    static String productName(String vendor, String product) {
+        return product.toLowerCase(java.util.Locale.ROOT).startsWith(vendor.toLowerCase(java.util.Locale.ROOT) + " ")
+                || product.equalsIgnoreCase(vendor) ? product : vendor + " " + product;
     }
 }

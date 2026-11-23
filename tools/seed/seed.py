@@ -102,7 +102,7 @@ def brightline() -> Company:
             ("crm", "Salesforce", "Sales Cloud", "Sales", 5, 100, "month"),
             ("workspace", "Google", "Google Workspace", "Engineering", 5, 168, "year"),
             ("jira", "Atlassian", "Jira", "Engineering", 3, 8.6, "month"),
-            ("jira-sales", "Atlassian", "JIRA", "Sales", 2, 8.6, "month"),
+            ("jira-sales", "Atlassian", "Jira", "Sales", 2, 8.6, "month"),
         ],
         licenses=[
             ("crm", "james.miller" + mail, 1), ("crm", "robert.brown" + mail, 25), ("crm", "emily.carter" + mail, 60),
