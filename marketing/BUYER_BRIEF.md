@@ -7,10 +7,12 @@ the repository; nothing is projected or invented.
 
 - **Source code** of a working multi-tenant product: a Java 25 / Spring Boot core, an agent gateway, five Python
   services, a React web UI, Python and TypeScript SDKs, and a Rust smart contract.
-- **75 architecture decision records** explaining why each part is built the way it is.
+- **80 architecture decision records** explaining why each part is built the way it is.
 - **Contracts and tests**: Avro schemas for every Kafka topic, OpenAPI specs checked against the code, about
-  1,100 automated tests across Java, Python, TypeScript and Rust.
-- **Operations**: Docker Compose for local runs, a Helm chart, Argo CD applications, Terraform (Yandex Cloud),
+  1,270 automated tests across Java, Python, TypeScript and Rust, all passing on 2026-11-25
+  ([FINAL_QA_REPORT.md](../docs/FINAL_QA_REPORT.md)), plus a load test that holds a hard budget limit under load.
+- **Operations**: Docker Compose for local runs (a full stack and a 2 GB one), a Helm chart, Argo CD applications,
+  Terraform (AWS for US/EU, Yandex Cloud), CI with security scans and Dependabot,
   Prometheus alerts, dashboards, backups with tested restores, 26 runbooks.
 - **Documentation in English** (`docs/`) and these buyer materials.
 
@@ -35,12 +37,14 @@ the repository; nothing is projected or invented.
 
 | Gap | Effort estimate (engineering judgement, not a quote) |
 |---|---|
-| Card payments for plans (Stripe): the provider interface exists, only a test provider is implemented | 1–2 weeks |
-| AWS / GCP / Azure Terraform (the Helm chart is cloud-neutral) | 1–2 weeks |
-| Country rules outside Russia: vacation allowance, payroll frequency, e-signature wording | 1–2 weeks |
-| The signature stamp, PDF documents and shadow-spend category names are still in Russian | 2–3 days |
-| JWT audience validation, general API rate limiting at the core | 1–2 days |
+| Country rules outside Russia in the employee cabinet: vacation allowance, payroll frequency, e-signature wording ([COUNTRY_RULES_ROADMAP.md](../docs/COUNTRY_RULES_ROADMAP.md)) | 1–2 weeks |
+| GCP / Azure Terraform (AWS and Yandex Cloud exist; the Helm chart is cloud-neutral) | 1–2 weeks per cloud |
+| Stripe and AWS exercised against real accounts (the code and Terraform exist and are tested; no account yet) | days, once the accounts exist |
 | SOC 2 / ISO 27001, external penetration test, GDPR documents reviewed by a lawyer | outside engineering |
+
+Done since the first version of this brief: Stripe subscriptions (ADR 0077), AWS Terraform for US and EU (ADR
+0078), JWT audience check (ADR 0076), rate limits at the ingress, English stamp, PDFs, shadow-spend categories and
+anomaly texts, the AI gateway without Kafka for small installs (ADR 0080).
 
 ## Risks to weigh
 

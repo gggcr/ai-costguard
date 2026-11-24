@@ -14,9 +14,10 @@ ADR 0071 (2026-11-13) and [SECURITY.md](SECURITY.md).
 | 3 | Medium | No request-rate limit in front of the web client, the API and Keycloak | Helm ingress | **Fixed**: `ingress.rateLimitRps` (20 rps per address, burst ×5) for web, API, Keycloak |
 | 4 | Medium | Payment provider notices: the old flow had no real provider; a new one must not be forgeable or replayable | billing | **Designed in** (ADR 0077): HMAC signature, 5-minute tolerance, event dedup, tests incl. negative controls |
 | 5 | Low | `GET /api/v1/login/hint` (public) tells whether an e-mail **domain** signs in with Microsoft | core | Accepted: by design for the login page; reveals domains, not people |
-| 6 | Low | Mandate hours are Russian words in the API | core API | Open (usability, not security) |
+| 6 | Low | Mandate hours are Russian words in the API | core API | **Fixed** 2026-11-25: the API answers `24/7`, `workdays` or a window; storage and mandate hashes unchanged |
 | 7 | Info | `/actuator/prometheus` answers on port 8080 in the **local** stack | local stack | Accepted: in Kubernetes the actuator is on the management port 9090, not routed by the ingress (ADR 0071) |
-| 8 | Info | Container images were not scanned (no Trivy/Grype on the build host) | images | Open: run an image scanner in CI before release |
+| 8 | Info | Container images were not scanned (no Trivy/Grype on the build host) | images | **Fixed** 2026-11-25: the security workflow scans every image, the web client included (it was missing); Trivy 0.57.1 on core, gateway and web client images: 0 fixable HIGH or CRITICAL. The web client moved to nginx 1.31 with `apk upgrade` (nginx 1.27/1.30 images carried fixable criticals); Dependabot proposes base image updates weekly |
+| 9 | Low | CSP `connect-src` was open: injected script could send data anywhere | web nginx | **Fixed** 2026-11-25: `connect-src` is this origin and Keycloak (and the API when it lives elsewhere), made at build time from the addresses baked into the bundle |
 
 No critical findings are open. No secrets were found in the repository or its history.
 
@@ -113,8 +114,12 @@ outside development: the core warns when it generates one per run).
 ## Remaining risks before a commercial launch
 
 - No independent penetration test; no SOC 2 / ISO 27001.
-- Container images not scanned; base images should be pinned by digest and scanned in CI.
-- `connect-src` of the CSP is open; `style-src` allows inline styles (React style attributes).
+- Base images are followed by tag (`25-jre`, `3.12-slim`, `1.31-alpine`, `17-bookworm`), not pinned by digest:
+  Dependabot proposes their updates weekly and the security workflow scans every image; pin by digest if a release
+  must be reproducible byte for byte.
+- `style-src` is not restricted: React style attributes need inline styles.
+- The internal paths of a small install without Kafka (`/internal/**`, ADR 0080) rest on one shared secret,
+  `INTERNAL_TOKEN`; keep the core's port off the internet there, as the web client's proxy does.
 - The receipt signing key, `CONNECTIONS_ENCRYPTION_KEY` and Keycloak client secrets must come from a secret store in
   every non-local environment; the local defaults in `.env.example` and Compose are for the laptop only.
 - Stripe integration not exercised against a real Stripe account.

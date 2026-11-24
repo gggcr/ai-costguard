@@ -3,6 +3,19 @@
 Releases are tagged `vX.Y.Z` ([RELEASE_PROCESS.md](RELEASE_PROCESS.md)); this lists what changed by milestone. Every decision has an ADR in
 [`docs/adr`](adr).
 
+## Unreleased: technical clean-up before sale (2026-11-25)
+
+- **Backups:** `pg_dump` as the backup role works again (V56: the gateway feed has no sequence); the backup image
+  follows PostgreSQL 17.x.
+- **CI:** the staging smoke test starts after a build only once a staging exists (`SMOKE_STAGING=on`), so builds are
+  not red for want of an environment; a `release-gate` workflow runs `tools/release/verify.sh` as one script; the
+  web client image is scanned like the others; Dependabot proposes dependency and base image updates weekly;
+  `verify.sh` and `plan_staging.sh` are executable.
+- **Security:** CSP `connect-src` limited to this origin and Keycloak; the web client runs on nginx 1.31 with
+  current Alpine packages (0 fixable high or critical findings in the core, gateway and web client images).
+- **English:** mandate hours are `24/7` / `workdays` in the API; the anomaly detector's risk reasons and finding
+  titles and the report explanations follow the company's language.
+
 ## Unreleased: the AI gateway without Kafka (2026-11-24)
 
 - **`EVENTS_TRANSPORT=direct`** for small installs: the gateway reads agents, mandates, budgets, policies, prices,

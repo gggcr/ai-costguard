@@ -25,12 +25,12 @@ Date: 2026-11-24. Status: **release candidate; external blockers remain** (below
 
 - Employee-cabinet labour rules are Russian (28-day leave, payroll kinds, e-signature wording):
   docs/COUNTRY_RULES_ROADMAP.md.
-- Mandate working hours: the API now accepts `24/7` and `workdays` as well as the Russian names, but answers with
-  the stored Russian names (`круглосуточно`, `только рабочие дни`); the UI shows them in English.
-- Some generated texts are still Russian for every company: risk reasons of the anomaly detector and the language
-  model's report explanations; the web UI's translator covers them in the browser.
-- The release gate script `tools/release/verify.sh` was assembled from steps run individually; it was not run as one
-  script on the build machine (no `uv` there).
+- Fixed 2026-11-25: mandate working hours are answered as `24/7`, `workdays` or a window in every language; the
+  anomaly detector's risk reasons and finding titles and the report explanations are in the company's language.
+- The release gate `tools/release/verify.sh` runs as one script in CI (Actions → release-gate, by hand). On the
+  Windows build machine its steps were run one by one on 2026-11-25; see FINAL_QA_REPORT.md.
+- The AI gateway also runs without Kafka for small installs (`EVENTS_TRANSPORT=direct`, ADR 0080); file parsing,
+  the anomaly detector and the NEAR notary need the full stack.
 
 ## External blockers before a commercial launch
 
