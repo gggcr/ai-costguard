@@ -18,6 +18,11 @@ spring:
 
 costguard:
   gateway:
+    # kafka, or direct for installs without Kafka and the Schema Registry: state comes from the core's feed and
+    # operations go to the core, both under INTERNAL_TOKEN, the same as the core's (ADR 0080)
+    transport: ${EVENTS_TRANSPORT:kafka}
+    core-url: ${CORE_INTERNAL_URL:http://localhost:8080}
+    internal-token: ${INTERNAL_TOKEN:}
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8085}
     time-zone: ${COMPANY_TIME_ZONE:Europe/Moscow}
     # The AI assessor of step 6 (ADR 0011). Off unless both are set; then a model of one of the providers below

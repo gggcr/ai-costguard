@@ -12,7 +12,10 @@ Empty optional settings switch a feature off; they never fall back to an insecur
 |---|---|---|
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | core | PostgreSQL of the core. The user must not be a superuser (superusers bypass row-level security) |
 | `DB_ADMIN_USER`, `DB_ADMIN_PASSWORD` | migrations | the owner role Flyway migrates with |
-| `KAFKA_BOOTSTRAP_SERVERS`, `SCHEMA_REGISTRY_URL` | all | Kafka and the Schema Registry |
+| `KAFKA_BOOTSTRAP_SERVERS`, `SCHEMA_REGISTRY_URL` | all | Kafka and the Schema Registry; not needed with `EVENTS_TRANSPORT=direct` |
+| `EVENTS_TRANSPORT` | core, gateway | `kafka` (default) or `direct`: a small install without Kafka, the Schema Registry and ClickHouse, where the gateway reads its state from the core and posts operations to it (ADR 0080). Direct also needs `CORE_EVENTS_KAFKA_ENABLED=false` on the core |
+| `INTERNAL_TOKEN` | core, gateway | with `direct` only: the shared secret of the core's `/internal/**` paths, the same on both, at least 32 characters (`openssl rand -hex 32`) |
+| `CORE_INTERNAL_URL` | gateway | with `direct` only: where the gateway reaches the core (default `http://localhost:8080`) |
 | `KEYCLOAK_ISSUER_URI` | core, gateway | the OIDC issuer whose tokens the API accepts |
 | `JWT_AUDIENCE` | core | the audience an access token must carry (default `costguard-api`, ADR 0076); it cannot be empty |
 | `REDIS_HOST`, `REDIS_PORT` | gateway | budget reserves and rate limits |

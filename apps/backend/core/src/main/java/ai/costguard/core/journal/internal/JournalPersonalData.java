@@ -26,7 +26,7 @@ class JournalPersonalData implements DataHolder {
 
     @Override
     public List<String> tables() {
-        return List.of("receipt", "receipt_chain", "anchor_batch");
+        return List.of("receipt", "receipt_chain", "anchor_batch", "agent_operation");
     }
 
     @Override
@@ -37,7 +37,8 @@ class JournalPersonalData implements DataHolder {
 
     @Override
     public void eraseCompany(UUID tenantId, Report report) {
-        TenantRows.delete(jdbc, tenantId, report, "journal", "receipt", "anchor_batch", "receipt_chain");
+        TenantRows.delete(jdbc, tenantId, report, "journal", "receipt", "anchor_batch", "receipt_chain",
+                "agent_operation");
     }
 
     /** What this module holds about the person (ADR 0079): the same rows erasure deletes or anonymizes. */

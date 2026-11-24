@@ -8,7 +8,10 @@
 | Port already in use (5432, 8080, 8081, 8180, 3000, 9000) | another program holds it. Stop it, or set `POSTGRES_PORT` for PostgreSQL; the other ports are fixed in `infra/local/docker-compose.yml` |
 | Sign-in loops back to the login page | Keycloak is not ready yet (first start takes about a minute), or the browser is not on `http://localhost:3000`, the only redirect URI of the local client |
 | `demo-us` or `ecarter` cannot sign in | Keycloak was created before these users existed: `make down && make demo` |
-| The console is empty right after `make demo` | the audit runs within a minute of start; reload. With `make demo-lite` spend charts and agents stay empty by design |
+| The console is empty right after `make demo` | the audit runs within a minute of start; reload. Agent spend appears once an agent spends through the gateway (`tools/demo/check_demo.py` makes some) |
+| `make demo-lite`: the gateway logs "Could not read the core's feed" | the core is still starting; the gateway retries every second and logs "the gateway has the state" once it has read it. If it repeats with 401, `INTERNAL_TOKEN` differs between the core and the gateway |
+| `make demo-lite`: the operation journal answers 503 "ClickHouse does not answer" | `CORE_CLICKHOUSE_URL` did not reach the core empty. In PowerShell set it to a space, `$env:CORE_CLICKHOUSE_URL=" "` ([INSTALLATION.md](INSTALLATION.md)) |
+| `make demo-lite`: an uploaded invoice stays "processing" | parsing files needs the ingest service and Kafka: use `make demo` |
 | E-mails are not delivered | locally all mail goes to Mailpit, http://localhost:8025 |
 | The UI is in Russian | the language follows the browser on the first visit; switch RU | EN in the top right corner, the choice is remembered |
 

@@ -3,9 +3,9 @@
     python tools/demo/check_demo.py          # after `make demo`; exit code 0 when every step passed
 
 Each step prints PASS or FAIL with what it saw. Nothing here is mocked: Keycloak issues the tokens, the core keeps
-the data, the gateway decides over Kafka-delivered state, and the receipt comes back from the ledger. The run
-creates a mandate, an agent, budgets and operations in the demo company, so it can be repeated; a fresh
-`make down && make demo` resets everything.
+the data, the gateway decides over state the core delivered (over Kafka, or directly in `make demo-lite`), and the
+receipt comes back from the ledger. The run creates a mandate, an agent, budgets and operations in the demo company,
+so it can be repeated; a fresh `make down && make demo` resets everything.
 """
 
 import os
@@ -142,7 +142,7 @@ def main() -> int:
     first = wait(lambda: (lambda x: x if x.status_code == 200 else None)(authorize(key, 40, str(uuid.uuid4()))),
                  timeout=120)
     step("the agent buys a $40 report: authorized", first is not None and first.status_code == 200,
-         "the gateway learned the agent, mandate and budget from Kafka" if first is not None else "timed out")
+         "the gateway learned the agent, mandate and budget from the core" if first is not None else "timed out")
     big = str(uuid.uuid4())
     held = authorize(key, 150, big)
     body = held.json() if held.headers.get("content-type", "").startswith("application/json") else {}

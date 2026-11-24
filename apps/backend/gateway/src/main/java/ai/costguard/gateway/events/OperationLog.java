@@ -13,42 +13,49 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 /**
- * Sends every decision to {@code agent.operations.v1}. If Kafka or the Schema Registry does not answer, the message
- * goes to a file on disk and is sent later, so the agent is never held up and no operation is lost. Messages from
- * the file keep their key, so the core dedupes a message that was sent twice.
+ * Sends every decision to the core: to {@code agent.operations.v1}, or without Kafka straight to the core
+ * ({@code EVENTS_TRANSPORT=direct}, ADR 0080). If it does not answer, the message goes to a file on disk and is
+ * sent later, so the agent is never held up and no operation is lost. Messages from the file keep their key, so the
+ * core dedupes a message that was sent twice.
  */
-@Component
 public class OperationLog {
 
     static final String TOPIC = "agent.operations.v1";
     private static final Logger log = LoggerFactory.getLogger(OperationLog.class);
 
-    private final KafkaTemplate<String, byte[]> kafka;
-    private final SchemaRegistryClient registry;
+    /** Delivers one operation; the future fails when it was not delivered. May also throw before sending. */
+    public interface Sender {
+        CompletableFuture<?> send(String key, AgentOperation op);
+    }
+
+    private final Sender sender;
     private final Path buffer;
     private final Object lock = new Object();
 
+    /** To Kafka, in the Schema Registry wire format. */
     public OperationLog(KafkaTemplate<String, byte[]> gatewayKafkaTemplate, SchemaRegistryClient registry,
-            @Value("${costguard.gateway.buffer-file:${java.io.tmpdir}/costguard-gateway/operations.buf}") Path buffer) {
-        this.kafka = gatewayKafkaTemplate;
-        this.registry = registry;
+            Path buffer) {
+        this(gatewayKafkaTemplate == null ? null : (key, op) -> gatewayKafkaTemplate.send(TOPIC, key,
+                AvroWire.encode(registry.idOf(TOPIC, op.getSchema()), op)), buffer);
+    }
+
+    public OperationLog(Sender sender, Path buffer) {
+        this.sender = sender;
         this.buffer = buffer;
     }
 
     public void record(AgentOperation op) {
         String key = op.getAgentId().toString();
         try {
-            byte[] value = AvroWire.encode(registry.idOf(TOPIC, op.getSchema()), op);
-            kafka.send(TOPIC, key, value).whenComplete((ok, error) -> {
+            sender.send(key, op).whenComplete((ok, error) -> {
                 if (error != null) {
                     keep(key, op);
                 }
@@ -130,8 +137,7 @@ public class OperationLog {
                         break;
                     }
                     try {
-                        kafka.send(TOPIC, key, AvroWire.encode(registry.idOf(TOPIC, op.getSchema()), op))
-                                .get(10, TimeUnit.SECONDS);
+                        sender.send(key, op).get(10, TimeUnit.SECONDS);
                         sent++;
                     } catch (Exception e) {
                         keep(key, op);

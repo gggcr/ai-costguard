@@ -27,6 +27,10 @@ public final class AvroWire {
     private AvroWire() {
     }
 
+    /** Runs the static block above: {@link SingleObject} decodes the same classes. */
+    static void trustEventClasses() {
+    }
+
     public static byte[] encode(int schemaId, SpecificRecord record) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             out.write(0);

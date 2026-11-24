@@ -52,8 +52,10 @@ the repository; nothing is projected or invented.
   purchase buys the copyright, the later work, the history and the team's know-how, not exclusivity over those
   copies. Written assignments from both Git authors are still missing. See
   `docs/INTELLECTUAL_PROPERTY_CHECKLIST.md`. This is not legal advice.
-- **Heavy stack** for a small team to operate: PostgreSQL, Kafka, ClickHouse, Redis, Keycloak, S3. `make demo-lite`
-  shows a lighter mode is possible.
+- **Stack.** The full product runs on PostgreSQL, Kafka, ClickHouse, Redis, Keycloak and S3. The AI gateway and the
+  core also run without Kafka, the Schema Registry and ClickHouse (`EVENTS_TRANSPORT=direct`, ADR 0080): `make
+  demo-lite` fits in about 2 GB and passes the whole demo script. File parsing, the anomaly detector and the NEAR
+  notary still need Kafka.
 - **Origin.** Built for the Russian market first. Selling or hosting for Western customers needs a non-Russian legal
   entity, sanctions and export-control advice, and Western cloud and payment accounts.
 

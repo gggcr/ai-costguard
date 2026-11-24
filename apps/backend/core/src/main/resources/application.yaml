@@ -54,6 +54,10 @@ costguard:
   events:
     kafka:
       enabled: ${CORE_EVENTS_KAFKA_ENABLED:true}
+    # kafka, or direct for installs without Kafka: the gateway reads its state from the core and posts operations to
+    # it, both under INTERNAL_TOKEN (ADR 0080). Direct needs CORE_EVENTS_KAFKA_ENABLED=false.
+    transport: ${EVENTS_TRANSPORT:kafka}
+    internal-token: ${INTERNAL_TOKEN:}
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8085}
   catalog:
     cbr:

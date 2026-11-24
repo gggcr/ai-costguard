@@ -49,11 +49,17 @@ demo:
 	@echo "Frontend http://localhost:3000 (demo / demo); for development: cd apps/frontend && npm install && npm run dev"
 	@echo "Findings of the audit appear within a minute."
 
-# The employee cabinet and the org on a small machine (ADR 0064): PostgreSQL, Keycloak, Mailpit, S3, the core and the
-# web client; no Kafka, ClickHouse, gateway or ingest. Spend charts and the AI gateway stay empty. ~2 GB of memory.
+# The whole product on a small machine (ADR 0064, 0080): PostgreSQL, Redis, Keycloak, Mailpit, S3, the core, the AI
+# gateway and the web client. No Kafka, Schema Registry or ClickHouse: the gateway reads its state from the core and
+# posts operations to it (EVENTS_TRANSPORT=direct). No ingest service, so uploaded files are not parsed, and the
+# spend charts stay empty. INTERNAL_TOKEN in the environment (not .env: the shell wins) replaces the local default.
+LITE_TOKEN ?= local-only-internal-token-change-me-0123456789
+LITE = EVENTS_TRANSPORT=direct CORE_EVENTS_KAFKA_ENABLED=false KAFKA_LISTENERS=false CORE_CLICKHOUSE_URL= \
+	INTERNAL_TOKEN=$${INTERNAL_TOKEN:-$(LITE_TOKEN)} CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC"
 demo-lite:
-	./gradlew :core:bootJar
-	$(COMPOSE) up -d --wait postgres keycloak mailpit s3
-	KAFKA_LISTENERS=false CORE_CLICKHOUSE_URL= CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC" $(COMPOSE) --profile demo up -d --build --no-deps --wait core frontend
+	./gradlew :core:bootJar :gateway:bootJar
+	$(COMPOSE) up -d --wait postgres redis keycloak mailpit s3
+	$(LITE) $(COMPOSE) --profile demo up -d --build --no-deps --wait core gateway frontend
 	$(MAKE) seed
-	@echo "Frontend http://localhost:3000 (demo / demo — owner, ivanov / demo — employee)"
+	@echo "Frontend http://localhost:3000 (demo-us / demo — owner, ecarter / demo — employee)"
+	@echo "Gateway  http://localhost:8081: agents spend through it (marketing/DEMO_SCRIPT.md)"

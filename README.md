@@ -106,9 +106,10 @@ python tools/seed/seed.py | docker compose -f infra/local/docker-compose.yml --e
 Если порт 5432 занят своим PostgreSQL, перед командами задайте другой: `$env:POSTGRES_PORT="15432"` (на Windows
 порты 5433–5532 часто зарезервированы системой).
 
-Компьютер слабый (меньше 8 ГБ для Docker)? Есть облегчённый режим `make demo-lite`, около 2 ГБ: кабинет сотрудника,
-оргструктура, подписки и находки работают, а шлюза агентов, Kafka и ClickHouse в нём нет, поэтому журнал операций и
-графики трат агентов пустые. Его шаги без `make` — в цели `demo-lite` в [Makefile](Makefile).
+Компьютер слабый (меньше 8 ГБ для Docker)? Есть облегчённый режим `make demo-lite`, около 2 ГБ: PostgreSQL, Redis,
+Keycloak, ядро, шлюз ИИ-агентов и веб-клиент, без Kafka, Schema Registry и ClickHouse (ADR 0080). Работают агенты,
+мандаты, бюджеты, согласования, квитанции, журнал операций, графики трат, кабинет и аудит; не работают разбор
+загруженных файлов, детектор аномалий и нотариус NEAR. Шаги без `make` — в [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ## Что внутри
 
@@ -180,8 +181,9 @@ Product documentation in English: [overview](docs/PRODUCT_OVERVIEW.md), [archite
 [security](docs/SECURITY.md), [API](docs/API.md), [troubleshooting](docs/TROUBLESHOOTING.md),
 [changelog](docs/CHANGELOG.md); for buyers: [marketing/](marketing/BUYER_BRIEF.md).
 
-On a machine with less than 8 GB for Docker, `make demo-lite` (about 2 GB) runs the same UI without the agent gateway,
-Kafka and ClickHouse.
+On a machine with less than 8 GB for Docker, `make demo-lite` (about 2 GB) runs the core, the agent gateway and the
+same UI on PostgreSQL, Redis and Keycloak only, without Kafka, the Schema Registry and ClickHouse (ADR 0080): the
+whole demo script passes there. File parsing, the anomaly detector and the notary need the full stack.
 
 **RU / EN.** The interface starts in the browser's language, and the core writes notifications, e-mails and
 audit findings in the company's language (ADR 0074). The interface was first written in Russian (the first
@@ -258,7 +260,7 @@ git clone -b goidochka https://github.com/gggcr/ai-costguard.git
 cd ai-costguard
 cp .env.example .env
 make demo               # инфраструктура, ядро и шлюз в Docker, демо-компания ООО «Ромашка»
-make demo-lite          # на слабой машине: только кабинет и оргструктура (без Kafka, ClickHouse, шлюза), ~2 ГБ
+make demo-lite          # на слабой машине: ядро, шлюз и веб-клиент без Kafka и ClickHouse (ADR 0080), ~2 ГБ
 ```
 
 Нужны JDK 25, Docker, Python 3.12+ с [uv](https://docs.astral.sh/uv/) и Node.js 20+. После `make demo`:

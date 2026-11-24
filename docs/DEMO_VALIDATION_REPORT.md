@@ -83,7 +83,7 @@ web UI and the plan page are served; plans are priced in USD.
 - The demo uses `PAYMENT_PROVIDER=dummy`: "Subscribe" succeeds without money. Stripe needs real test keys
   ([STRIPE_SETUP.md](STRIPE_SETUP.md)).
 - NEAR anchoring of receipts is not part of this run (it needs a testnet account and key).
-- Docker needs about 8 GB; on smaller machines use `make demo-lite` (no gateway).
+- Docker needs about 8 GB; on smaller machines use `make demo-lite`, which runs the gateway without Kafka (ADR 0080). On 2026-11-24 this script passed 23 of 23 steps there too.
 
 ## Reproducing
 

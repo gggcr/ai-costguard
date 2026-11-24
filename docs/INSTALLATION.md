@@ -40,9 +40,31 @@ uv run python tools/seed/seed.py | docker compose -f infra/local/docker-compose.
 uv run python tools/demo/check_demo.py     # optional: walks the demo through the API, PASS/FAIL per step
 ```
 
-On a smaller machine `make demo-lite` (about 2 GB) runs the core, the web UI, PostgreSQL, Keycloak, Mailpit and S3
-only: the employee cabinet, the organisation, software and the audit work; the AI gateway, spend charts and imports
-do not.
+### The lite stack: the whole AI gateway without Kafka
+
+On a smaller machine `make demo-lite` (about 2 GB for Docker; the containers took 1.5 GB on 2026-11-24) runs
+PostgreSQL, Redis, Keycloak, Mailpit, S3, the core, the AI gateway and the web UI, with no Kafka, Schema Registry or
+ClickHouse: the gateway reads its state from the core and posts its operations to it (`EVENTS_TRANSPORT=direct`,
+ADR 0080). Agents, mandates, budgets, approvals, signed receipts, the operation journal, agent spend charts, the
+employee cabinet, software and the audit all work, and `tools/demo/check_demo.py` passes. What needs Kafka does not:
+parsing uploaded files (ingest), the anomaly detector and the NEAR notary.
+
+Without make, in Git Bash (an empty `CORE_CLICKHOUSE_URL` matters: it tells the core there is no ClickHouse):
+
+```bash
+./gradlew :core:bootJar :gateway:bootJar
+docker compose -f infra/local/docker-compose.yml --env-file .env up -d --wait postgres redis keycloak mailpit s3
+EVENTS_TRANSPORT=direct CORE_EVENTS_KAFKA_ENABLED=false KAFKA_LISTENERS=false CORE_CLICKHOUSE_URL= \
+  INTERNAL_TOKEN=local-only-internal-token-change-me-0123456789 CORE_JAVA_OPTS="-Xmx512m -XX:+UseSerialGC" \
+  docker compose -f infra/local/docker-compose.yml --env-file .env --profile demo up -d --build --no-deps --wait \
+  core gateway frontend
+uv run python tools/seed/seed.py | docker compose -f infra/local/docker-compose.yml exec -T postgres \
+  psql -q -v ON_ERROR_STOP=1 -U postgres -d costguard
+```
+
+In Windows PowerShell set `$env:CORE_CLICKHOUSE_URL=" "` (a space): an empty value there removes the variable, and
+the core would wait for a ClickHouse that is not running. Pipe the seed from Git Bash or `cmd`: PowerShell 5.1
+re-encodes piped text and breaks the Cyrillic names of the Russian demo company.
 
 ## Sign in
 

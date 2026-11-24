@@ -18,8 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The operation journal for the web client: every decision of the gateway from ClickHouse ({@code agent_operations},
- * ADR 0007), with the state of its receipt from PostgreSQL. Without ClickHouse the list is empty: the core keeps
- * receipts of allowed operations only, not the denied ones.
+ * ADR 0007), with the state of its receipt from PostgreSQL. Without ClickHouse it reads {@code agent_operation} in
+ * PostgreSQL, which the core fills when the gateway posts to it directly (ADR 0080); with Kafka and no ClickHouse
+ * that table stays empty, and so does the list.
  *
  * <p>TabSeparated writes NULL as {@code \N}. The SQL is built from the tenant of the token, a UUID and an instant parsed by Spring, never from free text.
  */
@@ -34,34 +35,39 @@ class OperationLog {
     private final ClickHouse clickhouse;
     private final TenantSession session;
     private final JdbcClient jdbc;
+    private final OperationRows postgres;
 
-    OperationLog(ClickHouse clickhouse, TenantSession session, JdbcClient jdbc) {
+    OperationLog(ClickHouse clickhouse, TenantSession session, JdbcClient jdbc, OperationRows postgres) {
         this.clickhouse = clickhouse;
         this.session = session;
         this.jdbc = jdbc;
+        this.postgres = postgres;
     }
 
     @Transactional(readOnly = true)
     List<OperationView> list(UUID tenantId, UUID agentId, Instant before, int limit) {
-        if (!clickhouse.configured()) {
-            return List.of();
-        }
-        List<String[]> rows;
-        try {
-            rows = clickhouse.rows(query(tenantId, agentId, before, Math.min(Math.max(limit, 1), MAX_LIMIT)), "operations");
-        } catch (ClickHouse.Unavailable e) {
-            throw JournalProblem.OPERATIONS_UNAVAILABLE.failure();
-        }
+        int bounded = Math.min(Math.max(limit, 1), MAX_LIMIT);
         List<OperationView> found = new ArrayList<>();
-        for (String[] r : rows) {
-            found.add(new OperationView(UUID.fromString(r[0]), UUID.fromString(r[1]), parseTime(r[2]), r[3], r[4],
-                    nullable(r[5]), r[6], nullable(r[7]), new BigDecimal(r[8]), decimal(r[9]), r[10], number(r[11]),
-                    number(r[12]), null));
+        if (clickhouse.configured()) {
+            List<String[]> rows;
+            try {
+                rows = clickhouse.rows(query(tenantId, agentId, before, bounded), "operations");
+            } catch (ClickHouse.Unavailable e) {
+                throw JournalProblem.OPERATIONS_UNAVAILABLE.failure();
+            }
+            for (String[] r : rows) {
+                found.add(new OperationView(UUID.fromString(r[0]), UUID.fromString(r[1]), parseTime(r[2]), r[3],
+                        r[4], nullable(r[5]), r[6], nullable(r[7]), new BigDecimal(r[8]), decimal(r[9]), r[10],
+                        number(r[11]), number(r[12]), null));
+            }
+            session.bind(tenantId);
+        } else {
+            session.bind(tenantId);
+            found.addAll(postgres.list(agentId, before, bounded));
         }
         if (found.isEmpty()) {
             return found;
         }
-        session.bind(tenantId);
         Map<UUID, ReceiptStatus> receipts = receipts(found.stream().map(OperationView::id).toList());
         return found.stream().map(o -> o.withReceipt(receipts.get(o.id()))).toList();
     }

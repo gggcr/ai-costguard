@@ -3,6 +3,15 @@
 Releases are tagged `vX.Y.Z` ([RELEASE_PROCESS.md](RELEASE_PROCESS.md)); this lists what changed by milestone. Every decision has an ADR in
 [`docs/adr`](adr).
 
+## Unreleased: the AI gateway without Kafka (2026-11-24)
+
+- **`EVENTS_TRANSPORT=direct`** for small installs: the gateway reads agents, mandates, budgets, policies, prices,
+  rates, approval decisions and plans from a feed the core keeps in PostgreSQL, and posts its operations to the core;
+  no Kafka, Schema Registry or ClickHouse (ADR 0080, migrations V54–V55).
+- **Operation journal in PostgreSQL** when ClickHouse is not configured.
+- **`make demo-lite` includes the AI gateway**: agents, budgets, approvals, receipts, the journal and agent spend
+  charts work on PostgreSQL, Redis and Keycloak.
+
 ## 1.0.0-rc.1 (2026-11-24): commercial release candidate
 
 - **Security:** the core accepts only RS256 tokens issued for `costguard-api` (ADR 0076; add the Keycloak audience
