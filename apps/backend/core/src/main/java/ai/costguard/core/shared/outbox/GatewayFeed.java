@@ -35,8 +35,11 @@ class GatewayFeed {
             return;
         }
         jdbc.sql("select pg_advisory_xact_lock(?)").param(LOCK).query().singleRow();
+        // max + 1, not a sequence: the backup role reads tables only, and a sequence stopped pg_dump (V56). Rows are
+        // never deleted (a tombstone keeps its row), so the max only grows, and the lock makes it the writer's own.
         jdbc.sql("""
-                insert into gateway_feed (topic, key, value, seq) values (?, ?, ?, nextval('gateway_feed_seq'))
+                insert into gateway_feed (topic, key, value, seq)
+                values (?, ?, ?, (select coalesce(max(seq), 0) + 1 from gateway_feed))
                 on conflict (topic, key) do update set value = excluded.value, seq = excluded.seq""")
                 .params(topic, key, value).update();
     }
