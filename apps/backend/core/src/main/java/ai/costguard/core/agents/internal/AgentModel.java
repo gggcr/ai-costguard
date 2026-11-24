@@ -43,8 +43,15 @@ record IssuedKey(VirtualKey key, String secret) {
  * until the notary reports it.
  */
 record Mandate(UUID id, String name, List<String> models, List<String> vendors, BigDecimal maxPerOperation,
-        BigDecimal approvalThreshold, String hours, MandateStatus status, int version, Instant updatedAt,
-        String mandateHash, String nearTxHash) {
+        BigDecimal approvalThreshold, @com.fasterxml.jackson.annotation.JsonIgnore String hours, MandateStatus status,
+        int version, Instant updatedAt, String mandateHash, String nearTxHash) {
+
+    /** {@code hours} in the API: "24/7", "workdays" or a window such as "09:00–18:00", in any language. */
+    @com.fasterxml.jackson.annotation.JsonProperty("hours")
+    @io.swagger.v3.oas.annotations.media.Schema(example = "24/7")
+    String hoursCode() {
+        return MandateExpression.code(hours);
+    }
 }
 
 record MandateDetails(

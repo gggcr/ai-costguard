@@ -57,6 +57,42 @@ def test_the_template_says_the_same_plainly():
     assert "находок" not in calm and "подтверждено" not in calm
 
 
+def english(findings=None):
+    months = [(date(2026, m, 1), Decimal(100000 + 5000 * m)) for m in range(1, 9)]
+    return report.build("Brightline Analytics Inc.", "USD", months,
+                        findings or {"open": 3, "expectedSavings": 42000, "confirmedSavings": 7000}, date(2026, 9, 5),
+                        language="en")
+
+
+def test_an_english_company_gets_the_explanation_in_english():
+    r = english()
+    facts = explain.facts(r)
+    assert facts["spend in the period"] == "980,000" and facts["change, %"] == 33
+    assert facts["first month"]["month"] == "Jan 2026"
+
+    text = explain.template(r)
+    assert text.startswith("980,000 USD was spent in 8 months.")
+    assert "rose by 33%" in text and "can save 42,000 USD" in text and "Savings already confirmed: 7,000 USD" in text
+    assert not any("а" <= ch.lower() <= "я" for ch in text), text
+    assert explain.grounded(text, facts, "en")
+    assert explain.template(report.build("Empty", "USD", [], {}, date(2026, 9, 5), language="en")) \
+        == "No spend in the period yet."
+
+    good = "Brightline spent 980,000 USD over 8 months; spend rose by 33%. The 3 open findings can save 42,000 USD."
+    model = Fixed(good)
+    assert explain.explain(r, model) == explain.Explanation(good, "model")
+    system, user, _ = model.asked[0]
+    assert "in English" in system and json.loads(user)["open findings"] == 3
+    # 98,000 is not a fact: the template instead
+    assert explain.explain(r, Fixed("Spend was 98,000 USD.")).source == "template"
+
+
+def test_numbers_are_read_the_way_each_language_writes_them():
+    assert explain._numbers("1,200.5 and 31%", "en") == {"1200.5", "31"}
+    assert explain._numbers("1 200,5 и 31%", "ru") == {"1200.5", "31"}
+    assert explain.task_goal("en").startswith("An explanation") and explain.task_goal("ru").startswith("Пояснение")
+
+
 def test_the_explanation_goes_into_both_files():
     r = sample()
     text = explain.template(r)

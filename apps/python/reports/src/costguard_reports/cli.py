@@ -73,19 +73,21 @@ def main(argv: list[str] | None = None) -> None:
         series = fetch_clickhouse(clickhouse, args.tenant, currency, args.months,
                                   os.environ.get("CLICKHOUSE_TENANT_SETTING") == "1")
     r = report.build(company, currency, series, findings, date.today(), args.horizon, language)
-    text = explain.explain(r, model(os.environ), f"report-{date.today():%Y-%m}")
+    text = explain.explain(r, model(os.environ, language), f"report-{date.today():%Y-%m}")
     args.out.write_bytes(report.xlsx(r, text.text) if args.format == "xlsx" else report.pdf(r, text.text))
     print(f"{args.out}: {len(series)} months, forecast {r.forecast.method}, explanation by {text.source}")
 
 
-def model(env) -> llm.GatewayLlm | None:
-    """The model of the explanations, through the gateway; none unless REPORTS_LLM_API_KEY and _MODEL are set."""
+def model(env, language: str = "ru") -> llm.GatewayLlm | None:
+    """The model of the explanations, through the gateway; none unless REPORTS_LLM_API_KEY and _MODEL are set. The
+    task goal the gateway checks the call against is in the company's language, as people read it in approvals."""
     key, name = env.get("REPORTS_LLM_API_KEY"), env.get("REPORTS_LLM_MODEL")
     if not key or not name:
         return None
     client = httpx.Client(base_url=env.get("REPORTS_LLM_GATEWAY_URL", "http://gateway:8081"), timeout=60)
-    return llm.GatewayLlm(client, key, env.get("REPORTS_LLM_PROVIDER", "openai"), name, goal=explain.TASK_GOAL,
-                          max_tokens=600, folder_id=env.get("REPORTS_LLM_FOLDER_ID", ""))
+    return llm.GatewayLlm(client, key, env.get("REPORTS_LLM_PROVIDER", "openai"), name,
+                          goal=explain.task_goal(language), max_tokens=600,
+                          folder_id=env.get("REPORTS_LLM_FOLDER_ID", ""))
 
 
 if __name__ == "__main__":

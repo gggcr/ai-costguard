@@ -19,6 +19,10 @@ class MandateHoursTest {
         assertThat(with("Workdays").hours()).isEqualTo(MandateExpression.WORKDAYS);
         assertThat(with("09:00-18:00").hours()).isEqualTo("09:00-18:00");
         assertThat(with(MandateExpression.ALL_DAY).hours()).isEqualTo(MandateExpression.ALL_DAY);
+        // and the API answers in codes, whatever was sent
+        assertThat(MandateExpression.code(MandateExpression.ALL_DAY)).isEqualTo("24/7");
+        assertThat(MandateExpression.code(MandateExpression.WORKDAYS)).isEqualTo("workdays");
+        assertThat(MandateExpression.code("09:00–18:00")).isEqualTo("09:00–18:00");
         assertThat("24/7").matches(MandateExpression.HOURS);
         assertThat("Workdays").matches(MandateExpression.HOURS);
     }

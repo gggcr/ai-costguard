@@ -9,6 +9,18 @@ import { currencySign, fmtDate, fmtMoney } from '../lib';
 const ALL_MODELS = ['gpt-5-mini', 'gpt-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'GigaChat-Pro', 'YandexGPT-5'];
 const ALL_VENDORS = ['OpenAI', 'Anthropic', 'Сбер GigaChat', 'Yandex Cloud', 'СПАРК-Интерфакс'];
 
+/** The API's codes of mandate hours; a window such as 09:00–21:00 is its own label. */
+export const HOURS = ['24/7', '09:00–21:00', '08:00–20:00', 'workdays'];
+const HOUR_LABELS: Record<string, string> = {
+  '24/7': 'круглосуточно', workdays: 'только рабочие дни',
+  // what older answers of the API and drafts in the browser carry
+  'круглосуточно': 'круглосуточно', 'только рабочие дни': 'только рабочие дни',
+};
+/** The label in Russian, which the dictionary turns into English (i18n/en.json). */
+export const hoursLabel = (hours: string) => HOUR_LABELS[hours] ?? hours;
+const hoursCode = (hours: string) =>
+  hours === 'круглосуточно' ? '24/7' : hours === 'только рабочие дни' ? 'workdays' : hours;
+
 export const LADDER = [
   { n: 1, name: 'Ключ и агент', text: 'Ключ действителен, агент не остановлен', fail: '401 / 423' },
   { n: 2, name: 'Мандат', text: 'Модель, поставщик, сумма и время разрешены', fail: '403 policy_denied' },
@@ -70,7 +82,7 @@ export function Policies() {
                 <dt>Поставщики</dt><dd>{m.vendors.join(', ')}</dd>
                 <dt>Лимит на операцию</dt><dd>{fmtMoney(m.maxPerOperation)}</dd>
                 <dt>Согласование</dt><dd>выше {fmtMoney(m.approvalThreshold)}</dd>
-                <dt>Время работы</dt><dd>{m.hours}</dd>
+                <dt>Время работы</dt><dd>{hoursLabel(m.hours)}</dd>
                 <dt>Агенты</dt><dd>{used.length ? used.map((a, i) => <span key={a.id}>{i > 0 && ', '}<Link to={`/agents/${a.id}`}>{a.name}</Link></span>) : <span className="muted">не назначен</span>}</dd>
               </dl>
               <p className="muted small">Изменён {fmtDate(m.updatedAt)}</p>
@@ -131,7 +143,7 @@ function MandateForm({ mandate, onClose }: { mandate?: Mandate; onClose: () => v
   const [vendors, setVendors] = useState<string[]>(mandate?.vendors ?? ['OpenAI']);
   const [maxPerOperation, setMax] = useState(mandate?.maxPerOperation ?? 500);
   const [approvalThreshold, setThreshold] = useState(mandate?.approvalThreshold ?? 300);
-  const [hours, setHours] = useState(mandate?.hours ?? 'круглосуточно');
+  const [hours, setHours] = useState(hoursCode(mandate?.hours ?? '24/7'));
   const toggle = (arr: string[], v: string, set: (x: string[]) => void) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const invalid = !name.trim() || models.length === 0 || vendors.length === 0 || approvalThreshold > maxPerOperation;
 
@@ -157,7 +169,7 @@ function MandateForm({ mandate, onClose }: { mandate?: Mandate; onClose: () => v
           </Field>
           <Field label="Время работы">
             <select className="input" value={hours} onChange={(e) => setHours(e.target.value)}>
-              {['круглосуточно', '09:00–21:00', '08:00–20:00', 'только рабочие дни'].map((h) => <option key={h}>{h}</option>)}
+              {(HOURS.includes(hours) ? HOURS : [...HOURS, hours]).map((h) => <option key={h} value={h}>{hoursLabel(h)}</option>)}
             </select>
           </Field>
         </div>

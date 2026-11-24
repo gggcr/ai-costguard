@@ -2,6 +2,7 @@ package ai.costguard.core.cabinet.internal;
 
 import ai.costguard.core.org.EmployeeDirectory;
 import ai.costguard.core.shared.names.KnownServices;
+import ai.costguard.core.shared.names.Language;
 import ai.costguard.core.shared.names.Names;
 import ai.costguard.core.shared.names.WrittenValues;
 import ai.costguard.platform.tenant.TenantSession;
@@ -99,6 +100,23 @@ class ShadowService {
         } catch (java.security.GeneralSecurityException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /** The stored categories (Russian, as V40 keeps them) in English, for an English company (ADR 0074). */
+    private static final Map<String, String> CATEGORIES_EN = Map.ofEntries(Map.entry("Дизайн", "Design"),
+            Map.entry("Разработка", "Development"), Map.entry("Общение и встречи", "Communication and meetings"),
+            Map.entry("Документы и заметки", "Documents and notes"), Map.entry("Хранение файлов", "File storage"),
+            Map.entry("Безопасность и доступ", "Security and access"), Map.entry("Задачи и проекты", "Tasks and projects"),
+            Map.entry("ИИ", "AI"), Map.entry("Сервисы по подписке", "Subscription services"), Map.entry("Другое", "Other"));
+
+    /** A stored category as the company reads it; one without a translation stays as it is. */
+    static String categoryIn(Language language, String stored) {
+        return language == Language.EN ? CATEGORIES_EN.getOrDefault(stored, stored) : stored;
+    }
+
+    /** The company's language; the tenant is bound. */
+    private Language language() {
+        return employees.company().map(EmployeeDirectory.CompanyCard::language).orElse(Language.RU);
     }
 
     static String category(String service) {
@@ -206,12 +224,13 @@ class ShadowService {
     }
 
     private List<ShadowSpend> mine(UUID tenantId, UUID me) {
+        Language language = language();
         return jdbc.sql("""
                 select id, service, category, amount, currency, paid_on, purpose, created_at from shadow_spend
                 where reporter = ? order by paid_on desc, created_at desc""").param(pseudonym(tenantId, me))
                 .query((rs, i) -> new ShadowSpend(rs.getObject("id", UUID.class), rs.getString("service"),
-                        rs.getString("category"), rs.getBigDecimal("amount"), rs.getString("currency"),
-                        rs.getObject("paid_on", LocalDate.class), rs.getString("purpose"),
+                        categoryIn(language, rs.getString("category")), rs.getBigDecimal("amount"),
+                        rs.getString("currency"), rs.getObject("paid_on", LocalDate.class), rs.getString("purpose"),
                         rs.getTimestamp("created_at").toInstant()))
                 .list();
     }
@@ -231,6 +250,7 @@ class ShadowService {
     @Transactional(readOnly = true)
     ShadowSummary summary(UUID tenantId) {
         session.bind(tenantId);
+        Language language = language();
         record Row(String key, String service, String category, String department, String reporter,
                 BigDecimal amount, String currency, LocalDate paidOn) {
         }
@@ -267,10 +287,12 @@ class ShadowService {
                 }
             }
             if (othersPeople > 0) {
-                departments.add(new ShadowSummary.Department("Другие отделы", othersPeople, others));
+                departments.add(new ShadowSummary.Department(language.pick("Другие отделы", "Other departments"),
+                        othersPeople, others));
             }
             Row first = group.get(0);
-            shown.add(new ShadowSummary.Service(first.service(), first.category(), (int) people, group.size(),
+            shown.add(new ShadowSummary.Service(first.service(), categoryIn(language, first.category()), (int) people,
+                    group.size(),
                     group.stream().map(Row::amount).reduce(BigDecimal.ZERO, BigDecimal::add), first.currency(),
                     group.stream().map(Row::paidOn).max(Comparator.naturalOrder()).orElse(null), departments));
         }

@@ -1,6 +1,9 @@
 package ai.costguard.core.shared.inbox;
 
 import ai.costguard.core.findings.FindingsIntake;
+import ai.costguard.core.shared.names.DetectorText;
+import ai.costguard.core.shared.names.Language;
+import java.util.function.Function;
 import ai.costguard.events.Finding;
 import ai.costguard.platform.errors.ApiException;
 import java.math.RoundingMode;
@@ -18,16 +21,24 @@ class FindingInbox {
     private static final Logger log = LoggerFactory.getLogger(FindingInbox.class);
 
     private final FindingsIntake intake;
+    private final Function<UUID, Language> languages;
 
     FindingInbox(FindingsIntake intake) {
+        this(intake, tenant -> Language.RU);
+    }
+
+    /** The detector writes titles in Russian; they are kept in the company's language (ADR 0074, DetectorText). */
+    FindingInbox(FindingsIntake intake, Function<UUID, Language> languages) {
         this.intake = intake;
+        this.languages = languages;
     }
 
     void handle(Finding f) {
         UUID agent = entity(f, "agent:");
         UUID subscription = entity(f, "subscription:");
+        String title = DetectorText.in(languages.apply(f.getTenantId()), f.getTitle());
         try {
-            intake.detected(f.getTenantId(), f.getFingerprint(), f.getRule(), f.getTitle(), f.getTitle(),
+            intake.detected(f.getTenantId(), f.getFingerprint(), f.getRule(), title, title,
                     f.getExpectedSavings().setScale(2, RoundingMode.HALF_EVEN).max(java.math.BigDecimal.ZERO),
                     subscription, agent);
         } catch (ApiException | IllegalArgumentException e) {

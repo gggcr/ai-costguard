@@ -369,6 +369,16 @@ class AgentsApiIntegrationTest extends PostgresTestSupport {
     }
 
     @Test
+    void hoursAreAnsweredInCodesWhicheverLanguageTheyCameIn() throws Exception {
+        mvc.perform(json(post("/api/v1/mandates"), mandateBody(UUID.randomUUID().toString(), "круглосуточно"))
+                .with(admin())).andExpect(status().isCreated()).andExpect(jsonPath("$.hours").value("24/7"));
+        mvc.perform(json(post("/api/v1/mandates"), mandateBody(UUID.randomUUID().toString(), "workdays"))
+                .with(admin())).andExpect(status().isCreated()).andExpect(jsonPath("$.hours").value("workdays"));
+        mvc.perform(json(post("/api/v1/mandates"), mandateBody(UUID.randomUUID().toString(), "09:00–18:00"))
+                .with(admin())).andExpect(status().isCreated()).andExpect(jsonPath("$.hours").value("09:00–18:00"));
+    }
+
+    @Test
     void everyPublishedVersionGoesToTheNotaryOnce() throws Exception {
         String mandate = mandate();
         mvc.perform(put("/api/v1/mandates/" + mandate + "/publication").with(admin()));

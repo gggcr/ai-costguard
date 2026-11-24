@@ -5026,6 +5026,7 @@ components:
           type: number
         hours:
           type: string
+          example: 24/7
         status:
           type: string
           enum:

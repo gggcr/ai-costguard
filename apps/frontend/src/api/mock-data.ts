@@ -48,10 +48,10 @@ const users: User[] = [
 ];
 
 const mandates: Mandate[] = [
-  { id: 'm-std', name: 'Стандартный', models: ['gpt-5-mini', 'claude-sonnet-5-5', 'GigaChat-Pro'], vendors: ['OpenAI', 'Anthropic', 'Сбер GigaChat'], maxPerOperation: 500, approvalThreshold: 300, hours: 'круглосуточно', status: 'published', version: 4, updatedAt: iso(12 * DAY) },
+  { id: 'm-std', name: 'Стандартный', models: ['gpt-5-mini', 'claude-sonnet-5-5', 'GigaChat-Pro'], vendors: ['OpenAI', 'Anthropic', 'Сбер GigaChat'], maxPerOperation: 500, approvalThreshold: 300, hours: '24/7', status: 'published', version: 4, updatedAt: iso(12 * DAY) },
   { id: 'm-research', name: 'Исследования рынка', models: ['gpt-5', 'claude-opus-5-5', 'YandexGPT-5'], vendors: ['OpenAI', 'Anthropic', 'Yandex Cloud', 'СПАРК-Интерфакс'], maxPerOperation: 3000, approvalThreshold: 1500, hours: '09:00–21:00', status: 'published', version: 2, updatedAt: iso(30 * DAY) },
   { id: 'm-fin', name: 'Финансы — строгий', models: ['GigaChat-Pro', 'YandexGPT-5'], vendors: ['Сбер GigaChat', 'Yandex Cloud'], maxPerOperation: 150, approvalThreshold: 80, hours: '08:00–20:00', status: 'published', version: 1, updatedAt: iso(45 * DAY) },
-  { id: 'm-dev', name: 'Разработка (черновик)', models: ['claude-opus-5-5', 'gpt-5'], vendors: ['Anthropic', 'OpenAI', 'Yandex Cloud'], maxPerOperation: 1200, approvalThreshold: 800, hours: 'круглосуточно', status: 'draft', version: 1, updatedAt: iso(1 * DAY) },
+  { id: 'm-dev', name: 'Разработка (черновик)', models: ['claude-opus-5-5', 'gpt-5'], vendors: ['Anthropic', 'OpenAI', 'Yandex Cloud'], maxPerOperation: 1200, approvalThreshold: 800, hours: '24/7', status: 'draft', version: 1, updatedAt: iso(1 * DAY) },
 ];
 
 const agents: Agent[] = [

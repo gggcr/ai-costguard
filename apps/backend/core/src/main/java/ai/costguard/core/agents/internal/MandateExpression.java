@@ -21,6 +21,21 @@ final class MandateExpression {
     private MandateExpression() {
     }
 
+    /**
+     * What the API answers: "24/7" and "workdays" for the stored Russian names, a window as it is. Storage keeps the
+     * Russian names, which published mandate versions were hashed with (ADR 0009).
+     */
+    static String code(String hours) {
+        if (hours == null) {
+            return null;
+        }
+        return switch (hours) {
+            case ALL_DAY -> ALL_DAY_EN;
+            case WORKDAYS -> WORKDAYS_EN;
+            default -> hours;
+        };
+    }
+
     /** "24/7" and "workdays" as the stored names; anything else as it is. */
     static String canonical(String hours) {
         if (hours == null) {

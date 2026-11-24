@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -97,6 +98,28 @@ class ShadowSpendIntegrationTest extends PostgresTestSupport {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         // no names and no e-mails anywhere in it
         assertThat(summary).doesNotContain(a).doesNotContain(b).doesNotContain(c).doesNotContain("макеты");
+    }
+
+    /** ADR 0074: an English company reads the categories in English; the rows keep the stored names. */
+    @Test
+    void anEnglishCompanyReadsTheCategoriesInEnglish() throws Exception {
+        mvc.perform(json(put("/api/v1/company"), "{\"name\":\"Acme Inc\",\"currency\":\"USD\",\"language\":\"en\"}")
+                .with(as("o@corp.ru", "owner"))).andExpect(status().isOk());
+        String a = person();
+        String b = person();
+        String c = person();
+        for (String who : List.of(a, b, c)) {
+            report(who, "Figma", 15);
+        }
+        report(a, "Zoom", 10);
+
+        mvc.perform(get("/api/v1/shadow-spend/summary").with(as("f@corp.ru", "finance")))
+                .andExpect(jsonPath("$.services[0].category").value("Design"));
+        mvc.perform(get("/api/v1/me/shadow-spend").with(as(a, "employee")))
+                .andExpect(jsonPath("$[?(@.service == 'Zoom')].category").value("Communication and meetings"));
+        assertThat(JdbcClient.create(superuserAppDataSource())
+                .sql("select distinct category from shadow_spend where tenant_id = ? order by 1").param(tenant)
+                .query(String.class).list()).containsExactly("Дизайн", "Общение и встречи");
     }
 
     @Test

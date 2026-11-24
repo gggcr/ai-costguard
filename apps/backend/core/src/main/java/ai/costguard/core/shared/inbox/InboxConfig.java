@@ -79,9 +79,17 @@ class InboxConfig {
         return new NormalizedInbox(entities);
     }
 
+    /** The company's language for the detector's texts (ADR 0074). */
     @Bean
-    FindingInbox findingInbox(FindingsIntake intake) {
-        return new FindingInbox(intake);
+    CompanyLanguages companyLanguages(ai.costguard.platform.tenant.TenantSession session,
+            ai.costguard.core.org.EmployeeDirectory company,
+            org.springframework.transaction.PlatformTransactionManager transactions) {
+        return new CompanyLanguages(session, company, transactions);
+    }
+
+    @Bean
+    FindingInbox findingInbox(FindingsIntake intake, CompanyLanguages languages) {
+        return new FindingInbox(intake, languages);
     }
 
     @Bean
@@ -100,8 +108,8 @@ class InboxConfig {
     }
 
     @Bean
-    RiskSignalInbox riskSignalInbox(AgentRisks risks) {
-        return new RiskSignalInbox(risks);
+    RiskSignalInbox riskSignalInbox(AgentRisks risks, CompanyLanguages languages) {
+        return new RiskSignalInbox(risks, languages);
     }
 
     @Component

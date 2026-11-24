@@ -103,7 +103,7 @@ def main() -> int:
     # --- Track A: mandate, agent, key, budgets
     mandate = core.post("/api/v1/mandates", json={
         "name": f"Paid APIs {run}", "models": ["gpt-5"], "vendors": ["Acme Data"], "maxPerOperation": 300,
-        "approvalThreshold": 100, "hours": "круглосуточно"})
+        "approvalThreshold": 100, "hours": "24/7"})
     ok = step("a mandate: paid APIs up to $300, approval above $100", mandate.status_code in (200, 201),
               mandate.text[:120])
     if not ok:
