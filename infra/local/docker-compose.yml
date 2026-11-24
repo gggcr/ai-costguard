@@ -228,6 +228,28 @@ services:
       interval: 5s
       retries: 60
 
+  # The anomaly detector for `make demo` (apps/python/anomaly): spend spikes and double charges in cost records
+  # become findings, unusual agent behaviour becomes risk signals (ADR 0016, 0031). Without it an uploaded invoice
+  # with a double charge shows no finding, and the smoke test (tests/smoke) cannot pass locally. Models are kept in
+  # memory only: no MLflow here.
+  anomaly:
+    profiles: [demo]
+    build:
+      context: ../..
+      dockerfile: apps/python/anomaly/Dockerfile
+    depends_on:
+      # consumers subscribe at start: the topics must exist by then
+      topics: { condition: service_completed_successfully }
+      kafka: { condition: service_started }
+      schema-registry: { condition: service_started }
+    # start again if Kafka or the schema registry is not up yet
+    restart: on-failure
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      COSTGUARD_TRACING: ${TRACING:-false}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+
   # The ingest pipeline for `make demo` (apps/python/ingest): reads what is uploaded to «Импорт» from the bucket the
   # core writes to, suggests the mapping, and writes cost records, devices and people. Without it uploads wait forever.
   ingest:

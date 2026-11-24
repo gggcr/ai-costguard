@@ -24,8 +24,10 @@ make demo                     # 5–10 minutes on the first run: builds the jars
 ```
 
 `make demo` builds the core and the gateway, starts PostgreSQL, Kafka, Schema Registry, ClickHouse, Redis,
-Keycloak, SeaweedFS (S3), Mailpit and the services, creates the ClickHouse tables, and loads the demo data
-(`tools/seed/seed.py`). Audit findings appear within a minute.
+Keycloak, SeaweedFS (S3), Mailpit and the services (the core, the gateway, the web client, ingest and the anomaly
+detector), creates the ClickHouse tables, and loads the demo data (`tools/seed/seed.py`). Audit findings appear
+within a minute. With the stack up, `tests/e2e` (`E2E=1`) and `tests/smoke` (the local settings are in
+[runbooks/smoke.md](runbooks/smoke.md)) run against it.
 
 Without make (Windows without WSL, for example), the same steps by hand, from the repository root in Git Bash:
 
