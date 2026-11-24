@@ -1,0 +1,52 @@
+# Weekly pull requests for what the code depends on, so a fix upstream reaches the product without anyone looking
+# for it (ADR 0027). The security workflow then scans what the pull request brings. Minor and patch updates of one
+# ecosystem come as one pull request; majors come alone, to be read.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      gradle-minor: { update-types: [minor, patch] }
+
+  - package-ecosystem: uv
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      python-minor: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directories: [/apps/frontend, /libs/js/costguard-sdk]
+    schedule: { interval: weekly, day: monday }
+    groups:
+      npm-minor: { update-types: [minor, patch] }
+
+  - package-ecosystem: cargo
+    directory: /contracts/notary
+    schedule: { interval: weekly, day: monday }
+    groups:
+      cargo-minor: { update-types: [minor, patch] }
+
+  # Base images of every Dockerfile: a new patch of the JRE, Python, nginx or PostgreSQL image.
+  - package-ecosystem: docker
+    directories:
+      - /apps/backend/core
+      - /apps/backend/gateway
+      - /apps/frontend
+      - /apps/python/ingest
+      - /apps/python/anomaly
+      - /apps/python/notary
+      - /apps/python/connectors
+      - /apps/python/reports
+      - /deploy/backup
+      - /deploy/mlflow
+    schedule: { interval: weekly, day: monday }
+    groups:
+      base-images: { update-types: [minor, patch, digest] }
+
+  # The actions are pinned by commit; this moves the pins when an action releases.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      actions: { patterns: ['*'] }

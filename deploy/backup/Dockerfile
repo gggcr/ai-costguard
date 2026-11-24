@@ -1,6 +1,6 @@
 # The nightly backups (ADR 0025): pg_dump and pg_restore of the same major version as Managed PostgreSQL, age, and
 # boto3 for the bucket. Build from the repository root: docker build -f deploy/backup/Dockerfile -t backup .
-FROM postgres:17.2-bookworm
+FROM postgres:17-bookworm
 # upgrade: the security fixes Debian released after the base image was built (OpenSSL, GnuTLS, libxml2, Perl);
 # the security workflow fails the build on a critical one with a fix (ADR 0027).
 RUN apt-get update \

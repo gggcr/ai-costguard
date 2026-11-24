@@ -96,6 +96,8 @@ jobs:
         image:
           - { name: core, context: apps/backend/core, dockerfile: apps/backend/core/Dockerfile, jar: core }
           - { name: gateway, context: apps/backend/gateway, dockerfile: apps/backend/gateway/Dockerfile, jar: gateway }
+          # the web client: nginx and the built bundle, the only image the internet reaches directly
+          - { name: frontend, context: apps/frontend, dockerfile: apps/frontend/Dockerfile }
           - { name: ingest, context: ., dockerfile: apps/python/ingest/Dockerfile }
           - { name: anomaly, context: ., dockerfile: apps/python/anomaly/Dockerfile }
           - { name: notary, context: ., dockerfile: apps/python/notary/Dockerfile }

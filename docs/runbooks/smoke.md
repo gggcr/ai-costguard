@@ -12,6 +12,9 @@
    - Variables: `SMOKE_CORE_URL`, `SMOKE_GATEWAY_URL`, `SMOKE_KEYCLOAK_URL` (`https://…/realms/costguard`);
    - Secrets: `SMOKE_USERNAME`, `SMOKE_PASSWORD`, `ARGOCD_SERVER`, `ARGOCD_AUTH_TOKEN`.
 4. Запустить вручную: Actions → deploy-manifests → Run workflow.
+5. Когда ручной запуск прошёл, включить автозапуск после каждой сборки: Settings → Secrets and variables → Actions →
+   Variables (уровень репозитория, не окружения) → `SMOKE_STAGING` = `on`. Пока staging нет, переменной нет и
+   автоматический job не запускается вовсе, поэтому зелёная сборка не краснеет из-за отсутствия окружения.
 
 Локально на `make demo`: `SMOKE_CORE_URL=http://127.0.0.1:8080 SMOKE_GATEWAY_URL=http://127.0.0.1:8081
 SMOKE_KEYCLOAK_URL=http://127.0.0.1:8180/realms/costguard SMOKE_CLIENT_ID=costguard-e2e SMOKE_USERNAME=demo

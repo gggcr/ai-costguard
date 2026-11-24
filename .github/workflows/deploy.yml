@@ -58,11 +58,15 @@ jobs:
       - run: terraform validate
 
   smoke-staging:
-    # After a successful build of goidochka, or by hand. Needs the settings of docs/runbooks/smoke.md; without them the
-    # job fails and says which are missing, it never passes without having tested anything.
+    # After a successful build of goidochka once a staging exists (the repository variable SMOKE_STAGING is `on`), or
+    # by hand. Needs the settings of docs/runbooks/smoke.md; started by hand without them, the job fails and says
+    # which are missing: it never passes without having tested anything. Before a staging exists the automatic run is
+    # not started at all, so a green build does not turn red for want of an environment. The flag is a repository
+    # variable because a job's `if` does not see the variables of its environment.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       vars.SMOKE_STAGING == 'on')
     runs-on: ubuntu-latest
     environment: staging
     concurrency: { group: smoke-staging, cancel-in-progress: false }
