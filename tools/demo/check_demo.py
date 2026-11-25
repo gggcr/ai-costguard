@@ -151,13 +151,15 @@ def main() -> int:
          f"{held.status_code} {held.text[:100]}")
     if approval:
         # The agent's approvalId is the operation it waits on (GET /v1/spend/approvals/{id} at the gateway); the
-        # request people decide on reaches the core over Kafka a moment later, under its own id.
+        # request people decide on reaches the core a moment later, under its own id.
         request = wait(lambda: next((a for a in listed("/api/v1/approvals") if a.get("operationId") == approval),
                                     None), timeout=60)
-        d = request and core.put(f"/api/v1/approvals/{request['id']}/decision",
-                                 json={"verdict": "approve", "comment": "demo"})
-        d = d if d is not None and d.status_code == 200 else None
-        step("the owner approves it", d is not None, "" if d is not None else "the core did not see the request")
+        decided = request and core.put(f"/api/v1/approvals/{request['id']}/decision",
+                                       json={"verdict": "approve", "comment": "demo"})
+        d = decided if decided is not None and decided.status_code == 200 else None
+        why = ("" if d is not None else "the core did not see the request" if not request
+               else f"the decision was refused: {decided.status_code} {decided.text[:120]}")
+        step("the owner approves it", d is not None, why)
         again = wait(lambda: (lambda x: x if x.status_code == 200 else None)(authorize(key, 150, big)), timeout=60)
         step("the same request with the same Idempotency-Key passes", again is not None)
     else:

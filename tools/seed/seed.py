@@ -171,6 +171,14 @@ def company(c: Company, today: date) -> list[str]:
          "role": "owner", "employee_id": None},
         {"id": str(uid("user", c.employee_login.split("@")[0].split(".")[0])), "tenant_id": t, "name": employee[0],
          "email": c.employee_login, "role": "employee", "employee_id": str(employees[c.employee_login])}]))
+    # Keycloak of the local stack keeps no volume: every new container gives the demo users new subjects, while
+    # PostgreSQL keeps its rows. A demo account still linked to the old subject could sign in to nothing it may
+    # change (an approval answers 403 decider_account_required). Unlinked, it is linked again at the next sign-in by
+    # its verified e-mail (FirstLogin, ADR 0069), as on the first run. Only these synthetic accounts are touched.
+    demo_accounts = ", ".join(q(str(uid("user", name))) for name in
+                              ("demo", c.employee_login.split("@")[0].split(".")[0]))
+    sql.append(f"update user_account set keycloak_subject = null where tenant_id = {q(t)} "
+               f"and id in ({demo_accounts});\n")
     sql.append(insert("vendor", [{"id": str(vendor_ids[n]), "tenant_id": t, "name": n, "inn": inn, "category": cat}
                                  for n, (inn, cat) in c.vendors.items()]))
     vendor, number, amount = c.contract

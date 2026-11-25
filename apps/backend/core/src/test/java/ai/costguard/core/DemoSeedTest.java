@@ -71,5 +71,16 @@ class DemoSeedTest extends PostgresTestSupport {
                 .containsEntry("licenses", 10L).containsEntry("accounts", 2L);
         assertThat(tenants.get(1)).containsEntry("currency", "RUB").containsEntry("language", null)
                 .containsEntry("employees", 5L).containsEntry("licenses", 10L);
+
+        // The local Keycloak keeps no volume: after `make down && make demo` the demo users come back with new
+        // subjects. The seed unlinks the demo accounts, so the next sign-in links them again by the verified e-mail
+        // instead of leaving the owner unable to decide an approval (403 decider_account_required).
+        su.sql("update user_account set keycloak_subject = 'kc-of-the-previous-keycloak-' || id").update();
+        try (Connection connection = database(db, "postgres").getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(sql);
+        }
+        assertThat(su.sql("select count(*) from user_account where keycloak_subject is not null").query(Long.class)
+                .single()).isZero();
     }
 }
