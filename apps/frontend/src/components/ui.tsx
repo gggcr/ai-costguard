@@ -74,7 +74,8 @@ export const CODE_META: Record<GatewayCode, { label: string; tone: Tone; http: s
   '423_agent_suspended': { label: 'Агент остановлен', tone: 'critical', http: '423' },
   '429_rate_limited': { label: 'Замедлен', tone: 'warning', http: '429' },
   approval_rejected: { label: 'Отклонено человеком', tone: 'serious', http: '403' },
-  pending_approval: { label: 'Ждёт согласования', tone: 'warning', http: '202' },
+  // the gateway answers the agent 403 approval_required and keeps the operation until a person decides
+  pending_approval: { label: 'Ждёт согласования', tone: 'warning', http: '403' },
 };
 export function CodeBadge({ code }: { code: GatewayCode }) {
   const m = CODE_META[code];
